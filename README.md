@@ -14,7 +14,7 @@ rtds-project/
 ├── pyproject.toml
 ├── .gitignore
 ├── src/                 # project implementation
-└── report/              # course report sources and figures
+└── report/              # LaTeX report source and build configuration
 ```
 
 ## Requirements
@@ -23,4 +23,16 @@ Python 3.11 or later. Project metadata is defined in `pyproject.toml`; no depend
 
 ## Current status
 
-The source and report directories currently contain only `.gitkeep` placeholders. Build, experiment execution, testing, and linting commands will be documented when the corresponding implementation and tooling are introduced.
+The source directory currently contains only a `.gitkeep` placeholder. The report has a blank `main.tex` and an empty `sections/` directory; section headings will be added once the required structure is confirmed.
+
+## Report compilation
+
+Requires `make`, `latexmk`, and `pdflatex`. Compile from the repository root:
+
+```sh
+make -C report
+```
+
+The Makefile calls `latexmk` to manage compilation passes and dependencies. Automatic compilation is handled by the editor; in VS Code, configure LaTeX Workshop to run this Makefile on save. Add `\input{sections/filename}` entries to `report/main.tex` when section files are introduced.
+
+Experiment execution, Python testing, and linting commands will be documented when the corresponding implementation and tooling are introduced.

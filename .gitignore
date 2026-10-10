@@ -20,6 +20,7 @@ dist/
 !.env.example
 
 # LaTeX temporary files
+report/.build/
 *.aux
 *.bbl
 *.bcf
