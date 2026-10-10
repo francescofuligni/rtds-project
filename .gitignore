@@ -1,0 +1,39 @@
+# macOS
+.DS_Store
+
+# Python environments and generated files
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Local environment variables
+.env
+.env.*
+!.env.example
+
+# LaTeX temporary files
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+
+# Agent operational files & local knowledge base
+AGENTS.md
+HANDOFF.md
+wiki/
+notes/
