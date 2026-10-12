@@ -15,6 +15,7 @@ Usage: run from the repository root with the project venv, e.g.
 from __future__ import annotations
 
 import csv
+import gc
 import os
 import sys
 import time
@@ -35,12 +36,14 @@ M_VALUES = [10, 100]
 PILOT_N = 100
 REGULARIZATION = 0.01
 RASHOMON_BOUND_MULTIPLIER = 0.1
-N_REPEATS = 7
+N_REPEATS = 15  # odd, avoids ties in the binary-T majority vote; gives 8 distinct
+# agreement levels (8/15..15/15) instead of 7's 4 (4/7..7/7), for a finer isotonic fit
 SOLVE_TIMEOUT = 60.0
-N_WORKERS = min(6, os.cpu_count() or 1)  # lower than the 12 used elsewhere: each worker
-# does 2 m-values x 4 conditions x N_REPEATS solves sequentially (more memory held per
-# worker over a longer-lived process than the single-solve experiments), so fewer
-# concurrent workers trades wall-time for headroom after repeated OOM-adjacent kills
+N_WORKERS = min(6, os.cpu_count() or 1)  # matches the machine's 6 physical cores (12
+# threads); each worker does 2 m-values x 4 conditions x N_REPEATS solves sequentially
+# (more memory held per worker over a longer-lived process than the single-solve
+# experiments), so fewer concurrent workers trades wall-time for headroom after
+# repeated OOM-adjacent kills at N_REPEATS=7
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 
@@ -79,6 +82,10 @@ def run_seed(seed: int) -> list[dict]:
                     "n_solved": n_solved, "agreement": round(r.agreement, 4),
                     "correct": r.correct,
                 })
+            gc.collect()  # each repeated_reconstruct_with_confidence call builds and
+            # solves N_REPEATS fresh CP-SAT models in this same long-lived worker
+            # process; force collection between cells rather than relying on it
+            # happening before memory builds up across all 2*4*N_REPEATS solves
 
     print(f"[seed {seed}] done: {n_available} trees (build {build_time:.1f}s), {len(rows_out)} rows", flush=True)
     return rows_out
