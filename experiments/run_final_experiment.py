@@ -31,12 +31,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from attack.baselines import marginal_baseline, uniform_random_guess
 from attack.conditions import CONDITIONS, run_condition
-from attack.reconstruct import extract_branches
+from attack.reconstruct import _walk_leaves, extract_branches
 from rashomon.build import build_rashomon_set, select_trees
 from rashomon.data import binarize_adult_curated, known_columns_for, load_adult_raw, sample_rows
 
 TARGET, ATTR_A, ATTR_B = "sex", "marital-status", "education"
-N_SEEDS = 50
+N_SEEDS = 200
 M_VALUES = [5, 10, 25, 50, 100]
 PILOT_N = 100
 HOLDOUT_N = 2000
@@ -46,6 +46,23 @@ SOLVE_TIMEOUT = 120.0
 N_WORKERS = min(12, os.cpu_count() or 1)
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
+
+
+def joint_split_fraction(trees: list[dict], target_cols: set[int], other_cols: set[int]) -> float:
+    """Fraction of trees with at least one leaf whose root-to-leaf path
+    splits on a target column AND an "other" column together -- the
+    structural precondition for background knowledge of "other" to
+    propagate into a tighter constraint on "target" at that leaf."""
+    if not trees:
+        return 0.0
+    n_joint = 0
+    for t in trees:
+        for path, _pred in _walk_leaves(t, []):
+            feats = {f for f, _ in path}
+            if feats & target_cols and feats & other_cols:
+                n_joint += 1
+                break
+    return n_joint / len(trees)
 
 
 def run_seed(seed: int) -> list[dict]:
@@ -63,6 +80,8 @@ def run_seed(seed: int) -> list[dict]:
     build_time = time.time() - t0
 
     target_idx = [pilot.X.columns.get_loc(c) for c in known_columns_for(pilot, TARGET)]
+    a_idx = {pilot.X.columns.get_loc(c) for c in known_columns_for(pilot, ATTR_A)}
+    b_idx = {pilot.X.columns.get_loc(c) for c in known_columns_for(pilot, ATTR_B)}
     X = pilot.X.to_numpy()
     uniform = uniform_random_guess(PILOT_N, target_idx, pilot.X.shape[1], seed=seed)
     marginal = marginal_baseline(pilot, TARGET, PILOT_N, holdout_df, seed=seed)
@@ -78,6 +97,8 @@ def run_seed(seed: int) -> list[dict]:
         y = pilot.y.to_numpy()
         classes = sorted(pilot.y.unique().tolist())
         trees_branches = [extract_branches(t, X, y, classes) for t in trees]
+        joint_a_frac = joint_split_fraction(trees, set(target_idx), a_idx)
+        joint_b_frac = joint_split_fraction(trees, set(target_idx), b_idx)
 
         for condition in CONDITIONS:
             t0 = time.time()
@@ -91,6 +112,8 @@ def run_seed(seed: int) -> list[dict]:
                 "reconstruction_error": result.reconstruction_error,
                 "uniform_baseline_error": uniform_error,
                 "marginal_baseline_error": marginal_error,
+                "joint_split_frac_A": round(joint_a_frac, 4),
+                "joint_split_frac_B": round(joint_b_frac, 4),
             })
 
     print(f"[seed {seed}] done: {n_available} trees (build {build_time:.1f}s), {len(rows)} rows", flush=True)

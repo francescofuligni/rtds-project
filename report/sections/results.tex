@@ -1,18 +1,20 @@
 \section{Results}
 \label{sec:results}
 
-Figure~\ref{fig:error-vs-m} shows the mean reconstruction error on $T$ across the 50 repetitions, for each background-knowledge condition and number of released trees $m$, against the two baselines (means taken over all repetitions, since the baselines do not depend on $m$).
+\subsection{Background knowledge of $A$ and/or $B$ significantly reduces reconstruction error on $T$}
+
+Figure~\ref{fig:error-vs-m} shows the mean reconstruction error on $T$ across 200 repetitions, for each background-knowledge condition and number of released trees $m$, against the two baselines (means taken over all repetitions, since the baselines do not depend on $m$).
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.85\textwidth]{figures/reconstruction_error_vs_m.pdf}
-  \caption{Reconstruction error on $T=\texttt{sex}$ vs.\ number of released trees $m$, by background-knowledge condition. Error bars are $\pm 1$ standard error of the mean over 50 repetitions (fewer at $m=50,100$ where some repetitions' Rashomon sets or solves did not reach that point -- see Limitations).}
+  \caption{Reconstruction error on $T=\texttt{sex}$ vs.\ number of released trees $m$, by background-knowledge condition. Error bars are $\pm 1$ standard error of the mean over 200 repetitions (fewer at $m=50,100$ where some repetitions' Rashomon sets or solves did not reach that point -- see Limitations).}
   \label{fig:error-vs-m}
 \end{figure}
 
 \paragraph{The released trees leak substantially more than either baseline.} All four conditions solve to error between $0.31$ and $0.36$ across every $m$ tested, against a uniform-random baseline of $0.50$ and a holdout-marginal baseline of $0.44$.
 
-\paragraph{Background knowledge of $A$ and/or $B$ significantly reduces reconstruction error on $T$, with a clean ordering.} Unlike an earlier, shallower-tree version of this experiment, the four conditions now separate cleanly and consistently: $A{+}B < A \approx B < \text{None}$ at every $m$ from 10 onward (Table~\ref{tab:means}), and the gap widens as $m$ grows -- e.g.\ the $A{+}B$ advantage over \emph{None} grows from $0.013$ at $m=5$ to $0.025$ at $m=100$.
+\paragraph{A clean ordering: $A{+}B < A \approx B < \text{None}$.} The four conditions separate cleanly and consistently from $m=10$ onward (Table~\ref{tab:means}), with $A{+}B$ giving the lowest error at every $m$ tested.
 
 \begin{table}[h]
 \centering
@@ -20,13 +22,13 @@ Figure~\ref{fig:error-vs-m} shows the mean reconstruction error on $T$ across th
 \toprule
  & $m=5$ & $m=10$ & $m=25$ & $m=50$ & $m=100$ \\
 \midrule
-None & 0.350 & 0.358 & 0.342 & 0.343 & 0.337 \\
-$A$    & 0.340 & 0.337 & 0.336 & 0.333 & 0.321 \\
-$B$    & 0.343 & 0.343 & 0.345 & 0.333 & 0.322 \\
-$A{+}B$ & 0.337 & 0.327 & 0.325 & 0.315 & 0.312 \\
+None & 0.345 & 0.355 & 0.349 & 0.346 & 0.330 \\
+$A$    & 0.342 & 0.345 & 0.341 & 0.336 & 0.323 \\
+$B$    & 0.338 & 0.342 & 0.338 & 0.331 & 0.323 \\
+$A{+}B$ & 0.332 & 0.331 & 0.325 & 0.317 & 0.315 \\
 \bottomrule
 \end{tabular}
-\caption{Mean reconstruction error on $T$ by condition and $m$.}
+\caption{Mean reconstruction error on $T$ by condition and $m$, over 200 repetitions.}
 \label{tab:means}
 \end{table}
 
@@ -37,14 +39,43 @@ A paired Wilcoxon signed-rank test (same seed and $m$, condition vs.\ \emph{None
 \toprule
  & $A$ & $B$ & $A{+}B$ \\
 \midrule
-mean difference vs.\ None & $-0.0127$ & $-0.0083$ & $-0.0228$ \\
-$p$-value & $0.0013$ & $0.045$ & $4\times10^{-7}$ \\
+mean difference vs.\ None & $-0.0077$ & $-0.0110$ & $-0.0211$ \\
+$p$-value (pooled) & $6\times10^{-4}$ & $3\times10^{-7}$ & $1\times10^{-22}$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-$A{+}B$ is also individually significant at $m=10$ ($p=0.006$), $m=50$ ($p=0.007$), and $m=100$ ($p=0.004$), and directionally negative (helps) at every $m$ tested. $A$ alone reaches significance at $m=10$ and $m=100$. $B$ alone is the weakest of the three: it is significant pooled, but at $m=25$ its mean difference is slightly \emph{positive} (i.e.\ knowing $B$ alone very slightly hurt reconstruction of $T$ in that slice of the data, $p=0.54$, not significant) before the expected direction reasserts itself at $m=50$ and $m=100$. We read this as $B$ (education, 5 categories) carrying a genuinely weaker and noisier signal about $T$ than $A$ (marital-status, 4 categories) in this sample, consistent with $A$ having a tighter empirical association with \texttt{sex} in Adult -- not as a failure of the method.
+Because this pools 15 tests (3 conditions $\times$5 values of $m$), we additionally report per-$m$ tests with Holm-Bonferroni correction for multiple comparisons ($\alpha=0.05$): $A{+}B$ survives correction at $m=5,10,25,50$ (4 of 5 values; at $m=100$ it narrowly fails, $p=0.0097$, just short of its step-down threshold), and $B$ survives at $m=10$. $A$ alone does not survive the conservative per-$m$ correction at any single $m$, despite being significant pooled -- its effect size per cell ($\approx 0.008$--$0.01$) is simply too small relative to per-cell noise ($n=200$ per cell) to clear a corrected threshold alone, even though it reliably accumulates to significance when pooled. We read the overall pattern as: knowing \emph{both} $A$ and $B$ gives a robust, individually-significant effect; knowing either one alone gives a real but smaller effect that is only reliably detectable in aggregate. $B$ (education) is directionally the noisier of the two single-attribute conditions, consistent with a weaker empirical association with \texttt{sex} than marital-status has in this data.
 
-\paragraph{Why this result is stronger than an earlier pass of the same experiment.} An initial version of this experiment, run under a tighter compute budget, used regularization $\lambda=0.02$ and bound multiplier $0.2$, giving Rashomon sets of very shallow trees (1--3 splits) in which most trees never split on \texttt{sex} at all; the four conditions were statistically indistinguishable. The version reported here uses $\lambda=0.01$ (matching Hsu et al.'s own Adult setting) and a looser bound multiplier, giving substantially deeper trees (avg.\ depth 5.7) where \texttt{sex} is split on in essentially every tree and jointly with $A$/$B$ in the same root-to-leaf path in the large majority of trees. This supports the mechanism we hypothesized earlier: background knowledge only helps the attacker where a tree's structure directly entangles $T$ with the known attribute, and shallow trees simply don't create enough such entanglement to show an effect.
+\subsection{Testing the hypothesized mechanism: it does not hold up}
 
-\paragraph{Limitations.} (i) The pooled Wilcoxon test treats each (seed, $m$) pair as an independent observation; the five $m$-values drawn from the same seed are not independent of each other (they reuse the same 100-row sample and overlapping trees from the same Rashomon set), so the pooled $p$-values should be read as a convenient summary rather than a fully rigorous combined test -- the per-$m$ tests, which are properly independent across seeds, are the safer basis for any claim. (ii) At $m=100$, the \emph{None} condition timed out (CP-SAT returned \texttt{UNKNOWN} within the 120s budget) for 9 of 50 repetitions, and 2 repetitions had Rashomon sets smaller than 50/100 trees and were excluded at those $m$ values entirely; $n$ at $m=100$ is therefore 39, not 50. (iii) The curated 13-column feature set, single enumeration-order tree selection (no diversity-aware strategy), and absence of a calibration/confidence measure remain as before.
+An earlier pass of this experiment (fewer, shallower trees) found no condition separation, and we hypothesized that background knowledge only helps where a released tree's root-to-leaf path jointly splits on $T$ \emph{and} $A$ or $B$ together -- deeper trees seemed to confirm this indirectly, since they both showed much more joint splitting and the first clear condition separation.
+
+We tested this directly rather than leaving it as a plausible story. For every (seed, $m$) cell we computed the fraction of released trees containing at least one leaf whose path uses both $T$ and the attribute in question, and correlated it against that cell's observed error reduction (\emph{None} error minus the condition's error). Figure~\ref{fig:mechanism} shows the result: no relationship. Both attributes show a flat scatter (Spearman $\rho=0.03$, $p=0.42$, $n=949$ for $A$; $\rho=0.04$, $p=0.22$, $n=950$ for $B$).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/mechanism_joint_split_correlation.pdf}
+  \caption{Per-(seed, $m$) error reduction vs.\ fraction of released trees with a joint $T$+attribute split leaf. No correlation is visible for either attribute.}
+  \label{fig:mechanism}
+\end{figure}
+
+We take this as a genuine negative result, not a nuisance to explain away: the simple structural story ("more joint splits $\Rightarrow$ more leakage") does not predict cell-to-cell variation, even though the aggregate effect across hundreds of cells is unambiguous (previous subsection). The most likely reading is that single-cell reconstruction error is dominated by solver and sample idiosyncrasies that swamp this particular structural signal, so the background-knowledge benefit is real on average but not well explained by this one coarse proxy -- a deeper mechanism account (e.g.\ weighting joint-split leaves by how many training rows they actually capture, rather than a binary per-tree indicator) is left for future work.
+
+\subsection{Per-row confidence: solver agreement predicts correctness}
+\label{sec:results-confidence}
+
+No reviewed paper reports a confidence value for an individual reconstructed record from an ensemble of released models (gap G1 identified in the literature review); the solver-agreement proxy described in Section~\ref{sec:method-confidence} is our attempt to fill that gap. Figure~\ref{fig:calibration} bins the 20-seed, $m\in\{10,100\}$ sample by agreement rate and plots each bin's empirical accuracy.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/calibration_reliability.pdf}
+  \caption{Empirical accuracy vs.\ agreement rate across 7 repeated solves (confidence proxy), by $m$. Point size is proportional to bin count. The dashed line is perfect calibration (accuracy = agreement).}
+  \label{fig:calibration}
+\end{figure}
+
+Among the well-populated bins (hundreds to thousands of rows each), accuracy rises monotonically with agreement rate at both $m=10$ (from $0.53$ at agreement $4/7$ to $0.68$ at agreement $7/7$) and $m=100$ (from $0.52$ at $4/7$ to $0.71$ at $7/7$). Row-level Spearman correlation between agreement and correctness is positive and highly significant at both: $\rho=0.07$ ($p=1.9\times10^{-10}$, $n=8{,}000$) at $m=10$, and $\rho=0.10$ ($p=2.2\times10^{-19}$, $n=7{,}600$) at $m=100$.
+
+This is a real, useful confidence signal -- an attacker (or an auditor) can trust a unanimous reconstruction meaningfully more than a contested one -- but it is not a \emph{calibrated probability}: every curve in Figure~\ref{fig:calibration} sits below the perfect-calibration line, so a row where all 7 solves agree is correct about 68--71\% of the time, not close to 100\%. The agreement rate should be read as a valid relative ranking of confidence, not a literal probability of correctness.
+
+\paragraph{Limitations.} (i) The pooled Wilcoxon tests treat each (seed, $m$) pair as an independent observation; the five $m$-values drawn from the same seed reuse the same 100-row sample and overlapping trees from the same Rashomon set, so pooled $p$-values are a convenient summary rather than a fully independent combined test -- the per-$m$, Holm-corrected tests are the safer basis for any individual claim. (ii) At $m=100$, the \emph{None} condition most often timed out (CP-SAT returned \texttt{UNKNOWN} within the 120s budget); cell sizes shrink from 200 at $m=5$ to 156 at $m=100$ accordingly, and a handful of repetitions had Rashomon sets smaller than 50/100 trees and were excluded at those $m$ values entirely. (iii) A few agreement-rate bins at $m=100$ (e.g.\ $0.50$, $0.67$, $0.83$) have only 2--4 rows and are not reliable; the monotonic trend is supported by the large bins ($4/7$, $5/7$, $6/7$, $7/7$, each hundreds to thousands of rows). (iv) The curated 13-column feature set and single enumeration-order tree selection (no diversity-aware strategy) remain as before.
