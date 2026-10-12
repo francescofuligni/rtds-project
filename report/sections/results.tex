@@ -3,12 +3,12 @@
 
 \subsection{Background knowledge of $A$ and/or $B$ significantly reduces reconstruction error on $T$}
 
-Figure~\ref{fig:error-vs-m} shows the mean reconstruction error on $T$ across 200 repetitions, for each background-knowledge condition and number of released trees $m$, against the two baselines (means taken over all repetitions, since the baselines do not depend on $m$).
+Figure~\ref{fig:error-vs-m} shows the mean reconstruction error on $T$ across 350 repetitions, for each background-knowledge condition and number of released trees $m$, against the two baselines (means taken over all repetitions, since the baselines do not depend on $m$).
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.85\textwidth]{figures/reconstruction_error_vs_m.pdf}
-  \caption{Reconstruction error on $T=\texttt{sex}$ vs.\ number of released trees $m$, by background-knowledge condition. Error bars are $\pm 1$ standard error of the mean over 200 repetitions (fewer at $m=50,100$ where some repetitions' Rashomon sets or solves did not reach that point -- see Limitations).}
+  \caption{Reconstruction error on $T=\texttt{sex}$ vs.\ number of released trees $m$, by background-knowledge condition. Error bars are $\pm 1$ standard error of the mean over 350 repetitions (fewer at $m=50,100$ where some repetitions' Rashomon sets or solves did not reach that point -- see Limitations).}
   \label{fig:error-vs-m}
 \end{figure}
 
@@ -22,13 +22,13 @@ Figure~\ref{fig:error-vs-m} shows the mean reconstruction error on $T$ across 20
 \toprule
  & $m=5$ & $m=10$ & $m=25$ & $m=50$ & $m=100$ \\
 \midrule
-None & 0.345 & 0.355 & 0.349 & 0.346 & 0.330 \\
-$A$    & 0.342 & 0.345 & 0.341 & 0.336 & 0.323 \\
-$B$    & 0.338 & 0.342 & 0.338 & 0.331 & 0.323 \\
-$A{+}B$ & 0.332 & 0.331 & 0.325 & 0.317 & 0.315 \\
+None & 0.343 & 0.351 & 0.347 & 0.341 & 0.327 \\
+$A$    & 0.337 & 0.342 & 0.337 & 0.331 & 0.318 \\
+$B$    & 0.336 & 0.339 & 0.333 & 0.327 & 0.323 \\
+$A{+}B$ & 0.329 & 0.329 & 0.323 & 0.316 & 0.314 \\
 \bottomrule
 \end{tabular}
-\caption{Mean reconstruction error on $T$ by condition and $m$, over 200 repetitions.}
+\caption{Mean reconstruction error on $T$ by condition and $m$, over 350 repetitions.}
 \label{tab:means}
 \end{table}
 
@@ -39,33 +39,33 @@ A paired Wilcoxon signed-rank test (same seed and $m$, condition vs.\ \emph{None
 \toprule
  & $A$ & $B$ & $A{+}B$ \\
 \midrule
-mean difference vs.\ None & $-0.0077$ & $-0.0110$ & $-0.0211$ \\
-$p$-value (pooled) & $6\times10^{-4}$ & $3\times10^{-7}$ & $1\times10^{-22}$ \\
+mean difference vs.\ None & $-0.0088$ & $-0.0105$ & $-0.0200$ \\
+$p$-value (pooled) & $6\times10^{-8}$ & $1\times10^{-11}$ & $1\times10^{-34}$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-Because this pools 15 tests (3 conditions $\times$5 values of $m$), we additionally report per-$m$ tests with Holm-Bonferroni correction for multiple comparisons ($\alpha=0.05$): $A{+}B$ survives correction at $m=5,10,25,50$ (4 of 5 values; at $m=100$ it narrowly fails, $p=0.0097$, just short of its step-down threshold), and $B$ survives at $m=10$. $A$ alone does not survive the conservative per-$m$ correction at any single $m$, despite being significant pooled -- its effect size per cell ($\approx 0.008$--$0.01$) is simply too small relative to per-cell noise ($n=200$ per cell) to clear a corrected threshold alone, even though it reliably accumulates to significance when pooled. We read the overall pattern as: knowing \emph{both} $A$ and $B$ gives a robust, individually-significant effect; knowing either one alone gives a real but smaller effect that is only reliably detectable in aggregate. $B$ (education) is directionally the noisier of the two single-attribute conditions, consistent with a weaker empirical association with \texttt{sex} than marital-status has in this data.
+Because this pools 15 tests (3 conditions $\times$5 values of $m$), we additionally report per-$m$ tests with Holm-Bonferroni correction for multiple comparisons ($\alpha=0.05$). This experiment was originally run at 200 seeds; because $A$'s per-$m$ significance was the one unresolved question in that pass (significant pooled, but not at any single $m$), we extended it to 350 seeds specifically to find out whether that was a real-but-small effect or noise. It resolves cleanly in favor of a real effect: $A$ now survives correction at $m=25,50,100$ (3 of 5; still not individually detectable at $m=5,10$, where its effect size is smallest), $B$ at $m=10,25,50$ (3 of 5, up from 1 of 5), and $A{+}B$ now survives at \emph{all five} values of $m$ -- including $m=100$, which had narrowly failed ($p=0.0097$) at 200 seeds and now passes comfortably ($p=0.0027$). Overall, 11 of 15 per-$m$ tests survive correction, up from 5 of 15 at the smaller sample. $B$ is the one condition that gets \emph{less} reliable at the largest $m$: its $m=100$ effect ($p=0.41$) remains non-significant at both sample sizes, consistent with a genuinely small or null effect at that specific cell rather than an artifact of under-powering. We read the overall pattern as: knowing \emph{both} $A$ and $B$ gives a robust, individually-significant effect at every tree-release size tested; knowing either one alone gives a real, individually-detectable effect once $m$ is at least moderate (25+), though at small $m$ the per-cell effect is still too small relative to per-cell noise to clear a corrected threshold alone, even though it reliably accumulates to significance when pooled.
 
-\subsection{Testing the hypothesized mechanism: it does not hold up}
+\subsection{Testing the hypothesized mechanism: a real but practically negligible signal}
 
 An earlier pass of this experiment (fewer, shallower trees) found no condition separation, and we hypothesized that background knowledge only helps where a released tree's root-to-leaf path jointly splits on $T$ \emph{and} $A$ or $B$ together -- deeper trees seemed to confirm this indirectly, since they both showed much more joint splitting and the first clear condition separation.
 
-We tested this directly rather than leaving it as a plausible story. For every (seed, $m$) cell we computed the fraction of released trees containing at least one leaf whose path uses both $T$ and the attribute in question, and correlated it against that cell's observed error reduction (\emph{None} error minus the condition's error). Figure~\ref{fig:mechanism} shows the result: no relationship. Both attributes show a flat scatter (Spearman $\rho=0.03$, $p=0.42$, $n=949$ for $A$; $\rho=0.04$, $p=0.22$, $n=950$ for $B$).
+We tested this directly rather than leaving it as a plausible story. For every (seed, $m$) cell we computed the fraction of released trees containing at least one leaf whose path uses both $T$ and the attribute in question, and correlated it against that cell's observed error reduction (\emph{None} error minus the condition's error). Figure~\ref{fig:mechanism} shows the result at 350 seeds. With the original 200-seed sample this looked like a flat null ($\rho=0.03$, $p=0.42$, $n=949$ for $A$; $\rho=0.04$, $p=0.22$, $n=950$ for $B$); with the larger sample, a weak positive correlation is now statistically detectable for both: Spearman $\rho=0.069$ ($p=0.005$, $n=1{,}668$) for $A$ and $\rho=0.064$ ($p=0.009$) for $B$, both surviving a Bonferroni correction for the two tests. Pearson tells a slightly different story -- $r=0.058$ ($p=0.019$) for $A$, but $r=0.042$ ($p=0.083$, not significant) for $B$ -- consistent with a weak, rank-level rather than strictly linear relationship.
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.95\textwidth]{figures/mechanism_joint_split_correlation.pdf}
-  \caption{Per-(seed, $m$) error reduction vs.\ fraction of released trees with a joint $T$+attribute split leaf. No correlation is visible for either attribute.}
+  \caption{Per-(seed, $m$) error reduction vs.\ fraction of released trees with a joint $T$+attribute split leaf, at 350 seeds. A weak positive trend is now visible but the scatter remains dominated by noise.}
   \label{fig:mechanism}
 \end{figure}
 
-We take this as a genuine negative result, not a nuisance to explain away: the simple structural story ("more joint splits $\Rightarrow$ more leakage") does not predict cell-to-cell variation, even though the aggregate effect across hundreds of cells is unambiguous (previous subsection). The most likely reading is that single-cell reconstruction error is dominated by solver and sample idiosyncrasies that swamp this particular structural signal, so the background-knowledge benefit is real on average but not well explained by this one coarse proxy -- a deeper mechanism account (e.g.\ weighting joint-split leaves by how many training rows they actually capture, rather than a binary per-tree indicator) is left for future work.
+We do not read this as vindicating the mechanism story. $\rho\approx0.06$--$0.07$ means the joint-split fraction explains well under 1\% of the cell-to-cell variance in error reduction ($\rho^2\approx0.004$--$0.005$) -- statistically real at this sample size, but useless as a practical predictor of which cells benefit most. This is a textbook case of statistical significance versus practical significance: more data resolved whether the true correlation is exactly zero (it is not) without changing the substantive conclusion that single-cell reconstruction error is dominated by solver and sample idiosyncrasies this coarse structural proxy does not capture. The background-knowledge benefit remains real on average (previous subsection) but is not well explained by this proxy -- a deeper mechanism account (e.g.\ weighting joint-split leaves by how many training rows they actually capture, rather than a binary per-tree indicator) is left for future work.
 
 \subsection{Per-row confidence: solver agreement predicts correctness}
 \label{sec:results-confidence}
 
-No reviewed paper reports a confidence value for an individual reconstructed record from an ensemble of released models (gap G1 identified in the literature review); the solver-agreement proxy described in Section~\ref{sec:method-confidence} is our attempt to fill that gap. Figure~\ref{fig:calibration} bins the 20-seed, $m\in\{10,100\}$ sample by agreement rate and plots each bin's empirical accuracy.
+No reviewed paper reports a confidence value for an individual reconstructed record from an ensemble of released models (gap G1 identified in the literature review); the solver-agreement proxy described in Section~\ref{sec:method-confidence} is our attempt to fill that gap. Figure~\ref{fig:calibration} bins the 35-seed, $m\in\{10,100\}$ sample by agreement rate and plots each bin's empirical accuracy.
 
 \begin{figure}[h]
   \centering
@@ -74,13 +74,13 @@ No reviewed paper reports a confidence value for an individual reconstructed rec
   \label{fig:calibration}
 \end{figure}
 
-With $N_{\text{repeats}}=15$, agreement rate takes 8 well-populated values per $m$ (roughly $8/15$ through $15/15$; a handful of additional fractions appear from the rare cell where fewer than 15 repeats solved within the timeout, each with only a few rows -- see Limitations). The trend is upward but not strictly monotonic bin-to-bin: at $m=10$, accuracy moves from $0.57$ at agreement $8/15$ to a peak of $0.70$ at $14/15$ before settling at $0.68$ in the dominant full-agreement bin ($15/15$, $n=6{,}827$); at $m=100$ it rises from $0.50$ at $8/15$ to $0.80$ at $14/15$, then drops back to $0.70$ at $15/15$ ($n=5{,}768$) -- so even the best-populated bin is not the most accurate one. Row-level Spearman correlation between agreement and correctness is positive and highly significant at both, though modest in magnitude: $\rho=0.06$ ($p=4.8\times10^{-8}$, $n=8{,}000$) at $m=10$, and $\rho=0.08$ ($p=9.1\times10^{-13}$, $n=7{,}700$) at $m=100$.
+With $N_{\text{repeats}}=15$, agreement rate takes 8 well-populated values per $m$ (roughly $8/15$ through $15/15$; a handful of additional fractions appear from the rare cell where fewer than 15 repeats solved within the timeout, each with only a few rows -- see Limitations). The trend is upward and, with the larger 35-seed sample, now close to monotonic at $m=10$: accuracy moves from $0.51$ at agreement $8/15$ up to $0.68$ at both $14/15$ and the dominant full-agreement bin ($15/15$, $n=11{,}676$), with only a small dip at $9/15$ ($0.51$) and $12/15$ ($0.60$). At $m=100$ the non-monotonicity at the top persists even with more data: accuracy rises from $0.51$ at $8/15$ to a peak of $0.75$ at $14/15$, then drops to $0.71$ at the dominant full-agreement bin $15/15$ ($n=9{,}547$) -- so for $m=100$, the best-populated bin is still not the most accurate one. Row-level Spearman correlation between agreement and correctness is positive and highly significant at both, though modest in magnitude: $\rho=0.08$ ($p=6.1\times10^{-20}$, $n=14{,}000$) at $m=10$, and $\rho=0.09$ ($p=1.2\times10^{-22}$, $n=12{,}900$) at $m=100$.
 
-This is a real, useful confidence signal -- an attacker (or an auditor) can trust a unanimous reconstruction meaningfully more than a contested one -- but it is not a \emph{calibrated probability}: every curve in Figure~\ref{fig:calibration} sits below the perfect-calibration line, so a row with full agreement across all 15 solves is correct about 68--70\% of the time, not close to 100\%. The agreement rate should be read as a valid relative ranking of confidence, not a literal probability of correctness.
+This is a real, useful confidence signal -- an attacker (or an auditor) can trust a unanimous reconstruction meaningfully more than a contested one -- but it is not a \emph{calibrated probability}: every curve in Figure~\ref{fig:calibration} sits below the perfect-calibration line, so a row with full agreement across all 15 solves is correct about 68--71\% of the time, not close to 100\%. The agreement rate should be read as a valid relative ranking of confidence, not a literal probability of correctness.
 
 \subsection{From raw agreement to an actual calibrated probability}
 
-The previous subsection established correlation, not calibration, and did not separate the data used to observe the relationship from data used to evaluate it. We close that gap directly: split the 20 seeds into 14 training and 6 held-out test seeds, fit an isotonic regression mapping agreement rate to $P(\text{correct})$ on the training seeds only (separately for $m=10$ and $m=100$), and evaluate strictly on the 6 test seeds the mapping never saw.
+The previous subsection established correlation, not calibration, and did not separate the data used to observe the relationship from data used to evaluate it. We close that gap directly: split the 35 seeds into 25 training and 10 held-out test seeds, fit an isotonic regression mapping agreement rate to $P(\text{correct})$ on the training seeds only (separately for $m=10$ and $m=100$), and evaluate strictly on the 10 test seeds the mapping never saw.
 
 \begin{table}[h]
 \centering
@@ -88,23 +88,23 @@ The previous subsection established correlation, not calibration, and did not se
 \toprule
 $m$ & raw Brier & calibrated Brier & raw ECE & calibrated ECE \\
 \midrule
-10  & 0.320 & 0.221 & 0.310 & 0.016 \\
-100 & 0.331 & 0.231 & 0.318 & 0.072 \\
+10  & 0.316 & 0.224 & 0.296 & 0.015 \\
+100 & 0.282 & 0.217 & 0.241 & 0.015 \\
 \bottomrule
 \end{tabular}
 \caption{Calibration quality on held-out test seeds: raw agreement rate used directly as a probability, vs.\ the isotonic-calibrated probability fit on the disjoint training seeds. Lower is better for both metrics.}
 \label{tab:calibration-quality}
 \end{table}
 
-The calibrated probability roughly halves the Brier score and cuts expected calibration error by a factor of 4--20$\times$ (Table~\ref{tab:calibration-quality}), evaluated entirely out-of-sample. Figure~\ref{fig:calibration-isotonic} shows why: the isotonic curve (fit on training seeds) tracks the held-out test points far more closely than the raw agreement value would, which -- used directly as a probability -- is systematically overconfident across the whole range.
+The calibrated probability cuts Brier score by roughly 20--30\% and reduces expected calibration error by a factor of 16--20$\times$ (Table~\ref{tab:calibration-quality}), evaluated entirely out-of-sample. Figure~\ref{fig:calibration-isotonic} shows why: the isotonic curve (fit on training seeds) tracks the held-out test points far more closely than the raw agreement value would, which -- used directly as a probability -- is systematically overconfident across the whole range.
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.95\textwidth]{figures/calibration_isotonic.pdf}
-  \caption{Isotonic-calibrated probability (fit on 14 training seeds) vs.\ raw agreement rate, both evaluated against empirical accuracy on 6 held-out test seeds never used to fit the calibration.}
+  \caption{Isotonic-calibrated probability (fit on 25 training seeds) vs.\ raw agreement rate, both evaluated against empirical accuracy on 10 held-out test seeds never used to fit the calibration.}
   \label{fig:calibration-isotonic}
 \end{figure}
 
-This is, to our knowledge, the first attempt in this literature to produce an actual calibrated, validated per-record confidence value for a reconstruction attack against an ensemble of released models (as opposed to either no confidence measure at all, or an uncalibrated single-model entropy measure). We initially ran this with $N_{\text{repeats}}=7$ (four well-populated agreement levels) and asked whether a finer-grained proxy would improve the calibration; doubling to $N_{\text{repeats}}=15$ (eight levels, Table~\ref{tab:calibration-quality}) left Brier score and ECE essentially unchanged on held-out seeds. Agreement-level resolution was therefore not the bottleneck -- the limiting factor is more likely the held-out test-set size (6 seeds), not the coarseness of the confidence scale.
+This is, to our knowledge, the first attempt in this literature to produce an actual calibrated, validated per-record confidence value for a reconstruction attack against an ensemble of released models (as opposed to either no confidence measure at all, or an uncalibrated single-model entropy measure). We initially ran this with $N_{\text{repeats}}=7$ (four well-populated agreement levels) and asked whether a finer-grained proxy would improve the calibration; doubling to $N_{\text{repeats}}=15$ (eight levels) left Brier score and ECE essentially unchanged on held-out seeds, pointing instead to the held-out test-set size as the bottleneck. We tested that directly too: growing the calibration run from 20 to 35 seeds (held-out test set from 6 to 10 seeds) is what actually moved the numbers -- most visibly at $m=100$, where calibrated ECE dropped from $0.072$ to $0.015$ and raw Brier dropped from $0.331$ to $0.282$ purely from a larger, less noisy held-out sample. Test-set size, not confidence-scale granularity, was indeed the limiting factor.
 
-\paragraph{Limitations.} (i) The pooled Wilcoxon tests treat each (seed, $m$) pair as an independent observation; the five $m$-values drawn from the same seed reuse the same 100-row sample and overlapping trees from the same Rashomon set, so pooled $p$-values are a convenient summary rather than a fully independent combined test -- the per-$m$, Holm-corrected tests are the safer basis for any individual claim. (ii) At $m=100$, the \emph{None} condition most often timed out (CP-SAT returned \texttt{UNKNOWN} within the 120s budget); cell sizes shrink from 200 at $m=5$ to 156 at $m=100$ accordingly, and a handful of repetitions had Rashomon sets smaller than 50/100 trees and were excluded at those $m$ values entirely. (iii) A handful of odd-fraction agreement values (e.g.\ $0.50$, $0.69$, $0.85$ at $m=100$) come from the rare cell where fewer than 15 repeats solved within the timeout and have only 1--5 rows each; the reported trend is supported by the eight well-populated $k/15$ bins (hundreds to thousands of rows each), and even among those the relationship is non-monotonic bin-to-bin, not a clean staircase. (iv) The curated 13-column feature set and single enumeration-order tree selection (no diversity-aware strategy) remain as before. (v) The held-out calibration test set is only 6 seeds ($n\approx2{,}300$--$2{,}400$ rows); doubling the agreement-level resolution from four to eight levels (reported above) did not improve held-out Brier/ECE, so the test-set size -- not the confidence scale's granularity -- is the more likely remaining bottleneck before treating the calibrated probabilities as precise.
+\paragraph{Limitations.} (i) The pooled Wilcoxon tests treat each (seed, $m$) pair as an independent observation; the five $m$-values drawn from the same seed reuse the same 100-row sample and overlapping trees from the same Rashomon set, so pooled $p$-values are a convenient summary rather than a fully independent combined test -- the per-$m$, Holm-corrected tests are the safer basis for any individual claim. (ii) At $m=100$, the \emph{None} condition most often timed out (CP-SAT returned \texttt{UNKNOWN} within the 120s budget); cell sizes shrink from 350 at $m=5$ to 275 at $m=100$ accordingly, and a handful of repetitions had Rashomon sets smaller than 50/100 trees and were excluded at those $m$ values entirely. (iii) A handful of odd-fraction agreement values (e.g.\ $0.50$, $0.69$, $0.85$ at $m=100$) come from the rare cell where fewer than 15 repeats solved within the timeout and have only 1--5 rows each; the reported trend is supported by the eight well-populated $k/15$ bins (hundreds to thousands of rows each), and even among those the relationship is non-monotonic bin-to-bin, not a clean staircase. (iv) The curated 13-column feature set and single enumeration-order tree selection (no diversity-aware strategy) remain as before. (v) The held-out calibration test set is now 10 seeds ($n=3{,}300$--$4{,}000$ rows, up from 6 seeds / $n\approx2{,}300$--$2{,}400$), which measurably tightened the held-out Brier/ECE estimates (above); it is still a modest sample by machine-learning standards, and a further increase would be the natural next step if pursued beyond this project's scope.
