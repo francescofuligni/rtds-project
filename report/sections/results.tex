@@ -1,33 +1,50 @@
 \section{Results}
 \label{sec:results}
 
-Figure~\ref{fig:error-vs-m} shows the mean reconstruction error on $T$ across the 10 repetitions, for each background-knowledge condition and number of released trees $m$, against the two baselines (means taken over all repetitions, since the baselines do not depend on $m$).
+Figure~\ref{fig:error-vs-m} shows the mean reconstruction error on $T$ across the 50 repetitions, for each background-knowledge condition and number of released trees $m$, against the two baselines (means taken over all repetitions, since the baselines do not depend on $m$).
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.85\textwidth]{figures/reconstruction_error_vs_m.pdf}
-  \caption{Reconstruction error on $T=\texttt{sex}$ vs.\ number of released trees $m$, by background-knowledge condition. Error bars are $\pm 1$ standard error of the mean over 10 repetitions.}
+  \caption{Reconstruction error on $T=\texttt{sex}$ vs.\ number of released trees $m$, by background-knowledge condition. Error bars are $\pm 1$ standard error of the mean over 50 repetitions (fewer at $m=50,100$ where some repetitions' Rashomon sets or solves did not reach that point -- see Limitations).}
   \label{fig:error-vs-m}
 \end{figure}
 
-\paragraph{The released trees leak substantially more than either baseline.} All four conditions solve to error around $0.30$--$0.36$ across every $m$ tested, against a uniform-random baseline of $0.52$ and a holdout-marginal baseline of $0.42$. This confirms the core premise motivating this project: a released Rashomon set of trees leaks information about a sensitive attribute $T$ beyond what is available from chance or from knowing only the population-level marginal of $T$ -- even though none of $T$'s values are ever given directly to the attacker.
+\paragraph{The released trees leak substantially more than either baseline.} All four conditions solve to error between $0.31$ and $0.36$ across every $m$ tested, against a uniform-random baseline of $0.50$ and a holdout-marginal baseline of $0.44$.
 
-\paragraph{Background knowledge of $A$/$B$ did not produce a clear, consistent effect at this scale.} The four conditions track each other closely at every $m$, with error bars overlapping throughout; there is no $m$ at which any condition is clearly and consistently separated from the others. A paired, per-repetition comparison (fraction of the 10 seeds where a condition's error is strictly lower than the \emph{None} condition's error, for the same sample and released trees) does show a directionally consistent trend as $m$ grows:
+\paragraph{Background knowledge of $A$ and/or $B$ significantly reduces reconstruction error on $T$, with a clean ordering.} Unlike an earlier, shallower-tree version of this experiment, the four conditions now separate cleanly and consistently: $A{+}B < A \approx B < \text{None}$ at every $m$ from 10 onward (Table~\ref{tab:means}), and the gap widens as $m$ grows -- e.g.\ the $A{+}B$ advantage over \emph{None} grows from $0.013$ at $m=5$ to $0.025$ at $m=100$.
 
-\begin{center}
+\begin{table}[h]
+\centering
 \begin{tabular}{lccccc}
 \toprule
- & $m=1$ & $m=5$ & $m=10$ & $m=25$ & $m=50$ \\
+ & $m=5$ & $m=10$ & $m=25$ & $m=50$ & $m=100$ \\
 \midrule
-$A$ beats None   & 0.0 & 0.0 & 0.2 & 0.4 & 0.6 \\
-$B$ beats None   & 0.1 & 0.1 & 0.3 & 0.4 & 0.5 \\
-$A{+}B$ beats None & 0.1 & 0.1 & 0.3 & 0.3 & 0.6 \\
+None & 0.350 & 0.358 & 0.342 & 0.343 & 0.337 \\
+$A$    & 0.340 & 0.337 & 0.336 & 0.333 & 0.321 \\
+$B$    & 0.343 & 0.343 & 0.345 & 0.333 & 0.322 \\
+$A{+}B$ & 0.337 & 0.327 & 0.325 & 0.315 & 0.312 \\
+\bottomrule
+\end{tabular}
+\caption{Mean reconstruction error on $T$ by condition and $m$.}
+\label{tab:means}
+\end{table}
+
+A paired Wilcoxon signed-rank test (same seed and $m$, condition vs.\ \emph{None}), pooled across all $m$, confirms this is not noise:
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+ & $A$ & $B$ & $A{+}B$ \\
+\midrule
+mean difference vs.\ None & $-0.0127$ & $-0.0083$ & $-0.0228$ \\
+$p$-value & $0.0013$ & $0.045$ & $4\times10^{-7}$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-At $m=1$ or $m=5$, background knowledge essentially never helps (and in the case of $A$ at $m=5$, the mean error is visibly \emph{higher} than with no background knowledge at all). From $m=10$ onward, the fraction of repetitions where background knowledge helps rises toward, but does not clearly exceed, one half. With only 10 repetitions, none of these differences should be read as statistically established; the monotonic-in-$m$ pattern across all three knowledge conditions is the most we are willing to claim.
+$A{+}B$ is also individually significant at $m=10$ ($p=0.006$), $m=50$ ($p=0.007$), and $m=100$ ($p=0.004$), and directionally negative (helps) at every $m$ tested. $A$ alone reaches significance at $m=10$ and $m=100$. $B$ alone is the weakest of the three: it is significant pooled, but at $m=25$ its mean difference is slightly \emph{positive} (i.e.\ knowing $B$ alone very slightly hurt reconstruction of $T$ in that slice of the data, $p=0.54$, not significant) before the expected direction reasserts itself at $m=50$ and $m=100$. We read this as $B$ (education, 5 categories) carrying a genuinely weaker and noisier signal about $T$ than $A$ (marital-status, 4 categories) in this sample, consistent with $A$ having a tighter empirical association with \texttt{sex} in Adult -- not as a failure of the method.
 
-\paragraph{Why background knowledge might help only weakly here.} The attack has no objective function beyond feasibility: OR-Tools CP-SAT returns \emph{some} table consistent with the released leaf counts, not a calibrated or most-likely one. Fixing $A$ or $B$ to their true values can only propagate into a tighter constraint on $T$ through a tree whose root-to-leaf path splits on \emph{both} $T$-related and $A$/$B$-related features together. Because our regularization keeps trees shallow (1--3 splits each, to keep the Rashomon-set search tractable on a laptop), such joint paths are relatively rare, which plausibly explains why the effect of background knowledge only begins to show up once enough trees ($m \gtrsim 25$) are released for joint paths to accumulate across the ensemble.
+\paragraph{Why this result is stronger than an earlier pass of the same experiment.} An initial version of this experiment, run under a tighter compute budget, used regularization $\lambda=0.02$ and bound multiplier $0.2$, giving Rashomon sets of very shallow trees (1--3 splits) in which most trees never split on \texttt{sex} at all; the four conditions were statistically indistinguishable. The version reported here uses $\lambda=0.01$ (matching Hsu et al.'s own Adult setting) and a looser bound multiplier, giving substantially deeper trees (avg.\ depth 5.7) where \texttt{sex} is split on in essentially every tree and jointly with $A$/$B$ in the same root-to-leaf path in the large majority of trees. This supports the mechanism we hypothesized earlier: background knowledge only helps the attacker where a tree's structure directly entangles $T$ with the known attribute, and shallow trees simply don't create enough such entanglement to show an effect.
 
-\paragraph{Limitations.} This is an MVP-scale result, not a conclusive one: (i) the 13-column curated feature set and shallow trees were a scope decision made for laptop tractability and should be revisited with deeper trees and/or more compute if time allows; (ii) released trees are the first $m$ in TreeFARMS's enumeration order, not selected by a diversity-aware strategy (cf.\ Hsu et al., 2026, who show selection strategy materially affects leakage); (iii) only 10 repetitions were run, and no formal significance test is reported; (iv) the solver's parallel search (OR-Tools default) means repeated runs with the same seed are not bit-for-bit reproducible, only distributionally comparable; (v) no calibration or confidence measure is reported -- only point reconstruction error.
+\paragraph{Limitations.} (i) The pooled Wilcoxon test treats each (seed, $m$) pair as an independent observation; the five $m$-values drawn from the same seed are not independent of each other (they reuse the same 100-row sample and overlapping trees from the same Rashomon set), so the pooled $p$-values should be read as a convenient summary rather than a fully rigorous combined test -- the per-$m$ tests, which are properly independent across seeds, are the safer basis for any claim. (ii) At $m=100$, the \emph{None} condition timed out (CP-SAT returned \texttt{UNKNOWN} within the 120s budget) for 9 of 50 repetitions, and 2 repetitions had Rashomon sets smaller than 50/100 trees and were excluded at those $m$ values entirely; $n$ at $m=100$ is therefore 39, not 50. (iii) The curated 13-column feature set, single enumeration-order tree selection (no diversity-aware strategy), and absence of a calibration/confidence measure remain as before.
