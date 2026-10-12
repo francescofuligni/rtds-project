@@ -18,17 +18,18 @@ Figure~\ref{fig:error-vs-m} shows the mean reconstruction error on $T$ across 35
 
 \begin{table}[h]
 \centering
+\small
 \begin{tabular}{lccccc}
 \toprule
  & $m=5$ & $m=10$ & $m=25$ & $m=50$ & $m=100$ \\
 \midrule
-None & 0.343 & 0.351 & 0.347 & 0.341 & 0.327 \\
-$A$    & 0.337 & 0.342 & 0.337 & 0.331 & 0.318 \\
-$B$    & 0.336 & 0.339 & 0.333 & 0.327 & 0.323 \\
-$A{+}B$ & 0.329 & 0.329 & 0.323 & 0.316 & 0.314 \\
+None & $0.343\pm.004$ & $0.351\pm.003$ & $0.347\pm.004$ & $0.341\pm.004$ & $0.327\pm.004$ \\
+$A$    & $0.337\pm.003$ & $0.342\pm.003$ & $0.337\pm.003$ & $0.331\pm.003$ & $0.318\pm.004$ \\
+$B$    & $0.336\pm.003$ & $0.339\pm.003$ & $0.333\pm.003$ & $0.327\pm.003$ & $0.323\pm.003$ \\
+$A{+}B$ & $0.329\pm.003$ & $0.329\pm.003$ & $0.323\pm.003$ & $0.316\pm.003$ & $0.314\pm.003$ \\
 \bottomrule
 \end{tabular}
-\caption{Mean reconstruction error on $T$ by condition and $m$, over 350 repetitions.}
+\caption{Mean $\pm$ standard error of the mean, reconstruction error on $T$ by condition and $m$, over 350 repetitions.}
 \label{tab:means}
 \end{table}
 
@@ -97,6 +98,10 @@ $m$ & raw Brier & calibrated Brier & raw ECE & calibrated ECE \\
 \end{table}
 
 The calibrated probability cuts Brier score by roughly 20--30\% and reduces expected calibration error by a factor of 16--20$\times$ (Table~\ref{tab:calibration-quality}), evaluated entirely out-of-sample. Figure~\ref{fig:calibration-isotonic} shows why: the isotonic curve (fit on training seeds) tracks the held-out test points far more closely than the raw agreement value would, which -- used directly as a probability -- is systematically overconfident across the whole range.
+
+To know how much to trust these point estimates, we bootstrapped them: 1,000 resamples of the 10 held-out test seeds (resampling whole seeds, not individual rows, since rows from the same seed are not independent), recomputing all four metrics each time. The headline comparison is robust -- the 95\% CI for calibrated Brier ($[0.208,0.238]$ at $m=10$; $[0.200,0.232]$ at $m=100$) does not overlap at all with raw Brier's CI ($[0.272,0.357]$; $[0.230,0.330]$), and the same holds for ECE. But the exact \emph{magnitude} of the ECE improvement is much less precisely pinned down than the point estimate suggests: calibrated ECE's 95\% CI is $[0.003,0.054]$ at $m=10$ and $[0.013,0.068]$ at $m=100$ -- wide enough that, at $m=100$, we cannot rule out the true calibrated ECE being close to the $0.072$ we measured before growing the test set. The direction and existence of the improvement is solid; the precise ``$16$--$20\times$'' factor should be read as a point estimate from a still-modest sample, not a tight bound.
+
+We also checked, since it costs nothing beyond re-analyzing data already collected, whether a single $m$-agnostic calibration curve could replace the two separate per-$m$ curves, for practical simplicity (an attacker would rather use one lookup table than condition on $m$). The result is mixed, not a clean win: pooled and per-$m$ give essentially the same calibrated Brier score at both $m$, but for ECE pooling is noticeably worse at $m=10$ ($0.028$ vs.\ $0.015$, almost double) and noticeably better at $m=100$ ($0.003$ vs.\ $0.015$). We do not read this as evidence that calibration curves genuinely need to differ by $m$ in a principled way -- with only 10 held-out seeds, ECE's binned estimate is simply noisy at this scale (consistent with the wide bootstrap CIs above), and the pattern could easily flip with a different test-seed split. We keep the per-$m$ fits as the primary result since we have no basis yet to recommend collapsing them.
 
 \begin{figure}[h]
   \centering

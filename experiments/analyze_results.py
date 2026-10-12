@@ -78,6 +78,12 @@ def main():
     pivot = agg.pivot(index="m", columns="condition", values="mean").round(3)
     print(pivot)
 
+    print("\nAggregate table (mean +/- SEM, for Table 1 in the report):")
+    for condition in ["none", "A", "B", "A+B"]:
+        sub = agg[agg["condition"] == condition].sort_values("m")
+        cells = [f"{r['mean']:.3f}+/-{r['sem']:.3f}" for _, r in sub.iterrows()]
+        print(f"  {condition:<5} {cells}")
+
     print(f"\nUniform baseline mean: {uniform_mean:.3f}")
     print(f"Marginal baseline mean: {marginal_mean:.3f}")
 
