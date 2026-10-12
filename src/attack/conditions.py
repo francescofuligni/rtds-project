@@ -60,6 +60,7 @@ def run_condition(
     *,
     timeout: float = 120.0,
     seed: int = 0,
+    n_threads: int = 0,
 ) -> ConditionResult:
     X = data.X.to_numpy()
     y = data.y.to_numpy()
@@ -74,7 +75,7 @@ def run_condition(
         trees_branches, y, classes, n_features=X.shape[1],
         one_hot_groups=[_group_columns(data, g, col_index) for g in data.one_hot_groups],
         known_mask=known_mask, known_values=known_values,
-        timeout=timeout, seed=seed,
+        timeout=timeout, seed=seed, n_threads=n_threads,
     )
 
     if result.reconstructed is None:

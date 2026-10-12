@@ -9,6 +9,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from scipy.stats import wilcoxon
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS_CSV = ROOT / "results" / "final_experiment.csv"
@@ -47,7 +48,8 @@ def main():
     ax.set_xticks(sorted(df["m"].unique()))
     ax.set_xticklabels([str(m) for m in sorted(df["m"].unique())])
     ax.set_xlabel("Number of released trees (m)")
-    ax.set_ylabel("Reconstruction error on T = sex\n(mean $\\pm$ SEM over 10 seeds)")
+    n_seeds = df["seed"].nunique()
+    ax.set_ylabel(f"Reconstruction error on T = sex\n(mean $\\pm$ SEM over {n_seeds} seeds)")
     ax.set_title("Reconstruction error vs. released trees, by background knowledge", fontsize=11)
     ax.legend(fontsize=8, loc="upper right")
     ax.grid(alpha=0.3)
@@ -69,6 +71,21 @@ def main():
     for condition in ["A", "B", "A+B"]:
         frac = (paired[condition] < paired["none"]).groupby(level="m").mean()
         print(f"  {condition}: {dict(frac.round(2))}")
+
+    print("\nWilcoxon signed-rank test (condition vs. None), pooled across all m:")
+    for condition in ["A", "B", "A+B"]:
+        diffs = (paired[condition] - paired["none"]).dropna()
+        stat, p = wilcoxon(diffs)
+        print(f"  {condition}: n={len(diffs)}, mean_diff={diffs.mean():+.4f}, p={p:.4g}")
+
+    print("\nWilcoxon signed-rank test (condition vs. None), per m:")
+    for m in sorted(df["m"].unique()):
+        sub = paired.xs(m, level="m").dropna()
+        for condition in ["A", "B", "A+B"]:
+            diffs = sub[condition] - sub["none"]
+            if len(diffs) >= 5 and diffs.abs().sum() > 0:
+                stat, p = wilcoxon(diffs)
+                print(f"  m={m:<4} {condition:<4} n={len(diffs):<3} mean_diff={diffs.mean():+.4f} p={p:.4g}")
 
 
 if __name__ == "__main__":
