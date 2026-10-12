@@ -1,0 +1,26 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Rashomon set construction}
+We binarize a curated subset of the UCI Adult dataset: the sensitive target $T = \texttt{sex}$ (single indicator column), background-knowledge attribute $A = \texttt{marital-status}$ (collapsed to 4 categories: Married, Never-married, Divorced, Widowed-Separated), background-knowledge attribute $B = \texttt{education}$ (collapsed to 5 categories: Below-HS, HS-grad, Some-college, Bachelors, Grad+), plus \texttt{age} and \texttt{hours-per-week} median-split indicators and a \texttt{capital-gain}$>0$ indicator -- 13 binary columns in total. The prediction label $Y$ is income ($>\$50$K vs.\ not).
+
+This curated feature set is a deliberate scope reduction from the full $\sim$60-column binarization of Adult. On the full feature set, TreeFARMS (Xin et al., 2022), at a regularization loose enough to build a Rashomon set within a few minutes on a laptop, only produced trees shallow enough (1--2 splits) that none of them ever split on \texttt{sex}: every background-knowledge condition was then identical by construction, since the released trees carried no information about $T$ at all. Reducing the competing feature count lets $T$, $A$, and $B$ actually get selected as splits while keeping the exhaustive Rashomon-set search tractable on consumer hardware.
+
+For each of 10 repetitions (seeds), we sample $n = 100$ rows from Adult and build a Rashomon set with TreeFARMS using regularization $\lambda = 0.02$ and Rashomon bound multiplier $0.2$ (i.e.\ all trees within $20\%$ of the optimal objective are kept). This reliably produces Rashomon sets of 100+ trees in under a second.
+
+\subsection{Reconstruction attack}
+We reimplement the constraint-programming reconstruction attack of Ferry et al.\ (2024, \emph{``Trained Random Forests Completely Reveal your Dataset''}, known as DRAFT), adapted to read TreeFARMS's native tree representation and to support fixing a subset of feature columns to their true value for every row (the attacker's background knowledge). The attack is solved with OR-Tools CP-SAT (no commercial solver license required): one boolean variable per (row, feature), one-hot-sum constraints per categorical attribute, and per-tree, per-leaf constraints forcing the solved table to reproduce the exact per-class training-example counts of the released trees. The label $Y$ is assumed known to the attacker in every condition, consistent with this literature: the released trees predict $Y$, so $Y$ is treated as public.
+
+For a released ensemble of the first $m$ trees from the Rashomon set (TreeFARMS's enumeration order; no diversity-aware selection strategy is applied), we solve the attack under four background-knowledge conditions, holding the data sample and released trees fixed within a repetition:
+\begin{itemize}
+  \item \textbf{None}: neither $A$ nor $B$ is known.
+  \item \textbf{A}: $A$ is known for every row; $B$ is not.
+  \item \textbf{B}: $B$ is known for every row; $A$ is not.
+  \item \textbf{A+B}: both $A$ and $B$ are known.
+\end{itemize}
+In every condition $T$ remains unknown. We sweep $m \in \{1, 5, 10, 25, 50\}$.
+
+\subsection{Evaluation}
+The solver has no notion of row identity beyond $Y$ (fixed per row index) and whichever columns are pinned as known; under partial background knowledge, rows sharing a label are otherwise interchangeable as far as the model's constraints are concerned. Before scoring $T$, we therefore match each reconstructed row to a true row via the Hungarian algorithm (within each $Y$-label group), using Hamming distance over every column \emph{except} $T$ as the matching cost -- excluding $T$ from the matching cost avoids letting the evaluator's own knowledge of the true values inflate $T$'s measured accuracy. Reconstruction error is the fraction of matched rows whose reconstructed $T$ disagrees with the truth.
+
+We compare against two baselines: a uniform-random guess, and a holdout-marginal guess that samples $T$ from its empirical marginal estimated on a 2000-row holdout sample disjoint from the attacked 100 rows and never passed to the Rashomon-set construction or the attack.

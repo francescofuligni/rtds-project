@@ -1,0 +1,33 @@
+\section{Results}
+\label{sec:results}
+
+Figure~\ref{fig:error-vs-m} shows the mean reconstruction error on $T$ across the 10 repetitions, for each background-knowledge condition and number of released trees $m$, against the two baselines (means taken over all repetitions, since the baselines do not depend on $m$).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.85\textwidth]{figures/reconstruction_error_vs_m.pdf}
+  \caption{Reconstruction error on $T=\texttt{sex}$ vs.\ number of released trees $m$, by background-knowledge condition. Error bars are $\pm 1$ standard error of the mean over 10 repetitions.}
+  \label{fig:error-vs-m}
+\end{figure}
+
+\paragraph{The released trees leak substantially more than either baseline.} All four conditions solve to error around $0.30$--$0.36$ across every $m$ tested, against a uniform-random baseline of $0.52$ and a holdout-marginal baseline of $0.42$. This confirms the core premise motivating this project: a released Rashomon set of trees leaks information about a sensitive attribute $T$ beyond what is available from chance or from knowing only the population-level marginal of $T$ -- even though none of $T$'s values are ever given directly to the attacker.
+
+\paragraph{Background knowledge of $A$/$B$ did not produce a clear, consistent effect at this scale.} The four conditions track each other closely at every $m$, with error bars overlapping throughout; there is no $m$ at which any condition is clearly and consistently separated from the others. A paired, per-repetition comparison (fraction of the 10 seeds where a condition's error is strictly lower than the \emph{None} condition's error, for the same sample and released trees) does show a directionally consistent trend as $m$ grows:
+
+\begin{center}
+\begin{tabular}{lccccc}
+\toprule
+ & $m=1$ & $m=5$ & $m=10$ & $m=25$ & $m=50$ \\
+\midrule
+$A$ beats None   & 0.0 & 0.0 & 0.2 & 0.4 & 0.6 \\
+$B$ beats None   & 0.1 & 0.1 & 0.3 & 0.4 & 0.5 \\
+$A{+}B$ beats None & 0.1 & 0.1 & 0.3 & 0.3 & 0.6 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+At $m=1$ or $m=5$, background knowledge essentially never helps (and in the case of $A$ at $m=5$, the mean error is visibly \emph{higher} than with no background knowledge at all). From $m=10$ onward, the fraction of repetitions where background knowledge helps rises toward, but does not clearly exceed, one half. With only 10 repetitions, none of these differences should be read as statistically established; the monotonic-in-$m$ pattern across all three knowledge conditions is the most we are willing to claim.
+
+\paragraph{Why background knowledge might help only weakly here.} The attack has no objective function beyond feasibility: OR-Tools CP-SAT returns \emph{some} table consistent with the released leaf counts, not a calibrated or most-likely one. Fixing $A$ or $B$ to their true values can only propagate into a tighter constraint on $T$ through a tree whose root-to-leaf path splits on \emph{both} $T$-related and $A$/$B$-related features together. Because our regularization keeps trees shallow (1--3 splits each, to keep the Rashomon-set search tractable on a laptop), such joint paths are relatively rare, which plausibly explains why the effect of background knowledge only begins to show up once enough trees ($m \gtrsim 25$) are released for joint paths to accumulate across the ensemble.
+
+\paragraph{Limitations.} This is an MVP-scale result, not a conclusive one: (i) the 13-column curated feature set and shallow trees were a scope decision made for laptop tractability and should be revisited with deeper trees and/or more compute if time allows; (ii) released trees are the first $m$ in TreeFARMS's enumeration order, not selected by a diversity-aware strategy (cf.\ Hsu et al., 2026, who show selection strategy materially affects leakage); (iii) only 10 repetitions were run, and no formal significance test is reported; (iv) the solver's parallel search (OR-Tools default) means repeated runs with the same seed are not bit-for-bit reproducible, only distributionally comparable; (v) no calibration or confidence measure is reported -- only point reconstruction error.
