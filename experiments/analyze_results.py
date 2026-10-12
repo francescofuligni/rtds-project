@@ -15,6 +15,21 @@ ROOT = Path(__file__).resolve().parent.parent
 RESULTS_CSV = ROOT / "results" / "final_experiment.csv"
 FIGURES_DIR = ROOT / "report" / "figures"
 
+def holm_bonferroni(pvalues: list[float], alpha: float = 0.05) -> list[bool]:
+    """Holm's step-down procedure. Returns, in the same order as
+    `pvalues`, whether each test is significant after correcting for
+    `len(pvalues)` simultaneous comparisons."""
+    order = sorted(range(len(pvalues)), key=lambda i: pvalues[i])
+    k = len(pvalues)
+    significant = [False] * k
+    for rank, i in enumerate(order):
+        if pvalues[i] <= alpha / (k - rank):
+            significant[i] = True
+        else:
+            break  # Holm stops at the first failure to reject
+    return significant
+
+
 CONDITION_STYLE = {
     "none": dict(color="#555555", marker="o", label="None known"),
     "A": dict(color="#1b9e77", marker="s", label="A known (marital-status)"),
@@ -78,14 +93,22 @@ def main():
         stat, p = wilcoxon(diffs)
         print(f"  {condition}: n={len(diffs)}, mean_diff={diffs.mean():+.4f}, p={p:.4g}")
 
-    print("\nWilcoxon signed-rank test (condition vs. None), per m:")
+    print("\nWilcoxon signed-rank test (condition vs. None), per m, with Holm-Bonferroni correction:")
+    per_m_tests = []
     for m in sorted(df["m"].unique()):
         sub = paired.xs(m, level="m").dropna()
         for condition in ["A", "B", "A+B"]:
             diffs = sub[condition] - sub["none"]
             if len(diffs) >= 5 and diffs.abs().sum() > 0:
                 stat, p = wilcoxon(diffs)
-                print(f"  m={m:<4} {condition:<4} n={len(diffs):<3} mean_diff={diffs.mean():+.4f} p={p:.4g}")
+                per_m_tests.append((m, condition, len(diffs), diffs.mean(), p))
+
+    pvalues = [t[4] for t in per_m_tests]
+    sig = holm_bonferroni(pvalues)
+    for (m, condition, n, mean_diff, p), is_sig in zip(per_m_tests, sig):
+        flag = "*" if is_sig else " "
+        print(f"  m={m:<4} {condition:<4} n={n:<3} mean_diff={mean_diff:+.4f} p={p:.4g} {flag}")
+    print(f"  ({sum(sig)}/{len(sig)} tests survive Holm-Bonferroni correction at alpha=0.05)")
 
 
 if __name__ == "__main__":
