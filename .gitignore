@@ -39,5 +39,6 @@ report/.build/
 # Agent operational files & local knowledge base
 AGENTS.md
 HANDOFF.md
+PLAN.md
 wiki/
 notes/
