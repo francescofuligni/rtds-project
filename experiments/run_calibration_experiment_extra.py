@@ -10,6 +10,7 @@ Usage: .venv/bin/python experiments/run_calibration_experiment_extra.py
 from __future__ import annotations
 
 import csv
+import logging
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -28,13 +29,15 @@ def main():
 
     all_rows = []
     with ProcessPoolExecutor(max_workers=N_WORKERS) as pool:
-        futures = {pool.submit(run_seed, seed): seed for seed in range(SEED_START, SEED_END)}
+        futures = {
+            pool.submit(run_seed, seed): seed for seed in range(SEED_START, SEED_END)
+        }
         for future in as_completed(futures):
             seed = futures[future]
             try:
                 all_rows.extend(future.result())
-            except Exception as e:
-                print(f"[seed {seed}] FAILED: {e}", flush=True)
+            except Exception:
+                logging.getLogger(__name__).exception("[seed %s] FAILED", seed)
 
     out_path = RESULTS_DIR / "calibration_experiment_part2.csv"
     with open(out_path, "w", newline="") as f:
@@ -42,8 +45,10 @@ def main():
         writer.writeheader()
         writer.writerows(all_rows)
 
-    print(f"\nWrote {len(all_rows)} rows to {out_path} in {time.time() - t_start:.1f}s "
-          f"({N_WORKERS} parallel workers, {SEED_END - SEED_START} seeds)")
+    print(
+        f"\nWrote {len(all_rows)} rows to {out_path} in {time.time() - t_start:.1f}s "
+        f"({N_WORKERS} parallel workers, {SEED_END - SEED_START} seeds)"
+    )
 
 
 if __name__ == "__main__":

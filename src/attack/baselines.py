@@ -35,7 +35,9 @@ def _fill_guesses(out: np.ndarray, group_cols: list[int], choice: np.ndarray) ->
         out[np.arange(n_rows), np.array(group_cols)[choice]] = 1
 
 
-def uniform_random_guess(n_rows: int, group_cols: list[int], n_features: int, seed: int) -> np.ndarray:
+def uniform_random_guess(
+    n_rows: int, group_cols: list[int], n_features: int, seed: int
+) -> np.ndarray:
     """Guess T uniformly at random among its possible categories, for
     every row; all other columns are left at 0 (unused by the metric)."""
     rng = np.random.default_rng(seed)
@@ -46,8 +48,13 @@ def uniform_random_guess(n_rows: int, group_cols: list[int], n_features: int, se
     return out
 
 
-def marginal_baseline(data: BinarizedDataset, attribute: str, n_rows: int, holdout_df: pd.DataFrame,
-                       seed: int) -> np.ndarray:
+def marginal_baseline(
+    data: BinarizedDataset,
+    attribute: str,
+    n_rows: int,
+    holdout_df: pd.DataFrame,
+    seed: int,
+) -> np.ndarray:
     """Guess T by sampling from its marginal distribution estimated on a
     holdout sample disjoint from the attacked rows (never passed to the
     Rashomon-set construction or the attack).

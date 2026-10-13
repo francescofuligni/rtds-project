@@ -22,8 +22,12 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 
-def match_rows(true_X: np.ndarray, reconstructed_X: np.ndarray, y: np.ndarray,
-                exclude_cols: set[int]) -> np.ndarray:
+def match_rows(
+    true_X: np.ndarray,
+    reconstructed_X: np.ndarray,
+    y: np.ndarray,
+    exclude_cols: set[int],
+) -> np.ndarray:
     """Return `perm` of length N such that reconstructed_X[perm[j]] is the
     row matched to true_X[j]. Matching is done separately within each
     y-label group (y is always known/fixed per slot) using Hamming
@@ -46,8 +50,12 @@ def match_rows(true_X: np.ndarray, reconstructed_X: np.ndarray, y: np.ndarray,
     return perm
 
 
-def reconstruction_error(true_X: np.ndarray, reconstructed_X: np.ndarray, y: np.ndarray,
-                          target_cols: list[int]) -> tuple[float, np.ndarray]:
+def reconstruction_error(
+    true_X: np.ndarray,
+    reconstructed_X: np.ndarray,
+    y: np.ndarray,
+    target_cols: list[int],
+) -> tuple[float, np.ndarray]:
     """Match rows (excluding target_cols from the matching cost), then
     return the fraction of rows where the matched reconstruction disagrees
     with the truth on target_cols (a one-hot group collapses to one

@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rashomon.build import build_rashomon_set, select_trees
 from attack.reconstruct import extract_branches, reconstruct
+from rashomon.build import build_rashomon_set, select_trees
 
 
 @pytest.fixture(scope="module")
@@ -21,7 +21,9 @@ def toy_data():
 @pytest.fixture(scope="module")
 def toy_trees(toy_data):
     X_df, y_s, _, _ = toy_data
-    model = build_rashomon_set(X_df, y_s, regularization=0.05, rashomon_bound_multiplier=0.1)
+    model = build_rashomon_set(
+        X_df, y_s, regularization=0.05, rashomon_bound_multiplier=0.1
+    )
     assert model.get_tree_count() >= 1
     return select_trees(model, min(3, model.get_tree_count()))
 
@@ -30,12 +32,16 @@ def _branches_for(trees, X, y, classes):
     return [extract_branches(t, X, y, classes) for t in trees]
 
 
-def test_no_background_knowledge_is_feasible_and_respects_leaf_counts(toy_data, toy_trees):
-    X_df, y_s, X, y = toy_data
+def test_no_background_knowledge_is_feasible_and_respects_leaf_counts(
+    toy_data, toy_trees
+):
+    _X_df, _y_s, X, y = toy_data
     classes = [0, 1]
     trees_branches = _branches_for(toy_trees, X, y, classes)
 
-    result = reconstruct(trees_branches, y, classes, n_features=X.shape[1], one_hot_groups=[], timeout=20)
+    result = reconstruct(
+        trees_branches, y, classes, n_features=X.shape[1], one_hot_groups=[], timeout=20
+    )
 
     assert result.status in ("OPTIMAL", "FEASIBLE")
     assert result.reconstructed is not None
@@ -53,22 +59,29 @@ def test_no_background_knowledge_is_feasible_and_respects_leaf_counts(toy_data, 
 
 
 def test_fully_known_background_reconstructs_exactly(toy_data, toy_trees):
-    X_df, y_s, X, y = toy_data
+    _X_df, _y_s, X, y = toy_data
     classes = [0, 1]
     trees_branches = _branches_for(toy_trees, X, y, classes)
 
     known_mask = np.ones_like(X, dtype=bool)
     result = reconstruct(
-        trees_branches, y, classes, n_features=X.shape[1], one_hot_groups=[],
-        known_mask=known_mask, known_values=X, timeout=20,
+        trees_branches,
+        y,
+        classes,
+        n_features=X.shape[1],
+        one_hot_groups=[],
+        known_mask=known_mask,
+        known_values=X,
+        timeout=20,
     )
 
     assert result.status in ("OPTIMAL", "FEASIBLE")
+    assert result.reconstructed is not None
     np.testing.assert_array_equal(result.reconstructed, X)
 
 
 def test_single_known_column_is_respected(toy_data, toy_trees):
-    X_df, y_s, X, y = toy_data
+    _X_df, _y_s, X, y = toy_data
     classes = [0, 1]
     trees_branches = _branches_for(toy_trees, X, y, classes)
 
@@ -78,9 +91,28 @@ def test_single_known_column_is_respected(toy_data, toy_trees):
     known_values[:, 0] = X[:, 0]
 
     result = reconstruct(
-        trees_branches, y, classes, n_features=X.shape[1], one_hot_groups=[],
-        known_mask=known_mask, known_values=known_values, timeout=20,
+        trees_branches,
+        y,
+        classes,
+        n_features=X.shape[1],
+        one_hot_groups=[],
+        known_mask=known_mask,
+        known_values=known_values,
+        timeout=20,
     )
 
     assert result.status in ("OPTIMAL", "FEASIBLE")
+    assert result.reconstructed is not None
     np.testing.assert_array_equal(result.reconstructed[:, 0], X[:, 0])
+
+
+def test_known_mask_requires_known_values():
+    with pytest.raises(ValueError, match="known_values is required"):
+        reconstruct(
+            [],
+            np.array([0]),
+            [0],
+            n_features=1,
+            one_hot_groups=[],
+            known_mask=np.array([[True]]),
+        )

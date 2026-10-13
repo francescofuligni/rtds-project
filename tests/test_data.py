@@ -1,4 +1,4 @@
-from rashomon.data import load_adult_raw, binarize_adult, sample_rows, known_columns_for
+from rashomon.data import binarize_adult, known_columns_for, load_adult_raw, sample_rows
 
 
 def test_binarize_adult_is_all_binary():

@@ -23,8 +23,12 @@ def main():
     df = pd.read_csv(RESULTS_CSV)
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-    error = df.pivot_table(index=["seed", "m"], columns="condition", values="reconstruction_error")
-    joint = df.groupby(["seed", "m"])[["joint_split_frac_A", "joint_split_frac_B"]].first()
+    error = df.pivot_table(
+        index=["seed", "m"], columns="condition", values="reconstruction_error"
+    )
+    joint = df.groupby(["seed", "m"])[
+        ["joint_split_frac_A", "joint_split_frac_B"]
+    ].first()
     merged = error.join(joint).dropna(subset=["none"])
 
     merged["reduction_A"] = merged["none"] - merged["A"]
@@ -33,20 +37,41 @@ def main():
     fig, axes = plt.subplots(1, 2, figsize=(10, 4.2), sharey=True)
     for ax, (attr, color) in zip(axes, [("A", "#1b9e77"), ("B", "#d95f02")]):
         sub = merged.dropna(subset=[f"reduction_{attr}", f"joint_split_frac_{attr}"])
-        ax.scatter(sub[f"joint_split_frac_{attr}"], sub[f"reduction_{attr}"], alpha=0.35, s=18, color=color)
+        ax.scatter(
+            sub[f"joint_split_frac_{attr}"],
+            sub[f"reduction_{attr}"],
+            alpha=0.35,
+            s=18,
+            color=color,
+        )
         ax.axhline(0, color="#999999", linewidth=1, linestyle=":")
         ax.set_xlabel(f"Fraction of trees with a joint T+{attr} split leaf")
         ax.set_title(f"Attribute {attr}")
         if len(sub) >= 3 and sub[f"joint_split_frac_{attr}"].std() > 0:
-            r_p, p_p = pearsonr(sub[f"joint_split_frac_{attr}"], sub[f"reduction_{attr}"])
-            r_s, p_s = spearmanr(sub[f"joint_split_frac_{attr}"], sub[f"reduction_{attr}"])
-            ax.text(0.05, 0.95, f"Pearson r={r_p:.2f} (p={p_p:.2g})\nSpearman r={r_s:.2f} (p={p_s:.2g})\nn={len(sub)}",
-                    transform=ax.transAxes, va="top", fontsize=8,
-                    bbox=dict(boxstyle="round", facecolor="white", alpha=0.8))
-            print(f"{attr}: Pearson r={r_p:.3f} (p={p_p:.3g}), Spearman r={r_s:.3f} (p={p_s:.3g}), n={len(sub)}")
+            r_p, p_p = pearsonr(
+                sub[f"joint_split_frac_{attr}"], sub[f"reduction_{attr}"]
+            )
+            r_s, p_s = spearmanr(
+                sub[f"joint_split_frac_{attr}"], sub[f"reduction_{attr}"]
+            )
+            ax.text(
+                0.05,
+                0.95,
+                f"Pearson r={r_p:.2f} (p={p_p:.2g})\nSpearman r={r_s:.2f} (p={p_s:.2g})\nn={len(sub)}",
+                transform=ax.transAxes,
+                va="top",
+                fontsize=8,
+                bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
+            )
+            print(
+                f"{attr}: Pearson r={r_p:.3f} (p={p_p:.3g}), Spearman r={r_s:.3f} (p={p_s:.3g}), n={len(sub)}"
+            )
 
     axes[0].set_ylabel("Error reduction vs. None\n(None error - condition error)")
-    fig.suptitle("Does joint T+attribute splitting predict the background-knowledge benefit?", fontsize=11)
+    fig.suptitle(
+        "Does joint T+attribute splitting predict the background-knowledge benefit?",
+        fontsize=11,
+    )
     fig.tight_layout()
 
     out_path = RESULTS_DIR / "mechanism_joint_split_correlation.pdf"

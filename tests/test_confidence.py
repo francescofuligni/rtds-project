@@ -2,10 +2,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from rashomon.data import BinarizedDataset
-from rashomon.build import build_rashomon_set, select_trees
-from attack.reconstruct import extract_branches
 from attack.confidence import repeated_reconstruct_with_confidence
+from attack.reconstruct import extract_branches
+from rashomon.build import build_rashomon_set, select_trees
+from rashomon.data import BinarizedDataset
 
 
 @pytest.fixture(scope="module")
@@ -13,19 +13,27 @@ def toy_dataset():
     rng = np.random.default_rng(5)
     n = 40
     marital = rng.integers(0, 3, size=n)
-    marital_df = pd.get_dummies(pd.Series(marital, name="marital"), prefix="marital").astype(int)
+    marital_df = pd.get_dummies(
+        pd.Series(marital, name="marital"), prefix="marital"
+    ).astype(int)
     sex = rng.integers(0, 2, size=n)
     other = rng.integers(0, 2, size=(n, 2))
 
-    X = pd.concat([
-        marital_df,
-        pd.DataFrame(other, columns=["edu_hi", "age_hi"]),
-        pd.Series(sex, name="sex=Female"),
-    ], axis=1)
-    y = pd.Series(((marital_df["marital_1"] == 1) | (sex == 1)).astype(int), name="label")
+    X = pd.concat(
+        [
+            marital_df,
+            pd.DataFrame(other, columns=["edu_hi", "age_hi"]),
+            pd.Series(sex, name="sex=Female"),
+        ],
+        axis=1,
+    )
+    y = pd.Series(
+        ((marital_df["marital_1"] == 1) | (sex == 1)).astype(int), name="label"
+    )
 
     return BinarizedDataset(
-        X=X, y=y,
+        X=X,
+        y=y,
         one_hot_groups={"marital-status": list(marital_df.columns)},
         binary_columns={"sex": "sex=Female", "education": "edu_hi"},
     )
@@ -33,7 +41,9 @@ def toy_dataset():
 
 def test_confidence_rows_are_well_formed(toy_dataset):
     data = toy_dataset
-    model = build_rashomon_set(data.X, data.y, regularization=0.1, rashomon_bound_multiplier=0.2)
+    model = build_rashomon_set(
+        data.X, data.y, regularization=0.1, rashomon_bound_multiplier=0.2
+    )
     trees = select_trees(model, min(3, model.get_tree_count()))
     X = data.X.to_numpy()
     y = data.y.to_numpy()
@@ -41,8 +51,14 @@ def test_confidence_rows_are_well_formed(toy_dataset):
     trees_branches = [extract_branches(t, X, y, classes) for t in trees]
 
     rows, statuses = repeated_reconstruct_with_confidence(
-        trees_branches, data, "marital-status", "sex", "education", "none",
-        n_repeats=5, timeout=10,
+        trees_branches,
+        data,
+        "marital-status",
+        "sex",
+        "education",
+        "none",
+        n_repeats=5,
+        timeout=10,
     )
 
     assert len(statuses) == 5
@@ -65,7 +81,9 @@ def test_fully_known_background_gives_perfect_agreement(toy_dataset):
     # agreement below a weaker one is NOT guaranteed in general, so we
     # only assert the pipeline runs for the "A" condition too.
     data = toy_dataset
-    model = build_rashomon_set(data.X, data.y, regularization=0.1, rashomon_bound_multiplier=0.2)
+    model = build_rashomon_set(
+        data.X, data.y, regularization=0.1, rashomon_bound_multiplier=0.2
+    )
     trees = select_trees(model, min(3, model.get_tree_count()))
     X = data.X.to_numpy()
     y = data.y.to_numpy()
@@ -73,8 +91,14 @@ def test_fully_known_background_gives_perfect_agreement(toy_dataset):
     trees_branches = [extract_branches(t, X, y, classes) for t in trees]
 
     rows, statuses = repeated_reconstruct_with_confidence(
-        trees_branches, data, "marital-status", "sex", "education", "A",
-        n_repeats=5, timeout=10,
+        trees_branches,
+        data,
+        "marital-status",
+        "sex",
+        "education",
+        "A",
+        n_repeats=5,
+        timeout=10,
     )
     assert len(rows) == len(X)
     assert all(s in ("OPTIMAL", "FEASIBLE") for s in statuses)
