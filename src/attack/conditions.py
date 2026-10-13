@@ -19,15 +19,21 @@ from rashomon.data import BinarizedDataset, known_columns_for
 CONDITIONS = ["none", "A", "B", "A+B"]
 
 
-def _group_columns(data: BinarizedDataset, attribute: str, col_index: dict[str, int]) -> list[int]:
+def _group_columns(
+    data: BinarizedDataset, attribute: str, col_index: dict[str, int]
+) -> list[int]:
     return [col_index[c] for c in known_columns_for(data, attribute)]
 
 
-def known_mask_for_condition(data: BinarizedDataset, condition: str, attr_a: str, attr_b: str) -> np.ndarray:
+def known_mask_for_condition(
+    data: BinarizedDataset, condition: str, attr_a: str, attr_b: str
+) -> np.ndarray:
     """(N, M) boolean mask: True where the attacker is given that
     column's true value for every row, under the given condition."""
     if condition not in CONDITIONS:
-        raise ValueError(f"Unknown condition {condition!r}, expected one of {CONDITIONS}")
+        raise ValueError(
+            f"Unknown condition {condition!r}, expected one of {CONDITIONS}"
+        )
 
     n, m = data.X.shape
     col_index = {c: i for i, c in enumerate(data.X.columns)}
@@ -72,14 +78,24 @@ def run_condition(
     known_values = np.where(known_mask, X, 0)
 
     result: ReconstructionResult = reconstruct(
-        trees_branches, y, classes, n_features=X.shape[1],
-        one_hot_groups=[_group_columns(data, g, col_index) for g in data.one_hot_groups],
-        known_mask=known_mask, known_values=known_values,
-        timeout=timeout, seed=seed, n_threads=n_threads,
+        trees_branches,
+        y,
+        classes,
+        n_features=X.shape[1],
+        one_hot_groups=[
+            _group_columns(data, g, col_index) for g in data.one_hot_groups
+        ],
+        known_mask=known_mask,
+        known_values=known_values,
+        timeout=timeout,
+        seed=seed,
+        n_threads=n_threads,
     )
 
     if result.reconstructed is None:
         return ConditionResult(condition, result.status, result.duration, None, None)
 
     error, _perm = reconstruction_error(X, result.reconstructed, y, target_cols)
-    return ConditionResult(condition, result.status, result.duration, error, result.reconstructed)
+    return ConditionResult(
+        condition, result.status, result.duration, error, result.reconstructed
+    )

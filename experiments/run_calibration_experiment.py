@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import csv
 import gc
+import logging
 import os
 import sys
 import time
@@ -24,8 +25,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from attack.confidence import repeated_reconstruct_with_confidence
 from attack.conditions import CONDITIONS
+from attack.confidence import repeated_reconstruct_with_confidence
 from attack.reconstruct import extract_branches
 from rashomon.build import build_rashomon_set, select_trees
 from rashomon.data import binarize_adult_curated, load_adult_raw, sample_rows
@@ -54,8 +55,12 @@ def run_seed(seed: int) -> list[dict]:
     pilot = sample_rows(data_full, n=PILOT_N, seed=seed)
 
     t0 = time.time()
-    model = build_rashomon_set(pilot.X, pilot.y, regularization=REGULARIZATION,
-                                rashomon_bound_multiplier=RASHOMON_BOUND_MULTIPLIER)
+    model = build_rashomon_set(
+        pilot.X,
+        pilot.y,
+        regularization=REGULARIZATION,
+        rashomon_bound_multiplier=RASHOMON_BOUND_MULTIPLIER,
+    )
     n_available = model.get_tree_count()
     build_time = time.time() - t0
 
@@ -71,23 +76,41 @@ def run_seed(seed: int) -> list[dict]:
 
         for condition in CONDITIONS:
             rows, statuses = repeated_reconstruct_with_confidence(
-                trees_branches, pilot, ATTR_A, ATTR_B, TARGET, condition,
-                n_repeats=N_REPEATS, timeout=SOLVE_TIMEOUT, base_seed=seed * 1000, n_threads=1,
+                trees_branches,
+                pilot,
+                ATTR_A,
+                ATTR_B,
+                TARGET,
+                condition,
+                n_repeats=N_REPEATS,
+                timeout=SOLVE_TIMEOUT,
+                base_seed=seed * 1000,
+                n_threads=1,
             )
             n_solved = sum(1 for s in statuses if s in ("OPTIMAL", "FEASIBLE"))
             for r in rows:
-                rows_out.append({
-                    "seed": seed, "m": m, "condition": condition,
-                    "row": r.row, "n_votes": r.n_votes, "n_repeats": N_REPEATS,
-                    "n_solved": n_solved, "agreement": round(r.agreement, 4),
-                    "correct": r.correct,
-                })
+                rows_out.append(
+                    {
+                        "seed": seed,
+                        "m": m,
+                        "condition": condition,
+                        "row": r.row,
+                        "n_votes": r.n_votes,
+                        "n_repeats": N_REPEATS,
+                        "n_solved": n_solved,
+                        "agreement": round(r.agreement, 4),
+                        "correct": r.correct,
+                    }
+                )
             gc.collect()  # each repeated_reconstruct_with_confidence call builds and
             # solves N_REPEATS fresh CP-SAT models in this same long-lived worker
             # process; force collection between cells rather than relying on it
             # happening before memory builds up across all 2*4*N_REPEATS solves
 
-    print(f"[seed {seed}] done: {n_available} trees (build {build_time:.1f}s), {len(rows_out)} rows", flush=True)
+    print(
+        f"[seed {seed}] done: {n_available} trees (build {build_time:.1f}s), {len(rows_out)} rows",
+        flush=True,
+    )
     return rows_out
 
 
@@ -97,13 +120,15 @@ def main():
 
     all_rows = []
     with ProcessPoolExecutor(max_workers=N_WORKERS) as pool:
-        futures = {pool.submit(run_seed, seed): seed for seed in range(CALIBRATION_SEEDS)}
+        futures = {
+            pool.submit(run_seed, seed): seed for seed in range(CALIBRATION_SEEDS)
+        }
         for future in as_completed(futures):
             seed = futures[future]
             try:
                 all_rows.extend(future.result())
-            except Exception as e:
-                print(f"[seed {seed}] FAILED: {e}", flush=True)
+            except Exception:
+                logging.getLogger(__name__).exception("[seed %s] FAILED", seed)
 
     out_path = RESULTS_DIR / "calibration_experiment.csv"
     with open(out_path, "w", newline="") as f:
@@ -111,8 +136,10 @@ def main():
         writer.writeheader()
         writer.writerows(all_rows)
 
-    print(f"\nWrote {len(all_rows)} rows to {out_path} in {time.time() - t_start:.1f}s "
-          f"({N_WORKERS} parallel workers, {CALIBRATION_SEEDS} seeds)")
+    print(
+        f"\nWrote {len(all_rows)} rows to {out_path} in {time.time() - t_start:.1f}s "
+        f"({N_WORKERS} parallel workers, {CALIBRATION_SEEDS} seeds)"
+    )
 
 
 if __name__ == "__main__":

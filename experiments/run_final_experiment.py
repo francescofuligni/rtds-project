@@ -21,6 +21,7 @@ Usage: run from the repository root with the project venv, e.g.
 from __future__ import annotations
 
 import csv
+import logging
 import os
 import sys
 import time
@@ -33,7 +34,12 @@ from attack.baselines import marginal_baseline, uniform_random_guess
 from attack.conditions import CONDITIONS, run_condition
 from attack.reconstruct import _walk_leaves, extract_branches
 from rashomon.build import build_rashomon_set, select_trees
-from rashomon.data import binarize_adult_curated, known_columns_for, load_adult_raw, sample_rows
+from rashomon.data import (
+    binarize_adult_curated,
+    known_columns_for,
+    load_adult_raw,
+    sample_rows,
+)
 
 TARGET, ATTR_A, ATTR_B = "sex", "marital-status", "education"
 N_SEEDS = 200
@@ -48,7 +54,9 @@ N_WORKERS = min(12, os.cpu_count() or 1)
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 
 
-def joint_split_fraction(trees: list[dict], target_cols: set[int], other_cols: set[int]) -> float:
+def joint_split_fraction(
+    trees: list[dict], target_cols: set[int], other_cols: set[int]
+) -> float:
     """Fraction of trees with at least one leaf whose root-to-leaf path
     splits on a target column AND an "other" column together -- the
     structural precondition for background knowledge of "other" to
@@ -71,22 +79,38 @@ def run_seed(seed: int) -> list[dict]:
 
     pilot_idx = data_full.X.sample(n=PILOT_N, random_state=seed).index
     pilot = sample_rows(data_full, n=PILOT_N, seed=seed)
-    holdout_df = data_full.X.drop(index=pilot_idx).sample(n=HOLDOUT_N, random_state=seed + 10_000)
+    holdout_df = data_full.X.drop(index=pilot_idx).sample(
+        n=HOLDOUT_N, random_state=seed + 10_000
+    )
 
     t0 = time.time()
-    model = build_rashomon_set(pilot.X, pilot.y, regularization=REGULARIZATION,
-                                rashomon_bound_multiplier=RASHOMON_BOUND_MULTIPLIER)
+    model = build_rashomon_set(
+        pilot.X,
+        pilot.y,
+        regularization=REGULARIZATION,
+        rashomon_bound_multiplier=RASHOMON_BOUND_MULTIPLIER,
+    )
     n_available = model.get_tree_count()
     build_time = time.time() - t0
 
-    target_idx = [pilot.X.columns.get_loc(c) for c in known_columns_for(pilot, TARGET)]
-    a_idx = {pilot.X.columns.get_loc(c) for c in known_columns_for(pilot, ATTR_A)}
-    b_idx = {pilot.X.columns.get_loc(c) for c in known_columns_for(pilot, ATTR_B)}
+    target_idx = [
+        pilot.X.columns.to_list().index(c) for c in known_columns_for(pilot, TARGET)
+    ]
+    a_idx = {
+        pilot.X.columns.to_list().index(c) for c in known_columns_for(pilot, ATTR_A)
+    }
+    b_idx = {
+        pilot.X.columns.to_list().index(c) for c in known_columns_for(pilot, ATTR_B)
+    }
     X = pilot.X.to_numpy()
     uniform = uniform_random_guess(PILOT_N, target_idx, pilot.X.shape[1], seed=seed)
     marginal = marginal_baseline(pilot, TARGET, PILOT_N, holdout_df, seed=seed)
-    uniform_error = float((uniform[:, target_idx] != X[:, target_idx]).any(axis=1).mean())
-    marginal_error = float((marginal[:, target_idx] != X[:, target_idx]).any(axis=1).mean())
+    uniform_error = float(
+        (uniform[:, target_idx] != X[:, target_idx]).any(axis=1).mean()
+    )
+    marginal_error = float(
+        (marginal[:, target_idx] != X[:, target_idx]).any(axis=1).mean()
+    )
 
     rows = []
     for m in M_VALUES:
@@ -102,21 +126,38 @@ def run_seed(seed: int) -> list[dict]:
 
         for condition in CONDITIONS:
             t0 = time.time()
-            result = run_condition(condition, trees_branches, pilot, ATTR_A, ATTR_B, TARGET,
-                                    timeout=SOLVE_TIMEOUT, seed=seed, n_threads=1)
+            result = run_condition(
+                condition,
+                trees_branches,
+                pilot,
+                ATTR_A,
+                ATTR_B,
+                TARGET,
+                timeout=SOLVE_TIMEOUT,
+                seed=seed,
+                n_threads=1,
+            )
             duration = time.time() - t0
-            rows.append({
-                "seed": seed, "m": m, "n_trees_available": n_available,
-                "condition": condition, "status": result.status,
-                "duration_s": round(duration, 3),
-                "reconstruction_error": result.reconstruction_error,
-                "uniform_baseline_error": uniform_error,
-                "marginal_baseline_error": marginal_error,
-                "joint_split_frac_A": round(joint_a_frac, 4),
-                "joint_split_frac_B": round(joint_b_frac, 4),
-            })
+            rows.append(
+                {
+                    "seed": seed,
+                    "m": m,
+                    "n_trees_available": n_available,
+                    "condition": condition,
+                    "status": result.status,
+                    "duration_s": round(duration, 3),
+                    "reconstruction_error": result.reconstruction_error,
+                    "uniform_baseline_error": uniform_error,
+                    "marginal_baseline_error": marginal_error,
+                    "joint_split_frac_A": round(joint_a_frac, 4),
+                    "joint_split_frac_B": round(joint_b_frac, 4),
+                }
+            )
 
-    print(f"[seed {seed}] done: {n_available} trees (build {build_time:.1f}s), {len(rows)} rows", flush=True)
+    print(
+        f"[seed {seed}] done: {n_available} trees (build {build_time:.1f}s), {len(rows)} rows",
+        flush=True,
+    )
     return rows
 
 
@@ -131,8 +172,8 @@ def main():
             seed = futures[future]
             try:
                 all_rows.extend(future.result())
-            except Exception as e:
-                print(f"[seed {seed}] FAILED: {e}", flush=True)
+            except Exception:
+                logging.getLogger(__name__).exception("[seed %s] FAILED", seed)
 
     out_path = RESULTS_DIR / "final_experiment.csv"
     with open(out_path, "w", newline="") as f:
@@ -140,8 +181,10 @@ def main():
         writer.writeheader()
         writer.writerows(all_rows)
 
-    print(f"\nWrote {len(all_rows)} rows to {out_path} in {time.time() - t_start:.1f}s "
-          f"({N_WORKERS} parallel workers, {N_SEEDS} seeds)")
+    print(
+        f"\nWrote {len(all_rows)} rows to {out_path} in {time.time() - t_start:.1f}s "
+        f"({N_WORKERS} parallel workers, {N_SEEDS} seeds)"
+    )
 
 
 if __name__ == "__main__":

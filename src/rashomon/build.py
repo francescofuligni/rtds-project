@@ -28,8 +28,14 @@ def _suppress_native_stdout():
         os.close(saved)
 
 
-def build_rashomon_set(X: pd.DataFrame, y: pd.Series, *, regularization: float = 0.01,
-                        rashomon_bound_multiplier: float = 0.05, verbose: bool = False):
+def build_rashomon_set(
+    X: pd.DataFrame,
+    y: pd.Series,
+    *,
+    regularization: float = 0.01,
+    rashomon_bound_multiplier: float = 0.05,
+    verbose: bool = False,
+):
     """Fit TreeFARMS and return the model (supports get_tree_count() and
     indexing to access individual TreeClassifier objects)."""
     config = {

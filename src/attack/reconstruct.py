@@ -45,7 +45,9 @@ def _walk_leaves(node: dict, path: list[tuple[int, bool]]):
         yield from _walk_leaves(node["false"], path + [(feat, False)])
 
 
-def extract_branches(tree_source: dict, X: np.ndarray, y: np.ndarray, classes: list) -> list:
+def extract_branches(
+    tree_source: dict, X: np.ndarray, y: np.ndarray, classes: list
+) -> list:
     """Compute, for one tree, the list of (splits, per_class_counts)
     branches a released tree-with-leaf-counts would expose.
 
@@ -77,7 +79,9 @@ def extract_branches(tree_source: dict, X: np.ndarray, y: np.ndarray, classes: l
 class ReconstructionResult:
     status: str
     duration: float
-    reconstructed: np.ndarray | None  # shape (N, M), None if infeasible/no solution found
+    reconstructed: (
+        np.ndarray | None
+    )  # shape (N, M), None if infeasible/no solution found
 
 
 def reconstruct(
@@ -113,17 +117,19 @@ def reconstruct(
 
     model = cp_model.CpModel()
 
-    x_vars = [[model.NewBoolVar(f"x_{k}_{i}") for i in range(M)] for k in range(N)]
+    x_vars = [[model.new_bool_var(f"x_{k}_{i}") for i in range(M)] for k in range(N)]
 
     if known_mask is not None:
+        if known_values is None:
+            raise ValueError("known_values is required when known_mask is provided")
         for k in range(N):
             for i in range(M):
                 if known_mask[k, i]:
-                    model.Add(x_vars[k][i] == int(known_values[k, i]))
+                    model.add(x_vars[k][i] == int(known_values[k, i]))
 
     for group in one_hot_groups:
         for k in range(N):
-            model.Add(cp_model.LinearExpr.Sum([x_vars[k][i] for i in group]) == 1)
+            model.add(cp_model.LinearExpr.Sum([x_vars[k][i] for i in group]) == 1)
 
     for all_branches_t in trees_branches:
         examples_capts = [[] for _ in range(N)]
@@ -132,20 +138,29 @@ def reconstruct(
             for k in range(N):
                 c_idx = classes.index(y[k])
                 if class_counts[c_idx] > 0:
-                    capt_var = model.NewBoolVar(f"branch_capt_{c_idx}_{branch_nb}_{k}")
+                    capt_var = model.new_bool_var(
+                        f"branch_capt_{c_idx}_{branch_nb}_{k}"
+                    )
                     branch_vars_c[c_idx].append(capt_var)
                     examples_capts[k].append(capt_var)
                     for signed_feat, _threshold in splits:
                         feature_id = abs(signed_feat) - 1
                         if signed_feat > 0:
-                            model.Add(x_vars[k][feature_id] == 1).OnlyEnforceIf(capt_var)
+                            model.add(x_vars[k][feature_id] == 1).OnlyEnforceIf(
+                                capt_var
+                            )
                         else:
-                            model.Add(x_vars[k][feature_id] == 0).OnlyEnforceIf(capt_var)
+                            model.add(x_vars[k][feature_id] == 0).OnlyEnforceIf(
+                                capt_var
+                            )
             for c_idx in range(len(classes)):
-                model.Add(cp_model.LinearExpr.Sum(branch_vars_c[c_idx]) == int(class_counts[c_idx]))
+                model.add(
+                    cp_model.LinearExpr.Sum(branch_vars_c[c_idx])
+                    == int(class_counts[c_idx])
+                )
         for k in range(N):
             if examples_capts[k]:
-                model.Add(cp_model.LinearExpr.Sum(examples_capts[k]) == 1)
+                model.add(cp_model.LinearExpr.Sum(examples_capts[k]) == 1)
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = timeout
@@ -158,8 +173,12 @@ def reconstruct(
 
     status_name = solver.StatusName(status)
     if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        reconstructed = np.array([[solver.Value(x_vars[k][i]) for i in range(M)] for k in range(N)])
+        reconstructed = np.array(
+            [[solver.Value(x_vars[k][i]) for i in range(M)] for k in range(N)]
+        )
     else:
         reconstructed = None
 
-    return ReconstructionResult(status=status_name, duration=duration, reconstructed=reconstructed)
+    return ReconstructionResult(
+        status=status_name, duration=duration, reconstructed=reconstructed
+    )
