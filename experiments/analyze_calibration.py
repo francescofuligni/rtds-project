@@ -83,9 +83,8 @@ def main():
 
     out_path = RESULTS_DIR / "calibration_reliability.pdf"
     fig.savefig(out_path)
-    plt.close(fig)
     print(f"\nWrote {out_path}")
 
 
 if __name__ == "__main__":
-    run_analysis(main, RESULTS_DIR / "summaries" / "analyze_calibration_summary.txt")
+    run_analysis(main, RESULTS_DIR / "analyze_calibration_summary.txt")

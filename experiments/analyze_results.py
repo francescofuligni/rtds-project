@@ -100,7 +100,6 @@ def main():
 
     out_path = RESULTS_DIR / "reconstruction_error_vs_m.pdf"
     fig.savefig(out_path)
-    plt.close(fig)
     print(f"Wrote {out_path}")
 
     print("\nAggregate table (mean error by m, condition):")
@@ -157,4 +156,4 @@ def main():
 
 
 if __name__ == "__main__":
-    run_analysis(main, RESULTS_DIR / "summaries" / "analyze_results_summary.txt")
+    run_analysis(main, RESULTS_DIR / "analyze_results_summary.txt")

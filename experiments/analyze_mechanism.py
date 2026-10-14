@@ -76,9 +76,8 @@ def main():
 
     out_path = RESULTS_DIR / "mechanism_joint_split_correlation.pdf"
     fig.savefig(out_path)
-    plt.close(fig)
     print(f"\nWrote {out_path}")
 
 
 if __name__ == "__main__":
-    run_analysis(main, RESULTS_DIR / "summaries" / "analyze_mechanism_summary.txt")
+    run_analysis(main, RESULTS_DIR / "analyze_mechanism_summary.txt")

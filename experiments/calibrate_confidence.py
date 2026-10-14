@@ -194,7 +194,6 @@ def main():
 
     out_path = RESULTS_DIR / "calibration_isotonic.pdf"
     fig.savefig(out_path)
-    plt.close(fig)
     print(f"\nWrote {out_path}")
 
     print("\nCalibration quality on held-out seeds (lower is better for both metrics):")
@@ -249,4 +248,4 @@ def main():
 
 
 if __name__ == "__main__":
-    run_analysis(main, RESULTS_DIR / "summaries" / "calibrate_confidence_summary.txt")
+    run_analysis(main, RESULTS_DIR / "calibrate_confidence_summary.txt")
