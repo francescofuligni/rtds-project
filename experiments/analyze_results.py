@@ -9,11 +9,12 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from analysis_output import run_analysis
 from scipy.stats import wilcoxon
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS_CSV = ROOT / "results" / "final_experiment.csv"
-FIGURES_DIR = ROOT / "report" / "figures"
+RESULTS_DIR = ROOT / "results"
 
 
 def holm_bonferroni(pvalues: list[float], alpha: float = 0.05) -> list[bool]:
@@ -41,7 +42,7 @@ CONDITION_STYLE = {
 
 def main():
     df = pd.read_csv(RESULTS_CSV)
-    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     agg = (
         df.groupby(["m", "condition"])["reconstruction_error"]
@@ -97,7 +98,7 @@ def main():
     ax.grid(alpha=0.3)
     fig.tight_layout()
 
-    out_path = FIGURES_DIR / "reconstruction_error_vs_m.pdf"
+    out_path = RESULTS_DIR / "reconstruction_error_vs_m.pdf"
     fig.savefig(out_path)
     print(f"Wrote {out_path}")
 
@@ -155,4 +156,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run_analysis(main, RESULTS_DIR / "analyze_results_summary.txt")

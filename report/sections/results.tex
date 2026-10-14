@@ -7,7 +7,7 @@ Figure~\ref{fig:error-vs-m} shows the mean reconstruction error on $T$ across 35
 
 \begin{figure*}[t]
   \centering
-  \includegraphics[width=0.85\textwidth]{figures/reconstruction_error_vs_m.pdf}
+  \includegraphics[width=0.85\textwidth]{reconstruction_error_vs_m.pdf}
   \caption{Reconstruction error on $T=\texttt{sex}$ vs.\ number of released trees $m$, by background-knowledge condition. Error bars are $\pm 1$ standard error of the mean over 350 repetitions (fewer at $m=50,100$ where some repetitions' Rashomon sets or solves did not reach that point -- see Limitations).}
   \label{fig:error-vs-m}
 \end{figure*}
@@ -58,7 +58,7 @@ We tested this directly rather than leaving it as a plausible story. For every (
 
 \begin{figure*}[t]
   \centering
-  \includegraphics[width=0.95\textwidth]{figures/mechanism_joint_split_correlation.pdf}
+  \includegraphics[width=0.95\textwidth]{mechanism_joint_split_correlation.pdf}
   \caption{Per-(seed, $m$) error reduction vs.\ fraction of released trees with a joint $T$+attribute split leaf, at 350 seeds. A weak positive trend is now visible but the scatter remains dominated by noise.}
   \label{fig:mechanism}
 \end{figure*}
@@ -72,7 +72,7 @@ No reviewed paper reports a confidence value for an individual reconstructed rec
 
 \begin{figure*}[t]
   \centering
-  \includegraphics[width=0.95\textwidth]{figures/calibration_reliability.pdf}
+  \includegraphics[width=0.95\textwidth]{calibration_reliability.pdf}
   \caption{Empirical accuracy vs.\ agreement rate across 15 repeated solves (confidence proxy), by $m$. Point size is proportional to bin count. The dashed line is perfect calibration (accuracy = agreement).}
   \label{fig:calibration}
 \end{figure*}
@@ -107,7 +107,7 @@ We also checked, since it costs nothing beyond re-analyzing data already collect
 
 \begin{figure*}[t]
   \centering
-  \includegraphics[width=0.95\textwidth]{figures/calibration_isotonic.pdf}
+  \includegraphics[width=0.95\textwidth]{calibration_isotonic.pdf}
   \caption{Isotonic-calibrated probability (fit on 25 training seeds) vs.\ raw agreement rate, both evaluated against empirical accuracy on 10 held-out test seeds never used to fit the calibration.}
   \label{fig:calibration-isotonic}
 \end{figure*}

@@ -17,11 +17,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from analysis_output import run_analysis
 from sklearn.isotonic import IsotonicRegression
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS_CSV = ROOT / "results" / "calibration_experiment.csv"
-FIGURES_DIR = ROOT / "report" / "figures"
+RESULTS_DIR = ROOT / "results"
 
 TEST_SEED_FRACTION = 0.3
 SPLIT_SEED = 0
@@ -88,7 +89,7 @@ def bootstrap_ci(
 
 def main():
     df = pd.read_csv(RESULTS_CSV)
-    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     seeds = sorted(df["seed"].unique())
     rng = np.random.default_rng(SPLIT_SEED)
@@ -191,7 +192,7 @@ def main():
     )
     fig.tight_layout()
 
-    out_path = FIGURES_DIR / "calibration_isotonic.pdf"
+    out_path = RESULTS_DIR / "calibration_isotonic.pdf"
     fig.savefig(out_path)
     print(f"\nWrote {out_path}")
 
@@ -247,4 +248,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    run_analysis(main, RESULTS_DIR / "calibrate_confidence_summary.txt")
