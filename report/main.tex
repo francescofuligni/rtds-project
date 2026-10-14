@@ -1,4 +1,11 @@
-\documentclass[a4paper,11pt]{article}
+\documentclass[11pt]{article}
+% Exact ACL template supplied by the course; preprint keeps names and page numbers.
+\usepackage[preprint]{acl}
+\usepackage{times}
+% BasicTeX has Times but lacks Courier; use the installed Latin Modern Mono face.
+\renewcommand{\ttdefault}{lmtt}
+\usepackage{latexsym}
+\usepackage{microtype}
 
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -8,7 +15,7 @@
 \usepackage{amssymb}
 
 \title{Sensitive Attribute Reconstruction from a Rashomon Set of Decision Trees}
-\author{Hendrik De Coster \and Francesco Fuligni \and Aur\'elien Craplet}
+\author{Hendrik De Coster \and Francesco Fuligni \and Aur\'elien Craplet \\ Stockholm University}
 \date{}
 
 \begin{document}
@@ -23,5 +30,10 @@ Released machine learning models can leak the data they were trained on. We stud
 \input{sections/method}
 \input{sections/results}
 \input{sections/conclusion}
+
+\section*{Code availability}
+The project code is available at \url{https://github.com/francescofuligni/rtds-project}.
+
+\bibliography{references}
 
 \end{document}
