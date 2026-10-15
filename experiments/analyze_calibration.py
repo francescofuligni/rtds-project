@@ -11,16 +11,17 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from analysis_output import run_analysis
 from scipy.stats import spearmanr
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS_CSV = ROOT / "results" / "calibration_experiment.csv"
-FIGURES_DIR = ROOT / "report" / "figures"
+RESULTS_DIR = ROOT / "results"
 
 
 def main():
     df = pd.read_csv(RESULTS_CSV)
-    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     m_values = sorted(df["m"].unique())
     fig, axes = plt.subplots(1, len(m_values), figsize=(5.5 * len(m_values), 4.2), sharey=True)
@@ -54,10 +55,11 @@ def main():
     axes[0].legend(fontsize=8, loc="lower right")
     fig.tight_layout()
 
-    out_path = FIGURES_DIR / "calibration_reliability.pdf"
+    out_path = RESULTS_DIR / "calibration_reliability.pdf"
     fig.savefig(out_path)
+    plt.close(fig)
     print(f"\nWrote {out_path}")
 
 
 if __name__ == "__main__":
-    main()
+    run_analysis(main, RESULTS_DIR / "summaries" / "analyze_calibration_summary.txt")

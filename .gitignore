@@ -22,8 +22,10 @@ data/
 .env.*
 !.env.example
 
+# Local report, assembled manually from results
+/report/
+
 # LaTeX temporary files
-report/.build/
 *.aux
 *.bbl
 *.bcf
@@ -42,3 +44,6 @@ HANDOFF.md
 PLAN.md
 wiki/
 notes/
+
+# Local results interpretation guide
+/results/RESULTS_GUIDE.md

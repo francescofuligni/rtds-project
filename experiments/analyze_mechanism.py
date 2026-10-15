@@ -11,16 +11,17 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from analysis_output import run_analysis
 from scipy.stats import pearsonr, spearmanr
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS_CSV = ROOT / "results" / "final_experiment.csv"
-FIGURES_DIR = ROOT / "report" / "figures"
+RESULTS_DIR = ROOT / "results"
 
 
 def main():
     df = pd.read_csv(RESULTS_CSV)
-    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     error = df.pivot_table(index=["seed", "m"], columns="condition", values="reconstruction_error")
     joint = df.groupby(["seed", "m"])[["joint_split_frac_A", "joint_split_frac_B"]].first()
@@ -48,10 +49,11 @@ def main():
     fig.suptitle("Does joint T+attribute splitting predict the background-knowledge benefit?", fontsize=11)
     fig.tight_layout()
 
-    out_path = FIGURES_DIR / "mechanism_joint_split_correlation.pdf"
+    out_path = RESULTS_DIR / "mechanism_joint_split_correlation.pdf"
     fig.savefig(out_path)
+    plt.close(fig)
     print(f"\nWrote {out_path}")
 
 
 if __name__ == "__main__":
-    main()
+    run_analysis(main, RESULTS_DIR / "summaries" / "analyze_mechanism_summary.txt")
