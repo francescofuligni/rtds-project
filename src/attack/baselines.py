@@ -1,12 +1,4 @@
-"""Model-free baselines for the reconstruction attack.
-
-Both literature reviews flag that most prior work on tree/forest
-reconstruction only compares against uniform random guessing (G3 in the
-Hendrik review), which understates how much the released model actually
-adds. `marginal_baseline` is the informed control: it guesses T using
-only the empirical marginal of T estimated from a holdout sample that is
-disjoint from the attacked table and never touches the released trees.
-"""
+"""Generate uniform and holdout-marginal target guesses without trees."""
 
 from __future__ import annotations
 
@@ -23,11 +15,7 @@ def _group_columns(data: BinarizedDataset, attribute: str) -> list[int]:
 
 
 def _fill_guesses(out: np.ndarray, group_cols: list[int], choice: np.ndarray) -> None:
-    """Set out[row, group_cols[choice[row]]] = 1 for every row. For a
-    two-valued attribute stored as a single indicator column (len(group_cols)
-    == 1), `choice` must already be a 0/1 Bernoulli draw, not a column index
-    -- there is no second column to pick between.
-    """
+    """Fill a binary indicator or one-hot target group with the draws."""
     n_rows = out.shape[0]
     if len(group_cols) == 1:
         out[:, group_cols[0]] = choice
@@ -38,8 +26,7 @@ def _fill_guesses(out: np.ndarray, group_cols: list[int], choice: np.ndarray) ->
 def uniform_random_guess(
     n_rows: int, group_cols: list[int], n_features: int, seed: int
 ) -> np.ndarray:
-    """Guess T uniformly at random among its possible categories, for
-    every row; all other columns are left at 0 (unused by the metric)."""
+    """Draw T uniformly; leave unused feature columns at zero."""
     rng = np.random.default_rng(seed)
     out = np.zeros((n_rows, n_features), dtype=int)
     n_choices = 2 if len(group_cols) == 1 else len(group_cols)
@@ -55,10 +42,7 @@ def marginal_baseline(
     holdout_df: pd.DataFrame,
     seed: int,
 ) -> np.ndarray:
-    """Guess T by sampling from its marginal distribution estimated on a
-    holdout sample disjoint from the attacked rows (never passed to the
-    Rashomon-set construction or the attack).
-    """
+    """Draw T from marginal frequencies in a disjoint holdout."""
     group_cols = _group_columns(data, attribute)
     group_names = [data.X.columns[i] for i in group_cols]
     probs = holdout_df[group_names].mean(axis=0).to_numpy()
@@ -66,7 +50,7 @@ def marginal_baseline(
     rng = np.random.default_rng(seed)
     out = np.zeros((n_rows, data.X.shape[1]), dtype=int)
     if len(group_cols) == 1:
-        p = probs[0]  # P(indicator == 1), e.g. P(sex=Female)
+        p = probs[0]  # Positive rate for a single binary indicator.
         choice = (rng.random(n_rows) < p).astype(int)
     else:
         probs = probs / probs.sum()

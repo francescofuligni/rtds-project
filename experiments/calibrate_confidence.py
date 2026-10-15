@@ -1,13 +1,6 @@
-"""Turn the solver-agreement confidence proxy into an actual calibrated
-probability, and validate the calibration on held-out seeds.
+"""Fit isotonic calibration of diagnostic solver agreement.
 
-Section results-confidence showed agreement rate *correlates* with
-correctness, but never produced a usable probability, nor validated
-anything on data the calibration mapping hadn't already seen. This
-fits an isotonic regression (agreement -> P(correct)) per m on a
-training split of seeds, and evaluates Brier score + expected
-calibration error (ECE) against raw agreement-as-probability on a
-disjoint set of held-out seeds.
+Truth-aligned scores are not attacker-observable confidence.
 """
 
 from __future__ import annotations
@@ -18,11 +11,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from analysis_output import run_analysis
+from experiment_io import (
+    analysis_arguments,
+    diagnostic_scores,
+    load_results,
+    print_availability,
+)
 from sklearn.isotonic import IsotonicRegression
-
-ROOT = Path(__file__).resolve().parent.parent
-RESULTS_CSV = ROOT / "results" / "calibration_experiment.csv"
-RESULTS_DIR = ROOT / "results"
 
 TEST_SEED_FRACTION = 0.3
 SPLIT_SEED = 0
@@ -34,8 +29,7 @@ BOOTSTRAP_SEED = 1
 def expected_calibration_error(
     prob: np.ndarray, correct: np.ndarray, n_bins: int = N_ECE_BINS
 ) -> float:
-    """Standard ECE: bin by predicted probability, weight each bin's
-    |accuracy - mean predicted prob| by its share of the data."""
+    """Compute bin-weighted differences between confidence and accuracy."""
     bins = np.linspace(0.0, 1.0, n_bins + 1)
     bin_idx = np.clip(np.digitize(prob, bins) - 1, 0, n_bins - 1)
     ece = 0.0
@@ -56,10 +50,7 @@ def brier_score(prob: np.ndarray, correct: np.ndarray) -> float:
 def bootstrap_ci(
     test_df: pd.DataFrame, iso: IsotonicRegression, n_boot: int = N_BOOTSTRAP
 ) -> dict:
-    """Seed-level block bootstrap (not row-level) since rows within a seed
-    share the same pilot sample and Rashomon set and are not independent.
-    Resamples test seeds with replacement, pools their rows, and recomputes
-    all four metrics; returns 2.5/97.5 percentile CIs."""
+    """Resample test seeds as blocks and return 95% metric intervals."""
     seeds = test_df["seed"].unique()
     rng = np.random.default_rng(BOOTSTRAP_SEED)
     by_seed = {s: g for s, g in test_df.groupby("seed")}
@@ -87,11 +78,15 @@ def bootstrap_ci(
     }
 
 
-def main():
-    df = pd.read_csv(RESULTS_CSV)
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+def main(input_paths: list[Path], output_dir: Path):
+    attempts = load_results(input_paths, diagnostic=True)
+    print_availability(attempts)
+    df = diagnostic_scores(attempts)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     seeds = sorted(df["seed"].unique())
+    if len(seeds) < 2:
+        raise ValueError("calibration requires at least two available seeds")
     rng = np.random.default_rng(SPLIT_SEED)
     shuffled = rng.permutation(seeds)
     n_test = max(1, round(len(seeds) * TEST_SEED_FRACTION))
@@ -114,6 +109,8 @@ def main():
         train = sub[sub["seed"].isin(train_seeds)]
         test = sub[sub["seed"].isin(test_seeds)]
 
+        if train.empty or test.empty:
+            raise ValueError(f"m={m} needs available training and test scores")
         iso = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0)
         iso.fit(
             train["agreement"].to_numpy(), train["correct"].to_numpy().astype(float)
@@ -146,7 +143,7 @@ def main():
             }
         )
 
-        # reliability diagram on the TEST split only: raw agreement vs. isotonic-calibrated
+        # Compare raw agreement and the fitted mapping on held-out seeds.
         raw_tab = (
             test.groupby("agreement")["correct"].agg(["mean", "count"]).reset_index()
         )
@@ -187,13 +184,14 @@ def main():
     axes[0].set_ylabel("Empirical accuracy (held-out test seeds)")
     axes[0].legend(fontsize=8, loc="lower right")
     fig.suptitle(
-        "Isotonic-calibrated confidence vs. raw agreement, evaluated on held-out seeds",
+        "Diagnostic only: isotonic fit of truth-aligned agreement",
         fontsize=11,
     )
     fig.tight_layout()
 
-    out_path = RESULTS_DIR / "calibration_isotonic.pdf"
+    out_path = output_dir / "calibration_isotonic.pdf"
     fig.savefig(out_path)
+    plt.close(fig)
     print(f"\nWrote {out_path}")
 
     print("\nCalibration quality on held-out seeds (lower is better for both metrics):")
@@ -248,4 +246,8 @@ def main():
 
 
 if __name__ == "__main__":
-    run_analysis(main, RESULTS_DIR / "calibrate_confidence_summary.txt")
+    args = analysis_arguments(diagnostic=True)
+    run_analysis(
+        lambda: main(args.input, args.output_dir),
+        args.output_dir / "calibrate_confidence_summary.txt",
+    )

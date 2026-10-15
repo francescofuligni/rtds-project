@@ -1,41 +1,81 @@
 import numpy as np
+import pytest
 
-from attack.metrics import match_rows, reconstruction_error
-
-
-def test_match_rows_recovers_known_permutation():
-    rng = np.random.default_rng(1)
-    n, m = 8, 4
-    true_X = rng.integers(0, 2, size=(n, m))
-    y = rng.integers(0, 2, size=n)
-
-    # shuffle rows within each label group to build "reconstructed" data
-    # with a known best match, excluding column 0 (pretend T) from the cost
-    recon = true_X.copy()
-    for label in np.unique(y):
-        idx = np.where(y == label)[0]
-        shuffled = rng.permutation(idx)
-        recon[idx] = true_X[shuffled]
-
-    perm = match_rows(true_X, recon, y, exclude_cols={0})
-    # every matched row (outside T) should be identical after matching
-    matched = recon[perm]
-    assert np.array_equal(matched[:, 1:], true_X[:, 1:])
+from attack.metrics import match_rows, reconstruction_error, target_error
 
 
-def test_reconstruction_error_is_zero_for_perfect_reconstruction():
-    rng = np.random.default_rng(2)
-    n, m = 6, 3
-    true_X = rng.integers(0, 2, size=(n, m))
-    y = rng.integers(0, 2, size=n)
-    err, _perm = reconstruction_error(true_X, true_X.copy(), y, target_cols=[0])
-    assert err == 0.0
+def test_global_matching_recovers_permutation_without_label_groups():
+    true = np.array([[0, 0], [1, 1]])
+    recon = true[::-1].copy()
+    match = match_rows(true, recon, exclude_cols={0})
+    np.testing.assert_array_equal(match.permutation, [1, 0])
+    assert match.total_cost == 0 and not match.ambiguous
 
 
-def test_reconstruction_error_detects_flipped_target():
-    true_X = np.array([[1, 0], [0, 1], [1, 1], [0, 0]])
-    y = np.array([0, 0, 1, 1])
-    recon = true_X.copy()
-    recon[:, 0] = 1 - recon[:, 0]  # flip T for every row
-    err, _perm = reconstruction_error(true_X, recon, y, target_cols=[0])
-    assert err == 1.0
+def test_target_values_cannot_influence_assignment():
+    true = np.array([[1, 0, 0], [0, 0, 1], [1, 1, 0], [0, 1, 1]])
+    recon = true[[2, 0, 3, 1]].copy()
+    before = match_rows(true, recon, {0})
+    true[:, 0] = 1 - true[:, 0]
+    recon[:, 0] = 0
+    after = match_rows(true, recon, {0})
+    np.testing.assert_array_equal(before.permutation, after.permutation)
+    assert before.total_cost == after.total_cost
+
+
+def test_perfect_and_flipped_targets_with_unique_non_target_profiles():
+    true = np.array([[1, 0, 0], [0, 0, 1], [1, 1, 0], [0, 1, 1]])
+    error, _ = reconstruction_error(true, true.copy(), [0])
+    assert error == 0
+    recon = true.copy()
+    recon[:, 0] = 1 - recon[:, 0]
+    error, _ = reconstruction_error(true, recon, [0])
+    assert error == 1
+
+
+def test_duplicate_profiles_and_global_ties_are_detected():
+    duplicate = np.array([[0, 1], [1, 1]])
+    match = match_rows(duplicate, duplicate, {0})
+    assert match.ambiguous and match.total_cost == 0
+    # Equal-cost global assignments despite no duplicate profiles.
+    true = np.array([[0, 0, 0], [0, 1, 0]])
+    recon = np.array([[1, 0, 0], [1, 0, 1]])
+    match = match_rows(true, recon, {0})
+    assert match.ambiguous and match.total_cost == 2
+
+
+def test_known_profiles_are_hard_constraints():
+    true = np.array([[0, 0, 0, 0, 0], [1, 1, 1, 1, 1]])
+    recon = np.array([[1, 0, 1, 1, 1], [0, 1, 0, 0, 0]])
+    unconstrained = match_rows(true, recon, {0})
+    known = match_rows(true, recon, {0}, known_cols=[1])
+    np.testing.assert_array_equal(unconstrained.permutation, [1, 0])
+    np.testing.assert_array_equal(known.permutation, [0, 1])
+    with pytest.raises(ValueError, match="compatible"):
+        match_rows(true, np.zeros_like(true), {0}, known_cols=[1])
+
+
+def test_categorical_target_counts_one_error_per_row():
+    true = np.array([[1, 0, 0], [0, 1, 1]])
+    recon = np.array([[0, 1, 0], [0, 1, 1]])
+    error, _ = reconstruction_error(true, recon, [0, 1])
+    assert error == 0.5
+
+
+def test_target_only_baselines_use_the_attack_permutation():
+    true = np.array([[0, 0], [1, 1]])
+    recon = true[::-1]
+    match = match_rows(true, recon, {0})
+    baseline = np.array([[1, 0], [0, 0]])
+    assert target_error(true, baseline, [0], match.permutation) == 0
+    assert target_error(true, baseline, [0], np.arange(2)) == 1
+
+
+def test_invalid_matching_and_permutations():
+    true = np.array([[0, 0], [1, 1]])
+    with pytest.raises(ValueError, match="nonempty"):
+        match_rows(true, true[:1], {0})
+    with pytest.raises(ValueError, match="cannot be known"):
+        match_rows(true, true, {0}, known_cols=[0])
+    with pytest.raises(ValueError, match="bijective"):
+        target_error(true, true, [0], np.array([0, 0]))
