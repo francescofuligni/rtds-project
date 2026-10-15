@@ -1,42 +1,26 @@
-"""Dataset reconstruction attack against a released set of TreeFARMS trees.
+"""Reconstruct binary tables from public trees and exact class counts.
 
-This is a from-scratch reimplementation of the CP-SAT formulation in
-Ferry et al. (2024), "Trained Random Forests Completely Reveal your
-Dataset" (DRAFT, https://github.com/vidalt/DRAFT, MIT licensed), adapted
-to two things upstream DRAFT doesn't support out of the box:
-
-  1. Trees come from TreeFARMS's native recursive-dict representation
-     (`{"feature": i, "true": ..., "false": ...}` / `{"prediction": c}`)
-     instead of sklearn RandomForestClassifier.estimators_. Since
-     TreeFARMS only operates on pre-binarized data, every feature is a
-     plain boolean, so the ordinal/numerical-attribute machinery
-     upstream DRAFT needs is not required here.
-  2. The attacker can be given exact values for a subset of feature
-     columns, for every training row (background knowledge A/B in the
-     None/A/B/A+B ablation), by fixing those CP-SAT variables before
-     solving.
-
-Threat model: the attacker is assumed to know the training labels y (as
-in all reviewed reconstruction papers -- the released trees predict y,
-so y is public) and the released trees' exact per-leaf, per-class
-training-example counts (the "leaf counts" that make a published tree a
-small table of statistics). What the attacker does NOT get is the
-ground-truth feature matrix; `extract_branches` is the one place that
-touches it, to compute what the released artifact would contain.
+CP-SAT feasibility adaptation of DRAFT (Ferry et al., 2024).
+The publisher adds aggregate counts; true per-row Y is not attacker input.
 """
 
 from __future__ import annotations
 
+import copy
+import hashlib
+import json
 import time
 from dataclasses import dataclass
 
 import numpy as np
 from ortools.sat.python import cp_model
 
+PROTOCOL_VERSION = "no_y_v1"
+RELEASE_POLICY = "selected_trees_with_publisher_exact_class_counts"
+Branches = list[tuple[list[tuple[int, float]], list[int]]]
+
 
 def _walk_leaves(node: dict, path: list[tuple[int, bool]]):
-    """Yield (path, prediction) for every leaf of a TreeFARMS tree.source dict.
-    path is a list of (feature_index, taken_true_branch)."""
     if "prediction" in node:
         yield path, node["prediction"]
     else:
@@ -47,49 +31,143 @@ def _walk_leaves(node: dict, path: list[tuple[int, bool]]):
 
 def extract_branches(
     tree_source: dict, X: np.ndarray, y: np.ndarray, classes: list
-) -> list:
-    """Compute, for one tree, the list of (splits, per_class_counts)
-    branches a released tree-with-leaf-counts would expose.
-
-    splits: list of (signed_feature_id, threshold) pairs along the leaf's
-        root path, 1-indexed and signed as in upstream DRAFT: positive
-        means the feature's "true" (==1) branch was taken, negative means
-        "false" (==0). threshold is always 0.5 since every feature is boolean.
-    per_class_counts: number of rows of (X, y) landing in that leaf, per
-        class in `classes`.
-
-    This is the only function that touches ground-truth X -- it plays
-    the role of "the model's author publishing the tree with its leaf
-    statistics", not the attacker.
-    """
+) -> Branches:
+    """Compute leaf paths and class counts on the publisher side."""
     branches = []
     for path, _prediction in _walk_leaves(tree_source, []):
         mask = np.ones(len(X), dtype=bool)
         splits = []
         for feat, taken_true in path:
             mask &= (X[:, feat] == 1) if taken_true else (X[:, feat] == 0)
-            signed = (feat + 1) if taken_true else -(feat + 1)
-            splits.append((signed, 0.5))
+            splits.append(((feat + 1) if taken_true else -(feat + 1), 0.5))
         counts = [int(np.sum((y == c) & mask)) for c in classes]
         branches.append((splits, counts))
     return branches
+
+
+@dataclass(frozen=True)
+class PublicRelease:
+    """Public tree sources, aggregate counts and feature schema."""
+
+    trees: list[dict]
+    trees_branches: list[Branches]
+    classes: tuple[int | str, ...]
+    n_rows: int
+    feature_names: tuple[str, ...]
+    one_hot_groups: tuple[tuple[int, ...], ...]
+
+    @property
+    def n_features(self) -> int:
+        return len(self.feature_names)
+
+    @property
+    def release_id(self) -> str:
+        payload = {
+            "trees": self.trees,
+            "branches": self.trees_branches,
+            "classes": self.classes,
+            "n_rows": self.n_rows,
+            "features": self.feature_names,
+            "groups": self.one_hot_groups,
+            "policy": RELEASE_POLICY,
+        }
+        encoded = json.dumps(
+            payload,
+            sort_keys=True,
+            separators=(",", ":"),
+            default=lambda value: value.item(),
+        ).encode()
+        return hashlib.sha256(encoded).hexdigest()
+
+
+def prepare_release(
+    trees: list[dict],
+    X: np.ndarray,
+    y: np.ndarray,
+    feature_names: list[str],
+    one_hot_groups: list[list[int]],
+) -> PublicRelease:
+    """Copy selected trees and publish their exact class counts."""
+    X, y = np.asarray(X), np.asarray(y)
+    if X.ndim != 2 or y.shape != (len(X),) or X.shape[1] != len(feature_names):
+        raise ValueError("training arrays and feature schema must have matching shapes")
+    if not np.isin(X, [0, 1]).all():
+        raise ValueError("features must be binary")
+    classes = tuple(np.unique(y).tolist())
+    public_trees = copy.deepcopy(trees)
+    release = PublicRelease(
+        public_trees,
+        [extract_branches(tree, X, y, list(classes)) for tree in public_trees],
+        classes,
+        len(X),
+        tuple(feature_names),
+        tuple(tuple(group) for group in one_hot_groups),
+    )
+    validate_release(release)
+    for group in release.one_hot_groups:
+        if not (X[:, group].sum(axis=1) == 1).all():
+            raise ValueError("training rows violate the one-hot schema")
+    return release
+
+
+def validate_release(release: PublicRelease) -> None:
+    if not isinstance(release, PublicRelease):
+        raise TypeError("reconstruct requires a PublicRelease, not training labels")
+    if release.n_rows <= 0 or not release.feature_names or not release.classes:
+        raise ValueError("release must have positive dimensions and a class domain")
+    if len(set(release.feature_names)) != release.n_features or len(
+        set(release.classes)
+    ) != len(release.classes):
+        raise ValueError("feature names and classes must be unique")
+    if not release.trees or len(release.trees) != len(release.trees_branches):
+        raise ValueError("release must contain matching trees and branch lists")
+    grouped = set()
+    for group in release.one_hot_groups:
+        if not group or len(set(group)) != len(group):
+            raise ValueError("one-hot groups must be nonempty with unique columns")
+        if any(i < 0 or i >= release.n_features or i in grouped for i in group):
+            raise ValueError("one-hot groups contain overlapping or invalid columns")
+        grouped.update(group)
+    reference_totals = None
+    for tree, branches in zip(release.trees, release.trees_branches):
+        paths = [
+            [((f + 1) if taken else -(f + 1), 0.5) for f, taken in path]
+            for path, _ in _walk_leaves(tree, [])
+        ]
+        if not branches or paths != [splits for splits, _ in branches]:
+            raise ValueError("released paths must match the selected tree structure")
+        totals = np.zeros(len(release.classes), dtype=int)
+        for splits, counts in branches:
+            if any(
+                abs(f) < 1 or abs(f) > release.n_features or t != 0.5 for f, t in splits
+            ):
+                raise ValueError("invalid binary split")
+            if len(counts) != len(release.classes) or any(
+                not isinstance(c, (int, np.integer)) or c < 0 for c in counts
+            ):
+                raise ValueError(
+                    "class counts must be nonnegative integers in class order"
+                )
+            totals += counts
+        if totals.sum() != release.n_rows:
+            raise ValueError("each tree must count every row exactly once")
+        if reference_totals is not None and not np.array_equal(
+            totals, reference_totals
+        ):
+            raise ValueError("class totals must agree across non-bootstrap trees")
+        reference_totals = totals
 
 
 @dataclass
 class ReconstructionResult:
     status: str
     duration: float
-    reconstructed: (
-        np.ndarray | None
-    )  # shape (N, M), None if infeasible/no solution found
+    reconstructed: np.ndarray | None
+    reconstructed_labels: np.ndarray | None = None
 
 
 def reconstruct(
-    trees_branches: list[list[tuple[list[tuple[int, float]], list[int]]]],
-    y: np.ndarray,
-    classes: list,
-    n_features: int,
-    one_hot_groups: list[list[int]],
+    release: PublicRelease,
     *,
     known_mask: np.ndarray | None = None,
     known_values: np.ndarray | None = None,
@@ -98,87 +176,82 @@ def reconstruct(
     seed: int = 0,
     verbosity: bool = False,
 ) -> ReconstructionResult:
-    """Solve the CP-SAT reconstruction model.
+    """Find feature rows and unknown classes consistent with the release.
 
-    trees_branches: per-tree list of branches, as produced by extract_branches.
-    y: shape (N,) true labels (assumed known to the attacker).
-    classes: ordered list of class labels matching the per-class count order
-        used in trees_branches.
-    n_features: M, total number of (boolean) feature columns.
-    one_hot_groups: list of column-index groups that must each sum to 1
-        (categorical attributes' one-hot encoding).
-    known_mask / known_values: optional (N, M) arrays. Where known_mask is
-        True, x_vars[k][i] is fixed to known_values[k][i] -- this is the
-        attacker's background knowledge (None/A/B/A+B conditions).
+    Known cells constrain row slots; other slots remain exchangeable.
     """
-    start = time.time()
-    N = len(y)
-    M = n_features
-
-    model = cp_model.CpModel()
-
-    x_vars = [[model.new_bool_var(f"x_{k}_{i}") for i in range(M)] for k in range(N)]
-
+    start = time.perf_counter()
+    validate_release(release)
+    n, m, n_classes = release.n_rows, release.n_features, len(release.classes)
+    if timeout <= 0 or n_threads < 0:
+        raise ValueError("timeout must be positive and worker count nonnegative")
     if known_mask is not None:
         if known_values is None:
             raise ValueError("known_values is required when known_mask is provided")
-        for k in range(N):
-            for i in range(M):
-                if known_mask[k, i]:
-                    model.add(x_vars[k][i] == int(known_values[k, i]))
-
-    for group in one_hot_groups:
-        for k in range(N):
-            model.add(cp_model.LinearExpr.Sum([x_vars[k][i] for i in group]) == 1)
-
-    for all_branches_t in trees_branches:
-        examples_capts = [[] for _ in range(N)]
-        for branch_nb, (splits, class_counts) in enumerate(all_branches_t):
-            branch_vars_c = [[] for _ in classes]
-            for k in range(N):
-                c_idx = classes.index(y[k])
-                if class_counts[c_idx] > 0:
-                    capt_var = model.new_bool_var(
-                        f"branch_capt_{c_idx}_{branch_nb}_{k}"
-                    )
-                    branch_vars_c[c_idx].append(capt_var)
-                    examples_capts[k].append(capt_var)
-                    for signed_feat, _threshold in splits:
-                        feature_id = abs(signed_feat) - 1
-                        if signed_feat > 0:
-                            model.add(x_vars[k][feature_id] == 1).OnlyEnforceIf(
-                                capt_var
-                            )
-                        else:
-                            model.add(x_vars[k][feature_id] == 0).OnlyEnforceIf(
-                                capt_var
-                            )
-            for c_idx in range(len(classes)):
-                model.add(
-                    cp_model.LinearExpr.Sum(branch_vars_c[c_idx])
-                    == int(class_counts[c_idx])
-                )
-        for k in range(N):
-            if examples_capts[k]:
-                model.add(cp_model.LinearExpr.Sum(examples_capts[k]) == 1)
-
+        if known_mask.shape != (n, m) or known_mask.dtype != bool:
+            raise ValueError(
+                "known_mask must be a boolean array matching release dimensions"
+            )
+        if (
+            known_values.shape != (n, m)
+            or not np.isin(known_values[known_mask], [0, 1]).all()
+        ):
+            raise ValueError(
+                "known_values must match dimensions and contain binary known cells"
+            )
+    elif known_values is not None:
+        raise ValueError("known_mask is required when known_values is provided")
+    model = cp_model.CpModel()
+    x = [[model.new_bool_var(f"x_{i}_{j}") for j in range(m)] for i in range(n)]
+    z = [
+        [model.new_bool_var(f"class_{i}_{c}") for c in range(n_classes)]
+        for i in range(n)
+    ]
+    for i in range(n):
+        model.add(sum(z[i]) == 1)
+        for group in release.one_hot_groups:
+            model.add(sum(x[i][j] for j in group) == 1)
+        if known_mask is not None:
+            assert known_values is not None
+            for j in np.flatnonzero(known_mask[i]):
+                model.add(x[i][j] == int(known_values[i, j]))
+    for tree_index, branches in enumerate(release.trees_branches):
+        assignments = [[] for _ in range(n)]
+        for leaf_index, (splits, counts) in enumerate(branches):
+            for c, count in enumerate(counts):
+                captured = []
+                if count:
+                    for i in range(n):
+                        a = model.new_bool_var(
+                            f"capture_{tree_index}_{leaf_index}_{c}_{i}"
+                        )
+                        assignments[i].append(a)
+                        captured.append(a)
+                        model.add(z[i][c] == 1).OnlyEnforceIf(a)
+                        for signed_feature, _threshold in splits:
+                            model.add(
+                                x[i][abs(signed_feature) - 1] == int(signed_feature > 0)
+                            ).OnlyEnforceIf(a)
+                model.add(sum(captured) == count)
+        for captures in assignments:
+            model.add(sum(captures) == 1)
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = timeout
     solver.parameters.num_workers = n_threads
     solver.parameters.random_seed = seed
     solver.parameters.log_search_progress = verbosity
-
     status = solver.Solve(model)
-    duration = time.time() - start
-
-    status_name = solver.StatusName(status)
+    candidate = labels = None
     if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        reconstructed = np.array(
-            [[solver.Value(x_vars[k][i]) for i in range(M)] for k in range(N)]
+        candidate = np.array([[solver.Value(v) for v in row] for row in x], dtype=int)
+        labels = np.array(
+            [
+                release.classes[
+                    next(c for c in range(n_classes) if solver.Value(z[i][c]))
+                ]
+                for i in range(n)
+            ]
         )
-    else:
-        reconstructed = None
-
     return ReconstructionResult(
-        status=status_name, duration=duration, reconstructed=reconstructed
+        solver.StatusName(status), time.perf_counter() - start, candidate, labels
     )

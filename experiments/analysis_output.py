@@ -1,4 +1,4 @@
-"""Save analysis summaries while keeping their terminal output visible."""
+"""Write analysis summaries while retaining terminal output."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ class _Tee:
 
 
 def run_analysis(analysis: Callable[[], None], summary_path: Path) -> None:
-    """Run an analysis and retain its printed tables and metrics as UTF-8 text."""
+    """Save printed tables and metrics as UTF-8 text."""
     summary_path.parent.mkdir(parents=True, exist_ok=True)
     with (
         summary_path.open("w", encoding="utf-8") as summary,

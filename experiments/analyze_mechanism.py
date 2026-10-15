@@ -1,29 +1,21 @@
-"""Test the mechanism hypothesized in the report: background knowledge
-of A/B should only reduce error on T where a tree's root-to-leaf path
-jointly splits on T and A/B. Correlates each (seed, m) cell's
-joint-split fraction (logged by run_final_experiment.py) against the
-observed error reduction (None's error minus the condition's error).
-"""
+"""Relate joint-split frequency to observed target-error reduction."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import pandas as pd
 from analysis_output import run_analysis
+from experiment_io import analysis_arguments, load_results, print_availability
 from scipy.stats import pearsonr, spearmanr
 
-ROOT = Path(__file__).resolve().parent.parent
-RESULTS_CSV = ROOT / "results" / "final_experiment.csv"
-RESULTS_DIR = ROOT / "results"
 
+def main(input_paths: list[Path], output_dir: Path):
+    df = load_results(input_paths)
+    print_availability(df)
+    output_dir.mkdir(parents=True, exist_ok=True)
 
-def main():
-    df = pd.read_csv(RESULTS_CSV)
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-
-    error = df.pivot_table(
+    error = df.pivot(
         index=["seed", "m"], columns="condition", values="reconstruction_error"
     )
     joint = df.groupby(["seed", "m"])[
@@ -47,7 +39,11 @@ def main():
         ax.axhline(0, color="#999999", linewidth=1, linestyle=":")
         ax.set_xlabel(f"Fraction of trees with a joint T+{attr} split leaf")
         ax.set_title(f"Attribute {attr}")
-        if len(sub) >= 3 and sub[f"joint_split_frac_{attr}"].std() > 0:
+        if (
+            len(sub) >= 3
+            and sub[f"joint_split_frac_{attr}"].std() > 0
+            and sub[f"reduction_{attr}"].std() > 0
+        ):
             r_p, p_p = pearsonr(
                 sub[f"joint_split_frac_{attr}"], sub[f"reduction_{attr}"]
             )
@@ -74,10 +70,15 @@ def main():
     )
     fig.tight_layout()
 
-    out_path = RESULTS_DIR / "mechanism_joint_split_correlation.pdf"
+    out_path = output_dir / "mechanism_joint_split_correlation.pdf"
     fig.savefig(out_path)
+    plt.close(fig)
     print(f"\nWrote {out_path}")
 
 
 if __name__ == "__main__":
-    run_analysis(main, RESULTS_DIR / "analyze_mechanism_summary.txt")
+    args = analysis_arguments()
+    run_analysis(
+        lambda: main(args.input, args.output_dir),
+        args.output_dir / "analyze_mechanism_summary.txt",
+    )
