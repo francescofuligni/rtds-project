@@ -1,29 +1,30 @@
 # macOS
 .DS_Store
 
-# Python environments and generated files
-.venv/
-venv/
-__pycache__/
-*.py[cod]
-*.egg-info/
-build/
-dist/
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-.ipynb_checkpoints/
-
-# Downloaded/cached datasets
-data/
-
 # Local environment variables
 .env
 .env.*
 !.env.example
 
-# Local report, assembled manually from results
-/report/
+# Python environments
+.venv/
+venv/
+
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Tool caches
+.ipynb_checkpoints/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
+# Downloaded datasets
+data/
 
 # LaTeX temporary files
 *.aux
@@ -38,12 +39,16 @@ data/
 *.synctex.gz
 *.toc
 
-# Agent operational files & local knowledge base
-AGENTS.md
-HANDOFF.md
-PLAN.md
-wiki/
-notes/
-
-# Local results interpretation guide
-/results/RESULTS_GUIDE.md
+# Local documentation and working notes
+/report/
+.codex/
+.vscode/
+.AGENTS.md
+.HANDOFF.md
+.PLAN.md
+.CLAUDE.md
+.DRAFT.md
+.NOTES.md
+/results/.RESULTS_GUIDE.md
+.notes/
+.wiki/
