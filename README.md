@@ -68,3 +68,16 @@ uv sync                                                           # or: pip inst
 Parallelism: `--workers` sets how many seeds run at once; for the record-confidence
 runner `--threads` sets CP-SAT threads per solve (defaults use the cores the
 process is allowed to use, which respects cluster allocations).
+
+## Cluster runs
+
+`hpc/seed_array.sh` runs one seed per array task (see the usage lines at its
+top; adapt the resource and module lines to the cluster). Before submitting:
+create the virtualenv with the cluster's Python module, run `pytest -q` in an
+interactive job, and download the Adult data once on a login node, since
+compute nodes often have no internet access:
+
+```sh
+.venv/bin/python -c "import sys; sys.path.insert(0, 'src'); from rashomon.data import load_adult_raw; load_adult_raw('data')"
+mkdir -p hpc/logs
+```

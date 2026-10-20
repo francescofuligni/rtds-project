@@ -55,3 +55,6 @@ data/
 # Stamped result sets under results/ are committed (data, manifest, figures,
 # summaries) so results travel between machines; scratch runs go in results/dev/.
 results/dev/
+
+# Cluster job logs
+hpc/logs/
