@@ -133,6 +133,48 @@ def selective_accuracy(df: pd.DataFrame, seeds: pd.DataFrame, a: str = "prior_gu
                   f"{b} {wide[b].mean():.0%} (correct {acc.get(b, np.nan):.2f}); diff {diff.mean():+.0%} p={p:.3g}")
 
 
+def selective_accuracy_figure(df: pd.DataFrame, out_dir: Path) -> Path:
+    """Accuracy of the rows an attacker keeps when it keeps its most confident
+    share of the table, as that share grows (averaged over seeds)."""
+    m_values = sorted(df["m"].unique())
+    selections = sorted(df["selection"].unique())
+    shares = np.linspace(0.05, 1.0, 20)
+    fig, axes = plt.subplots(len(selections), len(m_values), figsize=(4.2 * len(m_values), 4.0 * len(selections)),
+                             sharex=True, sharey=True, squeeze=False)
+    for (row, selection), (col, m) in ((r, c) for r in enumerate(selections) for c in enumerate(m_values)):
+        ax = axes[row][col]
+        for method, (label, color, marker) in PLOTTED.items():
+            g = df[(df["selection"] == selection) & (df["m"] == m) & (df["method"] == method)]
+            if g.empty:
+                continue
+            ranked = g.sort_values(["seed", "confidence", "record", "k"], ascending=[True, False, True, True])
+            curve = []
+            for share in shares:
+                kept = ranked.groupby("seed", group_keys=False).apply(
+                    lambda s: s.head(max(1, int(round(share * len(s))))), include_groups=False)
+                curve.append(kept["correct"].mean())
+            ax.plot(shares, curve, color=color, marker=marker, markersize=5, linewidth=2, markevery=3,
+                    markeredgecolor="white", markeredgewidth=1, label=label)
+        ax.set_title(f"m = {m} trees, {selection} selection", color=INK, fontsize=10)
+        ax.set_xlim(0, 1.02)
+        ax.set_ylim(0, 1.02)
+        ax.set_xlabel("Share of its table the attacker keeps (most confident first)", color=MUTED, fontsize=9)
+        ax.grid(color=GRID, linewidth=0.8)
+        for spine in ("top", "right"):
+            ax.spines[spine].set_visible(False)
+        for spine in ("left", "bottom"):
+            ax.spines[spine].set_color(MUTED)
+        ax.tick_params(colors=MUTED, labelsize=8)
+    for row in axes:
+        row[0].set_ylabel("Share of kept rows that are correct", color=MUTED, fontsize=9)
+    handles, labels = axes[0][0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=2, frameon=False, fontsize=8, labelcolor=INK)
+    fig.tight_layout(rect=(0, 0.1 / len(selections), 1, 1))
+    out = out_dir / "record_confidence_selective_accuracy.pdf"
+    fig.savefig(out)
+    return out
+
+
 def selection_effect(seeds: pd.DataFrame, method: str = "prior_guided") -> None:
     """Same seeds, same m: how much does releasing random instead of the
     first m trees change the attacker's table accuracy?"""
@@ -211,6 +253,7 @@ def main(result_dirs: list[Path], out_dir: Path) -> None:
     selective_accuracy(df, seeds)
     selection_effect(seeds)
     print(f"\nWrote {reliability_figure(df, out_dir)}")
+    print(f"Wrote {selective_accuracy_figure(df, out_dir)}")
 
 
 if __name__ == "__main__":
