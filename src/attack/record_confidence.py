@@ -110,6 +110,7 @@ def sampled_candidates(
     seed: int = 0,
     n_threads: int = 1,
     random_tie_break: bool = False,
+    draw_table=None,
 ) -> tuple[list[Counter | None], list[str]]:
     """Several candidates from the joint release (all trees at once).
 
@@ -117,6 +118,8 @@ def sampled_candidates(
     release-consistent table closest to a fresh random table drawn from the
     public sample, so cells the release pins down agree across samples and
     free cells vary the way the population does (perturb-and-MAP style).
+    draw_table(y, rng), if given, draws that random table instead (e.g.
+    MarginalPrior.draw_table when only per-attribute shares are public).
     Without public data: only the solver's random seed varies.
 
     Several consistent tables are often equally close to the random table,
@@ -130,8 +133,11 @@ def sampled_candidates(
     candidates, statuses = [], []
     for s in range(n_samples):
         target = weights = None
-        if public_X is not None:
+        if draw_table is not None:
+            target = draw_table(y, rng)
+        elif public_X is not None:
             target = draw_prior_table(public_X, public_y, y, rng)
+        if target is not None:
             if random_tie_break:
                 # total jitter < one unit of distance
                 base = (TIE_BREAK_JITTER - 1) * n_cells + 1
@@ -241,6 +247,73 @@ class RecordPrior:
             self.label_totals[label] + self.alpha * self.n_feature_vectors
         )
         return float(binom.sf(k - 1, n_c, p))
+
+
+class MarginalPrior:
+    """No-trees baseline when the attacker knows only per-attribute shares
+    within each label (what published statistical tables give), not whole
+    records: p(r | c) is the product of the record's attribute shares, so
+    attributes are treated as independent given the label. Shares are
+    estimated from a public sample with add-alpha smoothing per category.
+
+    draw_table draws a random table from the same shares (every attribute
+    of every row independently, given its label), for prior-guided
+    sampling under this weaker knowledge.
+    """
+
+    def __init__(
+        self,
+        public_X,
+        public_y,
+        class_totals: dict,
+        one_hot_groups: list[list[int]],
+        alpha: float = 0.1,
+    ):
+        self.class_totals = class_totals
+        grouped = {i for group in one_hot_groups for i in group}
+        free = [i for i in range(public_X.shape[1]) if i not in grouped]
+        # Every attribute is a group of columns with exactly one 1 per row; a
+        # plain binary column j is the group (1 - x_j, x_j).
+        self.groups = [list(g) for g in one_hot_groups]
+        self.binary = free
+        self.shares = {}  # label -> (group shares, binary P(x = 1))
+        for label in np.unique(public_y):
+            rows = public_X[public_y == label]
+            group_shares = [
+                (rows[:, g].sum(axis=0) + alpha) / (len(rows) + alpha * len(g))
+                for g in self.groups
+            ]
+            ones = (rows[:, free].sum(axis=0) + alpha) / (len(rows) + 2 * alpha)
+            self.shares[int(label)] = (group_shares, ones)
+
+    def record_probability(self, record: RecordKey) -> float:
+        group_shares, ones = self.shares[record[-1]]
+        p = 1.0
+        for g, share in zip(self.groups, group_shares):
+            picked = [i for i, col in enumerate(g) if record[col] == 1]
+            if len(picked) != 1:
+                return 0.0
+            p *= share[picked[0]]
+        for col, p1 in zip(self.binary, ones):
+            p *= p1 if record[col] == 1 else 1 - p1
+        return float(p)
+
+    def probability(self, record: RecordKey, k: int) -> float:
+        n_c = self.class_totals.get(record[-1], 0)
+        return float(binom.sf(k - 1, n_c, self.record_probability(record)))
+
+    def draw_table(self, y: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+        n_features = sum(len(g) for g in self.groups) + len(self.binary)
+        table = np.zeros((len(y), n_features), dtype=int)
+        for label in np.unique(y):
+            rows = np.flatnonzero(y == label)
+            group_shares, ones = self.shares[int(label)]
+            for g, share in zip(self.groups, group_shares):
+                picks = rng.choice(len(g), size=len(rows), p=share / share.sum())
+                table[rows, np.asarray(g)[picks]] = 1
+            for col, p1 in zip(self.binary, ones):
+                table[rows, col] = rng.random(len(rows)) < p1
+        return table
 
 
 def best_table_claims(

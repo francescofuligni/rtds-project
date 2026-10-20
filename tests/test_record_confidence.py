@@ -6,6 +6,7 @@ import pytest
 
 from attack.reconstruct import extract_branches, reconstruct
 from attack.record_confidence import (
+    MarginalPrior,
     RecordPrior,
     best_table_claims,
     draw_prior_table,
@@ -190,3 +191,34 @@ def test_random_tie_break_samples_stay_consistent(toy):
             assert sorted(
                 b[1] for b in extract_branches(tree, rows, labels, [0, 1])
             ) == sorted(b[1] for b in original)
+
+
+def test_marginal_prior_is_a_distribution_over_valid_records():
+    rng = np.random.default_rng(1)
+    groups = [[1, 2, 3]]
+    public_X = np.zeros((200, 5), dtype=int)
+    public_X[:, [0, 4]] = rng.integers(0, 2, size=(200, 2))
+    public_X[np.arange(200), rng.choice([1, 2, 3], size=200, p=[0.6, 0.3, 0.1])] = 1
+    public_y = rng.integers(0, 2, size=200)
+    prior = MarginalPrior(public_X, public_y, {0: 1, 1: 1}, groups)
+    vectors = enumerate_feature_vectors(5, groups)
+    for label in (0, 1):
+        total = sum(prior.probability(v + (label,), 1) for v in vectors)
+        assert total == pytest.approx(1.0)
+    invalid = (1, 1, 1, 0, 0, 0)  # two categories of one attribute at once
+    assert prior.record_probability(invalid) == 0.0
+
+
+def test_marginal_prior_draws_valid_tables_with_public_shares():
+    rng = np.random.default_rng(2)
+    groups = [[0, 1]]
+    public_X = np.zeros((1000, 3), dtype=int)
+    public_X[:, 0] = rng.random(1000) < 0.8
+    public_X[:, 1] = 1 - public_X[:, 0]
+    public_X[:, 2] = rng.random(1000) < 0.3
+    public_y = np.zeros(1000, dtype=int)
+    prior = MarginalPrior(public_X, public_y, {0: 2000}, groups)
+    table = prior.draw_table(np.zeros(2000, dtype=int), rng)
+    assert (table[:, 0] + table[:, 1] == 1).all()
+    assert table[:, 0].mean() == pytest.approx(0.8, abs=0.03)
+    assert table[:, 2].mean() == pytest.approx(0.3, abs=0.03)

@@ -9,14 +9,16 @@ correct rows from the wrong ones), plus paired per-seed tests of
 prior-guided sampling against the no-trees baseline and of each
 prior-guided variant against the plain sampler, and selective accuracy (how
 right are the rows an attacker keeps when it keeps only its most confident
-ones). Result sets stamped before random selection became the only option
-may also differ in tree selection (first m in TreeFARMS order vs. m at
-random); those are then compared per selection.
+ones). Several result sets may differ in one compared setting -- tree
+selection (sets stamped before random selection became the only option),
+public sample size or records vs. marginals -- and are then reported per
+setting and compared with the first set, paired by seed.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 
@@ -34,6 +36,14 @@ N_BINS = 10
 MIN_BIN_ROWS = 20  # bins with fewer rows are too noisy to plot
 SELECTIVE_THRESHOLDS = [0.5, 0.7, 0.8, 0.9, 0.95]
 TOP_K = [10, 25, 50]
+# Protocol settings result sets may differ in when compared; older sets lack the
+# public-data keys and used the defaults below.
+COMPARED_SETTINGS = {"tree_selection", "public_n", "public_prior"}
+DEFAULT_SETTINGS = {
+    "tree_selection": "random",
+    "public_n": 2000,
+    "public_prior": "records",
+}
 
 # Display order; other attackers (e.g. prior-guided variants) follow alphabetically.
 METHOD_ORDER = [
@@ -71,16 +81,32 @@ def auroc(conf: np.ndarray, correct: np.ndarray) -> float:
     return float(roc_auc_score(correct, conf))
 
 
+def setting_labels(protocols: list[dict]) -> list[str]:
+    """Name each result set by the compared settings in which the sets differ
+    (the tree selection alone keeps its plain name, e.g. 'random')."""
+    keys = [
+        k
+        for k in sorted(COMPARED_SETTINGS)
+        if len({json.dumps(p.get(k, DEFAULT_SETTINGS.get(k))) for p in protocols}) > 1
+    ]
+    if not keys:
+        return [str(protocols[0].get("tree_selection", "random"))] * len(protocols)
+    if keys == ["tree_selection"]:
+        return [str(p["tree_selection"]) for p in protocols]
+    return [
+        ", ".join(f"{k}={p.get(k, DEFAULT_SETTINGS.get(k))}" for k in keys)
+        for p in protocols
+    ]
+
+
 def per_seed_metrics(df: pd.DataFrame) -> pd.DataFrame:
     rows = []
-    for (selection, m, method, seed), g in df.groupby(
-        ["selection", "m", "method", "seed"]
-    ):
+    for (setting, m, method, seed), g in df.groupby(["setting", "m", "method", "seed"]):
         conf, ok = g["confidence"].to_numpy(), g["correct"].to_numpy().astype(float)
         is_prob = method not in NON_PROBABILITY_METHODS
         rows.append(
             {
-                "selection": selection,
+                "setting": setting,
                 "m": m,
                 "method": method,
                 "seed": seed,
@@ -96,17 +122,17 @@ def per_seed_metrics(df: pd.DataFrame) -> pd.DataFrame:
 
 def summary_table(df: pd.DataFrame, seeds: pd.DataFrame) -> pd.DataFrame:
     rows = []
-    for (selection, m, method), g in df.groupby(["selection", "m", "method"]):
+    for (setting, m, method), g in df.groupby(["setting", "m", "method"]):
         conf, ok = g["confidence"].to_numpy(), g["correct"].to_numpy().astype(float)
         s = seeds[
-            (seeds["selection"] == selection)
+            (seeds["setting"] == setting)
             & (seeds["m"] == m)
             & (seeds["method"] == method)
         ]
         is_prob = method not in NON_PROBABILITY_METHODS
         rows.append(
             {
-                "selection": selection,
+                "setting": setting,
                 "m": m,
                 "method": method,
                 "seeds": g["seed"].nunique(),
@@ -125,7 +151,7 @@ def summary_table(df: pd.DataFrame, seeds: pd.DataFrame) -> pd.DataFrame:
         set(out["method"]) - set(METHOD_ORDER)
     )
     out["method"] = pd.Categorical(out["method"], order, ordered=True)
-    return out.sort_values(["selection", "m", "method"])
+    return out.sort_values(["setting", "m", "method"])
 
 
 def paired_tests(
@@ -136,7 +162,7 @@ def paired_tests(
     print(
         f"\nPaired per-seed comparison, {a} minus {b} (Wilcoxon signed-rank; abs_gap = calibration error):"
     )
-    for (selection, m), g in seeds.groupby(["selection", "m"]):
+    for (setting, m), g in seeds.groupby(["setting", "m"]):
         wide = g.pivot(index="seed", columns="method")
         for metric in ["accuracy", "auroc", "brier", "abs_gap"]:
             diff = (wide[(metric, a)] - wide[(metric, b)]).dropna()
@@ -146,7 +172,7 @@ def paired_tests(
                 else float("nan")
             )
             print(
-                f"  {selection:<6} m={m:<4} {metric:<9} mean diff {diff.mean():+.4f} (n={len(diff)}, "
+                f"  {setting:<6} m={m:<4} {metric:<9} mean diff {diff.mean():+.4f} (n={len(diff)}, "
                 f"{(diff > 0).sum()} seeds up, {(diff < 0).sum()} down) p={p:.3g}"
             )
 
@@ -163,8 +189,8 @@ def selective_accuracy(
     print(
         "\nSelective accuracy: keep rows with confidence >= t -> share correct / share of the table kept"
     )
-    for (selection, m), g in df.groupby(["selection", "m"]):
-        print(f"  {selection} m={m}")
+    for (setting, m), g in df.groupby(["setting", "m"]):
+        print(f"  {setting} m={m}")
         for method, h in g.groupby("method"):
             if method in NON_PROBABILITY_METHODS:
                 continue
@@ -193,7 +219,7 @@ def selective_accuracy(
     per_seed = (
         df[df["method"].isin([a, b])]
         .assign(kept=lambda d: d["confidence"] >= threshold)
-        .groupby(["selection", "m", "method", "seed"])
+        .groupby(["setting", "m", "method", "seed"])
         .agg(
             coverage=("kept", "mean"),
             kept_correct=(
@@ -203,14 +229,14 @@ def selective_accuracy(
         )
         .reset_index()
     )
-    for (selection, m), g in per_seed.groupby(["selection", "m"]):
+    for (setting, m), g in per_seed.groupby(["setting", "m"]):
         wide = g.pivot(index="seed", columns="method", values="coverage").dropna()
         if {a, b} <= set(wide.columns) and len(wide) >= 5:
             diff = wide[a] - wide[b]
             p = wilcoxon(diff).pvalue if diff.abs().sum() > 0 else float("nan")
             acc = g.groupby("method")["kept_correct"].mean()
             print(
-                f"  {selection:<6} m={m:<4} coverage {a} {wide[a].mean():.0%} (correct {acc.get(a, np.nan):.2f}) vs "
+                f"  {setting:<6} m={m:<4} coverage {a} {wide[a].mean():.0%} (correct {acc.get(a, np.nan):.2f}) vs "
                 f"{b} {wide[b].mean():.0%} (correct {acc.get(b, np.nan):.2f}); diff {diff.mean():+.0%} p={p:.3g}"
             )
 
@@ -219,25 +245,23 @@ def selective_accuracy_figure(df: pd.DataFrame, out_dir: Path) -> Path:
     """Accuracy of the rows an attacker keeps when it keeps its most confident
     share of the table, as that share grows (averaged over seeds)."""
     m_values = sorted(df["m"].unique())
-    selections = sorted(df["selection"].unique())
+    settings = sorted(df["setting"].unique())
     shares = np.linspace(0.05, 1.0, 20)
     fig, axes = plt.subplots(
-        len(selections),
+        len(settings),
         len(m_values),
-        figsize=(4.2 * len(m_values), 4.0 * len(selections)),
+        figsize=(4.2 * len(m_values), 4.0 * len(settings)),
         sharex=True,
         sharey=True,
         squeeze=False,
     )
-    for (row, selection), (col, m) in (
-        (r, c) for r in enumerate(selections) for c in enumerate(m_values)
+    for (row, setting), (col, m) in (
+        (r, c) for r in enumerate(settings) for c in enumerate(m_values)
     ):
         ax = axes[row][col]
         for method, (label, color, marker) in PLOTTED.items():
             g = df[
-                (df["selection"] == selection)
-                & (df["m"] == m)
-                & (df["method"] == method)
+                (df["setting"] == setting) & (df["m"] == m) & (df["method"] == method)
             ]
             if g.empty:
                 continue
@@ -264,9 +288,7 @@ def selective_accuracy_figure(df: pd.DataFrame, out_dir: Path) -> Path:
                 markeredgewidth=1,
                 label=label,
             )
-        title = f"m = {m} trees" + (
-            f", {selection} selection" if len(selections) > 1 else ""
-        )
+        title = f"m = {m} trees" + (f", {setting}" if len(settings) > 1 else "")
         ax.set_title(title, color=INK, fontsize=10)
         ax.set_xlim(0, 1.02)
         ax.set_ylim(0, 1.02)
@@ -295,45 +317,60 @@ def selective_accuracy_figure(df: pd.DataFrame, out_dir: Path) -> Path:
         fontsize=8,
         labelcolor=INK,
     )
-    fig.tight_layout(rect=(0, 0.1 / len(selections), 1, 1))
+    fig.tight_layout(rect=(0, 0.1 / len(settings), 1, 1))
     out = out_dir / "record_confidence_selective_accuracy.pdf"
     fig.savefig(out)
     return out
 
 
-def selection_effect(seeds: pd.DataFrame, method: str = "prior_guided") -> None:
-    """Same seeds, same m: how much does releasing random instead of the
-    first m trees change the attacker's table accuracy?"""
-    g = seeds[seeds["method"] == method]
-    if g["selection"].nunique() < 2:
+def setting_effect(
+    seeds: pd.DataFrame,
+    reference: str,
+    methods: tuple[str, ...] = ("prior_guided", "prior_only"),
+) -> None:
+    """Same seeds, same m, result sets that differ in one setting (tree
+    setting, public sample size, records vs. marginals): how much does
+    each setting change accuracy, calibration error and ranking, relative
+    to the reference set?"""
+    if seeds["setting"].nunique() < 2:
         return
     print(
-        f"\nTree selection effect on {method} accuracy, random minus first (paired by seed):"
+        f"\nSetting effects, each setting minus {reference!r} (paired by seed, Wilcoxon):"
     )
-    for m, sub in g.groupby("m"):
-        wide = sub.pivot(index="seed", columns="selection", values="accuracy").dropna()
-        if {"first", "random"} <= set(wide.columns) and len(wide) >= 5:
-            diff = wide["random"] - wide["first"]
-            p = wilcoxon(diff).pvalue if diff.abs().sum() > 0 else float("nan")
-            print(
-                f"  m={m:<4} first {wide['first'].mean():.3f}  random {wide['random'].mean():.3f}  "
-                f"diff {diff.mean():+.4f} (n={len(diff)}) p={p:.3g}"
-            )
+    for method in methods:
+        g = seeds[seeds["method"] == method]
+        for m, sub in g.groupby("m"):
+            for setting in sorted(set(sub["setting"]) - {reference}):
+                cells = []
+                for metric in ["accuracy", "abs_gap", "auroc"]:
+                    wide = sub.pivot(index="seed", columns="setting", values=metric)
+                    if not {reference, setting} <= set(wide.columns):
+                        continue
+                    diff = (wide[setting] - wide[reference]).dropna()
+                    if len(diff) < 5:
+                        continue
+                    p = wilcoxon(diff).pvalue if diff.abs().sum() > 0 else float("nan")
+                    cells.append(
+                        f"{metric} {wide[reference].mean():.3f}->{wide[setting].mean():.3f} "
+                        f"({diff.mean():+.3f}, p={p:.2g})"
+                    )
+                if cells:
+                    print(f"  {method:<13} m={m:<4} {setting:<22} " + "  ".join(cells))
 
 
 def reliability_figure(df: pd.DataFrame, out_dir: Path) -> Path:
     m_values = sorted(df["m"].unique())
-    selections = sorted(df["selection"].unique())
+    settings = sorted(df["setting"].unique())
     fig, axes = plt.subplots(
-        len(selections),
+        len(settings),
         len(m_values),
-        figsize=(4.2 * len(m_values), 4.0 * len(selections)),
+        figsize=(4.2 * len(m_values), 4.0 * len(settings)),
         sharex=True,
         sharey=True,
         squeeze=False,
     )
-    for (row, selection), (col, m) in (
-        (r, c) for r in enumerate(selections) for c in enumerate(m_values)
+    for (row, setting), (col, m) in (
+        (r, c) for r in enumerate(settings) for c in enumerate(m_values)
     ):
         ax = axes[row][col]
         ax.plot(
@@ -346,9 +383,7 @@ def reliability_figure(df: pd.DataFrame, out_dir: Path) -> Path:
         )
         for method, (label, color, marker) in PLOTTED.items():
             g = df[
-                (df["selection"] == selection)
-                & (df["m"] == m)
-                & (df["method"] == method)
+                (df["setting"] == setting) & (df["m"] == m) & (df["method"] == method)
             ]
             if g.empty:
                 continue
@@ -376,9 +411,7 @@ def reliability_figure(df: pd.DataFrame, out_dir: Path) -> Path:
                 markeredgewidth=1,
                 label=label,
             )
-        title = f"m = {m} trees" + (
-            f", {selection} selection" if len(selections) > 1 else ""
-        )
+        title = f"m = {m} trees" + (f", {setting}" if len(settings) > 1 else "")
         ax.set_title(title, color=INK, fontsize=10)
         ax.set_xlim(0, 1.02)
         ax.set_ylim(0, 1.02)
@@ -403,7 +436,7 @@ def reliability_figure(df: pd.DataFrame, out_dir: Path) -> Path:
         fontsize=8,
         labelcolor=INK,
     )
-    fig.tight_layout(rect=(0, 0.1 / len(selections), 1, 1))
+    fig.tight_layout(rect=(0, 0.1 / len(settings), 1, 1))
     out = out_dir / "record_confidence_reliability.pdf"
     fig.savefig(out)
     return out
@@ -413,8 +446,7 @@ def main(result_dirs: list[Path], out_dir: Path) -> None:
     frames, manifests = [], []
     for result_dir in result_dirs:
         data, manifest = load_results(result_dir, EXPERIMENT)
-        selection = manifest["protocol"].get("tree_selection", "random")
-        frames.append(data.assign(selection=selection))
+        frames.append(data)
         manifests.append(manifest)
         skipped = sorted(
             str(p.relative_to(result_dir)) for p in result_dir.glob("m*/seed*.skip")
@@ -423,9 +455,13 @@ def main(result_dirs: list[Path], out_dir: Path) -> None:
             f"{describe(manifest)}\n  directory: {result_dir}\n  {len(data)} output rows; "
             f"skipped (Rashomon set < m): {skipped or 'none'}\n"
         )
-    # Result sets may differ in tree selection (that is what is compared) but in nothing else.
-    require_comparable(manifests, may_differ={"tree_selection"})
-    df = pd.concat(frames, ignore_index=True)
+    # Result sets may differ in these settings (that is what is compared), in nothing else.
+    require_comparable(manifests, may_differ=COMPARED_SETTINGS)
+    labels = setting_labels([m["protocol"] for m in manifests])
+    df = pd.concat(
+        [f.assign(setting=label) for f, label in zip(frames, labels)],
+        ignore_index=True,
+    )
 
     seeds = per_seed_metrics(df)
     table = summary_table(df, seeds)
@@ -445,7 +481,7 @@ def main(result_dirs: list[Path], out_dir: Path) -> None:
     ):
         paired_tests(seeds, variant, "prior_guided")
     selective_accuracy(df, seeds)
-    selection_effect(seeds)
+    setting_effect(seeds, reference=labels[0])
     print(f"\nWrote {reliability_figure(df, out_dir)}")
     print(f"Wrote {selective_accuracy_figure(df, out_dir)}")
 

@@ -296,3 +296,22 @@ def test_solver_threads_are_part_of_every_protocol():
     with pytest.raises(SystemExit) as exc:
         record.main(["--threads", "0"])
     assert exc.value.code == 2
+
+
+def test_record_confidence_result_sets_are_named_by_their_differences():
+    from analyze_record_confidence import setting_labels
+
+    old = {"tree_selection": "random"}  # stamped before the public-data keys
+    small = {"tree_selection": "random", "public_n": 200, "public_prior": "records"}
+    assert setting_labels([old, old]) == ["random", "random"]
+    assert setting_labels([{"tree_selection": "first"}, old]) == ["first", "random"]
+    assert setting_labels([old, small]) == ["public_n=2000", "public_n=200"]
+
+
+def test_record_confidence_public_options_are_part_of_the_protocol():
+    import run_record_confidence as record
+
+    protocol = record.protocol(20, 30, public_n=200, public_prior="marginals")
+    assert protocol["public_n"] == 200 and protocol["public_prior"] == "marginals"
+    with pytest.raises(SystemExit):
+        record.main(["--public-prior", "census"])

@@ -2,7 +2,10 @@
 to trust each record it outputs, without ever seeing the ground truth?
 
 For each seed, sample a private table of 100 rows and a disjoint public sample
-of 2,000 rows from the same population. Build a Rashomon set and release m
+of 2,000 rows (--public-n) from the same population. With --public-prior
+marginals the attacker keeps only per-attribute shares within each income
+class from that sample (published tables) instead of whole records, for both
+prior-guided sampling and the no-trees baseline. Build a Rashomon set and release m
 trees selected uniformly without replacement using nested prefixes. Each
 attacker produces a 100-row candidate table whose label counts match the
 private sample, then scores claims about record multiplicities. A claim is
@@ -45,6 +48,7 @@ from provenance import seed_indices, stamp, write_rows
 
 from attack.reconstruct import extract_branches
 from attack.record_confidence import (
+    MarginalPrior,
     RecordPrior,
     best_table_claims,
     enumerate_feature_vectors,
@@ -62,6 +66,10 @@ from rashomon.data import binarize_adult_curated, load_adult_raw
 
 PILOT_N = 100
 PUBLIC_N = 2000
+# What the attacker knows about the population: a sample of other people's
+# whole records, or only per-attribute shares within each income class
+# (published tables), estimated from that sample (see MarginalPrior).
+PUBLIC_PRIORS = ["records", "marginals"]
 REGULARIZATION = 0.01
 RASHOMON_BOUND_MULTIPLIER = 0.1
 PRIOR_ALPHA = (
@@ -81,12 +89,15 @@ def protocol(
     m_values: list[int] | None = None,
     workers: int = 2,
     threads: int = DEFAULT_SOLVER_THREADS,
+    public_n: int = PUBLIC_N,
+    public_prior: str = "records",
 ) -> dict:
     """Every setting that changes what this experiment's numbers mean."""
     return {
         "dataset": "adult_curated_13col",
         "pilot_n": PILOT_N,
-        "public_n": PUBLIC_N,
+        "public_n": public_n,
+        "public_prior": public_prior,
         "regularization": REGULARIZATION,
         "rashomon_bound_multiplier": RASHOMON_BOUND_MULTIPLIER,
         "tree_selection": "random",
@@ -150,6 +161,8 @@ def run_seed(
     timeout: float,
     methods: set[str] = frozenset(METHODS),
     threads: int = DEFAULT_SOLVER_THREADS,
+    public_n: int = PUBLIC_N,
+    public_prior: str = "records",
 ) -> list[dict] | None:
     data_full = binarize_adult_curated(load_adult_raw(ROOT / "data"))
     cols = list(data_full.X.columns)
@@ -158,7 +171,7 @@ def run_seed(
     idx = data_full.X.sample(n=PILOT_N, random_state=seed).index
     X, y = data_full.X.loc[idx].to_numpy(), data_full.y.loc[idx].to_numpy()
     public = (
-        data_full.X.drop(index=idx).sample(n=PUBLIC_N, random_state=seed + 10_000).index
+        data_full.X.drop(index=idx).sample(n=public_n, random_state=seed + 10_000).index
     )
     public_X, public_y = (
         data_full.X.loc[public].to_numpy(),
@@ -169,9 +182,16 @@ def run_seed(
     classes = sorted(np.unique(y).tolist())
     class_totals = {int(c): int((y == c).sum()) for c in classes}
     vectors = enumerate_feature_vectors(len(cols), groups)
-    prior = RecordPrior(
-        public_X, public_y, class_totals, len(vectors), alpha=PRIOR_ALPHA
-    )
+    if public_prior == "marginals":
+        prior = MarginalPrior(
+            public_X, public_y, class_totals, groups, alpha=PRIOR_ALPHA
+        )
+        draw_table = prior.draw_table
+    else:
+        prior = RecordPrior(
+            public_X, public_y, class_totals, len(vectors), alpha=PRIOR_ALPHA
+        )
+        draw_table = None
 
     # name -> (scores that pick the table, number of candidates, scores reported as confidence)
     scored: dict[str, tuple[dict, int, dict]] = {}
@@ -241,6 +261,7 @@ def run_seed(
                 public_X=public_X,
                 public_y=public_y,
                 random_tie_break=tie_break,
+                draw_table=draw_table,
                 **solve,
             )
             for name in names:
@@ -292,6 +313,8 @@ def _run_and_write(seed: int, m: int, args) -> str:
         args.timeout,
         methods=only or set(args.methods),
         threads=args.threads,
+        public_n=args.public_n,
+        public_prior=args.public_prior,
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     if rows is None:
@@ -320,6 +343,19 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--timeout", type=float, default=30.0, help="seconds per solve")
     add_threads_argument(parser)
     parser.add_argument(
+        "--public-n",
+        type=int,
+        default=PUBLIC_N,
+        help=f"public sample size (default {PUBLIC_N})",
+    )
+    parser.add_argument(
+        "--public-prior",
+        choices=PUBLIC_PRIORS,
+        default="records",
+        help="records: the attacker holds the public records; marginals: only "
+        "per-attribute shares within each label, estimated from them",
+    )
+    parser.add_argument(
         "--methods",
         nargs="+",
         choices=METHOD_CHOICES,
@@ -347,6 +383,8 @@ def main(argv: list[str] | None = None) -> None:
         parser.error("--timeout must be positive")
     if args.threads < 1:
         parser.error("--threads must be positive")
+    if args.public_n < 1:
+        parser.error("--public-n must be positive")
     if args.only and not set(args.only) <= set(args.methods):
         parser.error("--only must name attackers that are part of --methods")
 
@@ -361,6 +399,8 @@ def main(argv: list[str] | None = None) -> None:
             args.m,
             args.workers,
             args.threads,
+            args.public_n,
+            args.public_prior,
         ),
         data="m*/seed*.csv",
         argv=argv,
