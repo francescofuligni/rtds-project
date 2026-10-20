@@ -6,7 +6,8 @@ it gives confidence c, about a fraction c are correct. Reports per m and
 attacker: table accuracy (1 - global error), mean confidence, the gap
 between the two, ECE, Brier score and AUROC (does confidence separate the
 correct rows from the wrong ones), plus paired per-seed tests of
-prior-guided sampling against the no-trees baseline.
+prior-guided sampling against the no-trees baseline, separately for each
+tree selection (first m in TreeFARMS order vs. m at random).
 """
 
 from __future__ import annotations
@@ -52,21 +53,21 @@ def auroc(conf: np.ndarray, correct: np.ndarray) -> float:
 
 def per_seed_metrics(df: pd.DataFrame) -> pd.DataFrame:
     rows = []
-    for (m, method, seed), g in df.groupby(["m", "method", "seed"]):
+    for (selection, m, method, seed), g in df.groupby(["selection", "m", "method", "seed"]):
         conf, ok = g["confidence"].to_numpy(), g["correct"].to_numpy().astype(float)
-        rows.append({"m": m, "method": method, "seed": seed, "accuracy": ok.mean(), "auroc": auroc(conf, ok),
+        rows.append({"selection": selection, "m": m, "method": method, "seed": seed, "accuracy": ok.mean(), "auroc": auroc(conf, ok),
                      "brier": float(np.mean((conf - ok) ** 2)) if method in PROBABILITY_METHODS else np.nan})
     return pd.DataFrame(rows)
 
 
 def summary_table(df: pd.DataFrame, seeds: pd.DataFrame) -> pd.DataFrame:
     rows = []
-    for (m, method), g in df.groupby(["m", "method"]):
+    for (selection, m, method), g in df.groupby(["selection", "m", "method"]):
         conf, ok = g["confidence"].to_numpy(), g["correct"].to_numpy().astype(float)
-        s = seeds[(seeds["m"] == m) & (seeds["method"] == method)]
+        s = seeds[(seeds["selection"] == selection) & (seeds["m"] == m) & (seeds["method"] == method)]
         is_prob = method in PROBABILITY_METHODS
         rows.append({
-            "m": m, "method": method, "seeds": g["seed"].nunique(),
+            "selection": selection, "m": m, "method": method, "seeds": g["seed"].nunique(),
             "accuracy": ok.mean(), "acc_sem": s["accuracy"].sem(),
             "mean_conf": conf.mean() if is_prob else np.nan,
             "gap": conf.mean() - ok.mean() if is_prob else np.nan,
@@ -76,27 +77,46 @@ def summary_table(df: pd.DataFrame, seeds: pd.DataFrame) -> pd.DataFrame:
         })
     out = pd.DataFrame(rows)
     out["method"] = pd.Categorical(out["method"], ALL_METHODS, ordered=True)
-    return out.sort_values(["m", "method"])
+    return out.sort_values(["selection", "m", "method"])
 
 
 def paired_tests(seeds: pd.DataFrame, a: str = "prior_guided", b: str = "prior_only") -> None:
     print(f"\nPaired per-seed comparison, {a} minus {b} (Wilcoxon signed-rank):")
-    for m, g in seeds.groupby("m"):
+    for (selection, m), g in seeds.groupby(["selection", "m"]):
         wide = g.pivot(index="seed", columns="method")
         for metric in ["accuracy", "auroc", "brier"]:
             diff = (wide[(metric, a)] - wide[(metric, b)]).dropna()
             p = wilcoxon(diff).pvalue if len(diff) >= 5 and diff.abs().sum() > 0 else float("nan")
-            print(f"  m={m:<4} {metric:<9} mean diff {diff.mean():+.4f} (n={len(diff)}, "
+            print(f"  {selection:<6} m={m:<4} {metric:<9} mean diff {diff.mean():+.4f} (n={len(diff)}, "
                   f"{(diff > 0).sum()} seeds up, {(diff < 0).sum()} down) p={p:.3g}")
+
+
+def selection_effect(seeds: pd.DataFrame, method: str = "prior_guided") -> None:
+    """Same seeds, same m: how much does releasing random instead of the
+    first m trees change the attacker's table accuracy?"""
+    g = seeds[seeds["method"] == method]
+    if g["selection"].nunique() < 2:
+        return
+    print(f"\nTree selection effect on {method} accuracy, random minus first (paired by seed):")
+    for m, sub in g.groupby("m"):
+        wide = sub.pivot(index="seed", columns="selection", values="accuracy").dropna()
+        if {"first", "random"} <= set(wide.columns) and len(wide) >= 5:
+            diff = wide["random"] - wide["first"]
+            p = wilcoxon(diff).pvalue if diff.abs().sum() > 0 else float("nan")
+            print(f"  m={m:<4} first {wide['first'].mean():.3f}  random {wide['random'].mean():.3f}  "
+                  f"diff {diff.mean():+.4f} (n={len(diff)}) p={p:.3g}")
 
 
 def reliability_figure(df: pd.DataFrame) -> Path:
     m_values = sorted(df["m"].unique())
-    fig, axes = plt.subplots(1, len(m_values), figsize=(4.2 * len(m_values), 4.2), sharey=True, squeeze=False)
-    for ax, m in zip(axes[0], m_values):
+    selections = sorted(df["selection"].unique())
+    fig, axes = plt.subplots(len(selections), len(m_values), figsize=(4.2 * len(m_values), 4.0 * len(selections)),
+                             sharex=True, sharey=True, squeeze=False)
+    for (row, selection), (col, m) in ((r, c) for r in enumerate(selections) for c in enumerate(m_values)):
+        ax = axes[row][col]
         ax.plot([0, 1], [0, 1], linestyle="--", color=MUTED, linewidth=1, label="Perfectly calibrated")
         for method, (label, color, marker) in PLOTTED.items():
-            g = df[(df["m"] == m) & (df["method"] == method)]
+            g = df[(df["selection"] == selection) & (df["m"] == m) & (df["method"] == method)]
             if g.empty:
                 continue
             bins = np.clip((g["confidence"].to_numpy() * N_BINS).astype(int), 0, N_BINS - 1)
@@ -105,7 +125,7 @@ def reliability_figure(df: pd.DataFrame) -> Path:
             agg = agg[agg["n"] >= MIN_BIN_ROWS]
             ax.plot(agg["conf"], agg["acc"], color=color, marker=marker, markersize=6, linewidth=2,
                     markeredgecolor="white", markeredgewidth=1, label=label)
-        ax.set_title(f"m = {m} released trees", color=INK, fontsize=10)
+        ax.set_title(f"m = {m} trees, {selection} selection", color=INK, fontsize=10)
         ax.set_xlim(0, 1.02)
         ax.set_ylim(0, 1.02)
         ax.set_xlabel("Stated confidence (no calibration fitted)", color=MUTED, fontsize=9)
@@ -115,22 +135,23 @@ def reliability_figure(df: pd.DataFrame) -> Path:
         for spine in ("left", "bottom"):
             ax.spines[spine].set_color(MUTED)
         ax.tick_params(colors=MUTED, labelsize=8)
-    axes[0][0].set_ylabel("Share of rows actually correct", color=MUTED, fontsize=9)
+    for row in axes:
+        row[0].set_ylabel("Share of rows actually correct", color=MUTED, fontsize=9)
     handles, labels = axes[0][0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False, fontsize=8, labelcolor=INK)
-    fig.tight_layout(rect=(0, 0.1, 1, 1))
+    fig.tight_layout(rect=(0, 0.1 / len(selections), 1, 1))
     out = RESULTS_DIR / "record_confidence_reliability.pdf"
     fig.savefig(out)
     return out
 
 
 def main() -> None:
-    files = sorted(RAW_DIR.glob("m*/seed*.csv"))
+    files = sorted(RAW_DIR.glob("*/m*/seed*.csv"))  # <selection>/m<m>/seed<seed>.csv
     if not files:
         raise SystemExit(f"no results under {RAW_DIR}; run run_record_confidence.py first")
-    df = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
-    skipped = sorted(p.relative_to(RAW_DIR) for p in RAW_DIR.glob("m*/seed*.skip"))
-    print(f"Loaded {len(files)} (m, seed) files, {len(df)} output rows; skipped (Rashomon set < m): "
+    df = pd.concat([pd.read_csv(f).assign(selection=f.parent.parent.name) for f in files], ignore_index=True)
+    skipped = sorted(p.relative_to(RAW_DIR) for p in RAW_DIR.glob("*/m*/seed*.skip"))
+    print(f"Loaded {len(files)} (selection, m, seed) files, {len(df)} output rows; skipped (Rashomon set < m): "
           f"{[str(s) for s in skipped] or 'none'}")
 
     seeds = per_seed_metrics(df)
@@ -141,6 +162,7 @@ def main() -> None:
         print(table.round(3).to_string(index=False))
 
     paired_tests(seeds)
+    selection_effect(seeds)
     print(f"\nWrote {reliability_figure(df)}")
 
 

@@ -14,7 +14,7 @@ from attack.record_confidence import (
     sampled_candidates,
     support_matrix,
 )
-from rashomon.build import build_rashomon_set, select_trees
+from rashomon.build import build_rashomon_set, select_random_trees, select_trees
 
 
 @pytest.fixture(scope="module")
@@ -93,3 +93,18 @@ def test_prior_table_keeps_each_rows_label():
     y = np.array([0, 1, 0])
     table = draw_prior_table(public_X, public_y, y, np.random.default_rng(0))
     np.testing.assert_array_equal(table, [[0, 0], [1, 1], [0, 0]])
+
+
+def test_random_tree_selection_is_reproducible_and_nested():
+    rng = np.random.default_rng(0)
+    X = rng.integers(0, 2, size=(40, 6))
+    y = ((X[:, 0] + X[:, 1] + X[:, 2]) >= 2).astype(int)
+    model = build_rashomon_set(pd.DataFrame(X, columns=[f"f{i}" for i in range(6)]), pd.Series(y),
+                               regularization=0.01, rashomon_bound_multiplier=0.3)
+    assert model.get_tree_count() >= 50  # large enough for random picks to differ from the first ones
+    small, big = select_random_trees(model, 3, seed=7), select_random_trees(model, 6, seed=7)
+    assert big[:3] == small  # growing m adds trees, it does not swap them
+    assert select_random_trees(model, 6, seed=7) == big
+    assert big != select_trees(model, 6)
+    with pytest.raises(ValueError):
+        select_random_trees(model, 4, seed=7, pool=3)

@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import os
 
+import numpy as np
 import pandas as pd
 from treefarms import TREEFARMS
 
@@ -49,8 +50,31 @@ def select_trees(model, m: int) -> list[dict]:
     """Select the first m trees from the Rashomon set (index 0 is the
     optimal tree; this is TreeFARMS's default enumeration order).
     Returns each tree's raw recursive-dict representation (`.source`).
+
+    Consecutive indices are near-copies: TreeFARMS decodes an index like an
+    odometer over its stored subtree choices (the false-branch subtree
+    changes fastest), so the first m trees mostly share their root and most
+    branches. Use `select_random_trees` to measure leakage as a function of m.
     """
     n = model.get_tree_count()
     if m > n:
         raise ValueError(f"Requested {m} trees but the Rashomon set only has {n}")
     return [model[i].source for i in range(m)]
+
+
+def select_random_trees(model, m: int, seed: int, pool: int = 1000) -> list[dict]:
+    """Select m trees uniformly at random (without replacement) from the
+    Rashomon set.
+
+    A fixed-size random ordering of `pool` indices is drawn per seed and
+    its first m are returned, so for one seed the selections are nested:
+    the m=10 trees are among the m=50 trees, which are among the m=100
+    trees. Increasing m therefore adds trees instead of swapping them.
+    """
+    n = model.get_tree_count()
+    if m > n:
+        raise ValueError(f"Requested {m} trees but the Rashomon set only has {n}")
+    if m > pool:
+        raise ValueError(f"Requested {m} trees but the nested pool only has {pool}")
+    order = np.random.default_rng(seed).choice(n, size=min(pool, n), replace=False)
+    return [model[int(i)].source for i in order[:m]]

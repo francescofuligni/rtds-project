@@ -2,8 +2,9 @@
 to trust each record it outputs, without ever seeing the ground truth?
 
 Per seed: sample n=100 rows (the private table) and a disjoint 2000-row
-public sample from the same population, build a Rashomon set, release the
-first m trees, and let each attacker output a 100-row table (per label,
+public sample from the same population, build a Rashomon set, release m of
+its trees (--selection: the first m in TreeFARMS order, which are
+near-copies, or m drawn at random, nested across m), and let each attacker output a 100-row table (per label,
 as many rows as the release says carry that label) with a confidence per
 row. A row is correct if the private table really contains at least that
 many copies of the record (features + label). Attackers:
@@ -19,8 +20,8 @@ many copies of the record (features + label). Attackers:
                        closest to a random table drawn from the public sample
   prior_only           no trees: P(at least k copies) from public frequencies
 
-One CSV per (m, seed) so an interrupted run keeps every finished seed and
-resumes where it stopped.
+One CSV per (selection, m, seed) so an interrupted run keeps every finished
+seed and resumes where it stopped.
 
 Usage: .venv/bin/python experiments/run_record_confidence.py --m 10 --seed-end 20
 """
@@ -49,7 +50,7 @@ from attack.record_confidence import (
     sampled_candidates,
     support_matrix,
 )
-from rashomon.build import build_rashomon_set, select_trees
+from rashomon.build import build_rashomon_set, select_random_trees, select_trees
 from rashomon.data import binarize_adult_curated, load_adult_raw
 
 PILOT_N = 100
@@ -57,6 +58,7 @@ PUBLIC_N = 2000
 REGULARIZATION = 0.01
 RASHOMON_BOUND_MULTIPLIER = 0.1
 PRIOR_MIN_PROBABILITY = 1e-4  # prior_only claims below this cannot reach any table
+TREE_SELECTION_SEED_OFFSET = 20_000  # keeps tree choice independent of the row sample
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_OUT = ROOT / "results" / "record_confidence"
@@ -81,7 +83,7 @@ def _n_solved(support: dict) -> int:
 
 
 def run_seed(seed: int, m: int, n_samples: int, n_threads: int, timeout: float,
-             methods: set[str] = frozenset(METHODS)) -> list[dict] | None:
+             methods: set[str] = frozenset(METHODS), selection: str = "first") -> list[dict] | None:
     data_full = binarize_adult_curated(load_adult_raw(ROOT / "data"))
     cols = list(data_full.X.columns)
     groups = [[cols.index(c) for c in g] for g in data_full.one_hot_groups.values()]
@@ -116,7 +118,9 @@ def run_seed(seed: int, m: int, n_samples: int, n_threads: int, timeout: float,
                                    rashomon_bound_multiplier=RASHOMON_BOUND_MULTIPLIER)
         if model.get_tree_count() < m:
             return None
-        branches = [extract_branches(t, X, y, classes) for t in select_trees(model, m)]
+        trees = (select_trees(model, m) if selection == "first"
+                 else select_random_trees(model, m, seed=seed + TREE_SELECTION_SEED_OFFSET))
+        branches = [extract_branches(t, X, y, classes) for t in trees]
         solve = dict(timeout=timeout, seed=seed, n_threads=n_threads)
 
         if methods & PER_TREE_SCORES.keys():
@@ -150,7 +154,7 @@ def run_seed(seed: int, m: int, n_samples: int, n_threads: int, timeout: float,
 
 
 def _run_and_write(seed: int, m: int, args) -> str:
-    out = args.out_dir / f"m{m:03d}" / f"seed{seed:03d}.csv"
+    out = args.out_dir / args.selection / f"m{m:03d}" / f"seed{seed:03d}.csv"
     if out.with_suffix(".skip").exists():
         return f"[m={m} seed {seed}] skipped earlier: Rashomon set smaller than m"
     only = set(args.only or [])
@@ -159,7 +163,8 @@ def _run_and_write(seed: int, m: int, args) -> str:
     if out.exists() and not only:
         return f"[m={m} seed {seed}] already done"
     t0 = time.time()
-    rows = run_seed(seed, m, args.samples, args.threads, args.timeout, methods=only or set(METHODS))
+    rows = run_seed(seed, m, args.samples, args.threads, args.timeout, methods=only or set(METHODS),
+                    selection=args.selection)
     out.parent.mkdir(parents=True, exist_ok=True)
     if rows is None:
         out.with_suffix(".skip").write_text("Rashomon set smaller than m\n")
@@ -183,8 +188,11 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--seed-end", type=int, default=20, help="exclusive")
     parser.add_argument("--samples", type=int, default=20, help="K for the sampling attackers")
     parser.add_argument("--workers", type=int, default=2, help="seeds solved in parallel")
-    parser.add_argument("--threads", type=int, default=max(1, (os.cpu_count() or 2) // 2),
+    # sched_getaffinity respects the cores a cluster scheduler actually allocated
+    parser.add_argument("--threads", type=int, default=max(1, len(os.sched_getaffinity(0)) // 2),
                         help="CP-SAT threads per solve")
+    parser.add_argument("--selection", choices=["first", "random"], default="random",
+                        help="which m trees of the Rashomon set are released")
     parser.add_argument("--timeout", type=float, default=30.0, help="seconds per solve")
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--only", nargs="+", choices=METHODS,
