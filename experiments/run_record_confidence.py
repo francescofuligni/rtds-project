@@ -48,6 +48,7 @@ from provenance import seed_indices, stamp, write_rows
 
 from attack.reconstruct import extract_branches
 from attack.record_confidence import (
+    DirichletRecordPrior,
     MarginalPrior,
     RecordPrior,
     best_table_claims,
@@ -69,7 +70,9 @@ PUBLIC_N = 2000
 # What the attacker knows about the population: a sample of other people's
 # whole records, or only per-attribute shares within each income class
 # (published tables), estimated from that sample (see MarginalPrior).
-PUBLIC_PRIORS = ["records", "marginals"]
+# records_dirichlet: whole records, with the uncertainty of a finite sample
+# about the population carried into the confidence (see DirichletRecordPrior).
+PUBLIC_PRIORS = ["records", "records_dirichlet", "marginals"]
 REGULARIZATION = 0.01
 RASHOMON_BOUND_MULTIPLIER = 0.1
 PRIOR_ALPHA = (
@@ -187,6 +190,11 @@ def run_seed(
             public_X, public_y, class_totals, groups, alpha=PRIOR_ALPHA
         )
         draw_table = prior.draw_table
+    elif public_prior == "records_dirichlet":
+        prior = DirichletRecordPrior(
+            public_X, public_y, class_totals, vectors, alpha=PRIOR_ALPHA
+        )
+        draw_table = prior.draw_table
     else:
         prior = RecordPrior(
             public_X, public_y, class_totals, len(vectors), alpha=PRIOR_ALPHA
@@ -195,6 +203,9 @@ def run_seed(
 
     # name -> (scores that pick the table, number of candidates, scores reported as confidence)
     scored: dict[str, tuple[dict, int, dict]] = {}
+    # name -> solves proven optimal (for a feasibility solve: a table was found;
+    # for prior-guided sampling: the closest consistent table was proven closest)
+    optimal: dict[str, int] = {}
     if "prior_only" in methods:  # needs no trees, so also no Rashomon set
         prior_scores = {}
         for v in vectors:
@@ -224,22 +235,24 @@ def run_seed(
         }
 
         if methods & PER_TREE_SCORES.keys():
-            per_tree, _ = per_tree_candidates(
+            per_tree, statuses = per_tree_candidates(
                 branches, y, classes, len(cols), groups, **solve
             )
             support = support_matrix(per_tree)
             for name in methods & PER_TREE_SCORES.keys():
                 scores = _scores_from_support(support, PER_TREE_SCORES[name])
                 scored[name] = (scores, _n_solved(support), scores)
+                optimal[name] = statuses.count("OPTIMAL")
 
         occurrence = lambda c, k: float(np.mean(c >= k))  # noqa: E731
         if "seed_only" in methods:
-            candidates, _ = sampled_candidates(
+            candidates, statuses = sampled_candidates(
                 branches, y, classes, len(cols), groups, n_samples=n_samples, **solve
             )
             support = support_matrix(candidates)
             scores = _scores_from_support(support, occurrence)
             scored["seed_only"] = (scores, _n_solved(support), scores)
+            optimal["seed_only"] = statuses.count("OPTIMAL")
 
         variants = [name for name in methods if name in PRIOR_GUIDED_VARIANTS]
         for tie_break in (False, True):
@@ -251,7 +264,7 @@ def run_seed(
                 max(PRIOR_GUIDED_VARIANTS[n][1][1], PRIOR_GUIDED_VARIANTS[n][2][1])
                 for n in names
             )
-            candidates, _ = sampled_candidates(
+            candidates, statuses = sampled_candidates(
                 branches,
                 y,
                 classes,
@@ -273,6 +286,9 @@ def run_seed(
                     _n_solved(score),
                     _scores_from_support(score, occurrence),
                 )
+                optimal[name] = statuses[s0 * n_samples : s1 * n_samples].count(
+                    "OPTIMAL"
+                )
 
     # Ground truth is used only from here on, to score the tables.
     truth = record_counts(X, y)
@@ -293,6 +309,7 @@ def run_seed(
                     "correct": int(truth[record] >= k),
                     "true_count": truth[record],
                     "n_candidates": n_candidates,
+                    "n_optimal": optimal.get(name, 0),
                 }
             )
     return rows

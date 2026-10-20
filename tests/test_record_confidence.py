@@ -6,6 +6,7 @@ import pytest
 
 from attack.reconstruct import extract_branches, reconstruct
 from attack.record_confidence import (
+    DirichletRecordPrior,
     MarginalPrior,
     RecordPrior,
     best_table_claims,
@@ -222,3 +223,23 @@ def test_marginal_prior_draws_valid_tables_with_public_shares():
     assert (table[:, 0] + table[:, 1] == 1).all()
     assert table[:, 0].mean() == pytest.approx(0.8, abs=0.03)
     assert table[:, 2].mean() == pytest.approx(0.3, abs=0.03)
+
+
+def test_dirichlet_prior_is_a_distribution_and_less_sure_than_counts():
+    vectors = enumerate_feature_vectors(3, [])
+    public_X = np.array([[1, 0, 0]] * 8 + [[0, 1, 0]] * 2)
+    public_y = np.zeros(10, dtype=int)
+    dirichlet = DirichletRecordPrior(public_X, public_y, {0: 1}, vectors)
+    plain = RecordPrior(public_X, public_y, {0: 1}, n_feature_vectors=len(vectors))
+    total = sum(dirichlet.probability(v + (0,), 1) for v in vectors)
+    assert total == pytest.approx(1.0)
+    # same mean for one draw, but more spread over several copies
+    common = (1, 0, 0, 0)
+    assert dirichlet.probability(common, 1) == pytest.approx(
+        plain.probability(common, 1)
+    )
+    many = DirichletRecordPrior(public_X, public_y, {0: 5}, vectors)
+    plain5 = RecordPrior(public_X, public_y, {0: 5}, n_feature_vectors=len(vectors))
+    assert many.probability(common, 5) > plain5.probability(common, 5)
+    table = many.draw_table(np.zeros(50, dtype=int), np.random.default_rng(0))
+    assert {tuple(r) for r in table} <= set(vectors)

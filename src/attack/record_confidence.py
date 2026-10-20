@@ -26,7 +26,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 import numpy as np
-from scipy.stats import binom
+from scipy.stats import betabinom, binom
 
 from attack.reconstruct import reconstruct
 
@@ -247,6 +247,51 @@ class RecordPrior:
             self.label_totals[label] + self.alpha * self.n_feature_vectors
         )
         return float(binom.sf(k - 1, n_c, p))
+
+
+class DirichletRecordPrior:
+    """RecordPrior that also accounts for how little a small public sample
+    says about the population. The record distribution given label c is
+    uncertain: Dirichlet(count(r, c) + alpha) over every possible feature
+    vector. Then P(at least k copies of r) is a beta-binomial tail, and
+    draw_table first draws a record distribution from that posterior and
+    then the rows from it (one fresh distribution per table), so
+    prior-guided samples vary as much as the public data leave open.
+    """
+
+    def __init__(
+        self,
+        public_X,
+        public_y,
+        class_totals: dict,
+        vectors: list[tuple[int, ...]],
+        alpha: float = 0.1,
+    ):
+        self.class_totals = class_totals
+        self.vectors = np.array(vectors, dtype=int)
+        index = {v: i for i, v in enumerate(vectors)}
+        self.concentration = {}
+        for label in np.unique(public_y):
+            counts = np.full(len(vectors), alpha)
+            for row in public_X[public_y == label]:
+                counts[index[tuple(int(v) for v in row)]] += 1
+            self.concentration[int(label)] = counts
+        self.index = index
+
+    def probability(self, record: RecordKey, k: int) -> float:
+        label = record[-1]
+        n_c = self.class_totals.get(label, 0)
+        conc = self.concentration[label]
+        a = conc[self.index[record[:-1]]]
+        return float(betabinom.sf(k - 1, n_c, a, conc.sum() - a))
+
+    def draw_table(self, y: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+        table = np.empty((len(y), self.vectors.shape[1]), dtype=int)
+        for label in np.unique(y):
+            rows = np.flatnonzero(y == label)
+            p = rng.dirichlet(self.concentration[int(label)])
+            table[rows] = self.vectors[rng.choice(len(p), size=len(rows), p=p)]
+        return table
 
 
 class MarginalPrior:
