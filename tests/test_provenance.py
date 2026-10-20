@@ -9,6 +9,7 @@ from provenance import (
     load_results,
     require_comparable,
     run_seeds,
+    seed_indices,
     stamp,
     write_rows,
 )
@@ -37,6 +38,7 @@ def test_stamp_creates_manifest_and_records_each_run(tmp_path):
     assert manifest["protocol"] == {"tree_selection": "random", "m_values": [10, 50]}
     assert len(manifest["runs"]) == 2
     assert manifest["runs"][0]["command"][1:] == ["--a"]
+    assert manifest["runs"][1]["invocation"] == {}
     assert json.loads((tmp_path / MANIFEST).read_text()) == manifest
 
 
@@ -101,3 +103,12 @@ def test_run_seeds_writes_one_file_per_seed_and_resumes(tmp_path, capsys):
 def test_run_seeds_propagates_worker_errors(tmp_path):
     with pytest.raises(ValueError, match="seed 0 failed"):
         run_seeds(tmp_path, [0], _raising_rows, workers=1)
+
+
+def test_seed_indices_are_contiguous_and_validated():
+    assert list(seed_indices(0, 3)) == [0, 1, 2]
+    assert list(seed_indices(350, 2)) == [350, 351]
+    with pytest.raises(ValueError, match="seed-start"):
+        seed_indices(-1, 3)
+    with pytest.raises(ValueError, match="n-seeds"):
+        seed_indices(0, 0)

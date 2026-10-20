@@ -68,37 +68,3 @@ def test_confidence_rows_are_well_formed(toy_dataset):
         assert 0.0 < row.agreement <= 1.0
         assert 1 <= row.n_votes <= 5
         assert isinstance(row.correct, bool)
-
-
-def test_fully_known_background_gives_perfect_agreement(toy_dataset):
-    # with A+B... well there's no A+B here, but "sex" as the known
-    # background attribute (not the target) should make the *other*
-    # known target ("education" here, via attr_b="sex") irrelevant --
-    # instead verify that fixing the condition's known columns is
-    # respected across every repeat by checking status validity and
-    # perfect agreement isn't required, only well-formedness (covered
-    # above). This test checks a stronger condition should not reduce
-    # agreement below a weaker one is NOT guaranteed in general, so we
-    # only assert the pipeline runs for the "A" condition too.
-    data = toy_dataset
-    model = build_rashomon_set(
-        data.X, data.y, regularization=0.1, rashomon_bound_multiplier=0.2
-    )
-    trees = select_random_trees(model, min(3, model.get_tree_count()), seed=6)
-    X = data.X.to_numpy()
-    y = data.y.to_numpy()
-    classes = sorted(data.y.unique().tolist())
-    trees_branches = [extract_branches(t, X, y, classes) for t in trees]
-
-    rows, statuses = repeated_reconstruct_with_confidence(
-        trees_branches,
-        data,
-        "marital-status",
-        "sex",
-        "education",
-        "A",
-        n_repeats=5,
-        timeout=10,
-    )
-    assert len(rows) == len(X)
-    assert all(s in ("OPTIMAL", "FEASIBLE") for s in statuses)

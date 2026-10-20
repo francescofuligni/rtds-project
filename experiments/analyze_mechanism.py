@@ -11,7 +11,7 @@ import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-from analysis_output import run_analysis
+from analysis_output import condition_labels, run_analysis
 from output_paths import latest_result_dir
 from provenance import describe, load_results
 from scipy.stats import pearsonr, spearmanr
@@ -22,6 +22,7 @@ EXPERIMENT = "final_experiment"
 def main(result_dir: Path):
     df, manifest = load_results(result_dir, EXPERIMENT)
     print(describe(manifest) + "\n")
+    labels = condition_labels(manifest["protocol"])
 
     error = df.pivot_table(
         index=["seed", "m"], columns="condition", values="reconstruction_error"
@@ -36,6 +37,7 @@ def main(result_dir: Path):
 
     fig, axes = plt.subplots(1, 2, figsize=(10, 4.2), sharey=True)
     for ax, (attr, color) in zip(axes, [("A", "#1b9e77"), ("B", "#d95f02")]):
+        feature = labels[attr].split(": ", maxsplit=1)[1]
         sub = merged.dropna(subset=[f"reduction_{attr}", f"joint_split_frac_{attr}"])
         ax.scatter(
             sub[f"joint_split_frac_{attr}"],
@@ -45,8 +47,8 @@ def main(result_dir: Path):
             color=color,
         )
         ax.axhline(0, color="#999999", linewidth=1, linestyle=":")
-        ax.set_xlabel(f"Fraction of trees with a joint T+{attr} split leaf")
-        ax.set_title(f"Attribute {attr}")
+        ax.set_xlabel(f"Trees splitting on T and {feature}")
+        ax.set_title(labels[attr])
         if len(sub) >= 3 and sub[f"joint_split_frac_{attr}"].std() > 0:
             r_p, p_p = pearsonr(
                 sub[f"joint_split_frac_{attr}"], sub[f"reduction_{attr}"]
@@ -64,7 +66,7 @@ def main(result_dir: Path):
                 bbox={"boxstyle": "round", "facecolor": "white", "alpha": 0.8},
             )
             print(
-                f"{attr}: Pearson r={r_p:.3f} (p={p_p:.3g}), Spearman r={r_s:.3f} (p={p_s:.3g}), n={len(sub)}"
+                f"{labels[attr]}: Pearson r={r_p:.3f} (p={p_p:.3g}), Spearman r={r_s:.3f} (p={p_s:.3g}), n={len(sub)}"
             )
 
     axes[0].set_ylabel("Error reduction vs. None\n(None error - condition error)")

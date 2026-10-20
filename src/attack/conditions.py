@@ -25,6 +25,18 @@ def _group_columns(
     return [col_index[c] for c in known_columns_for(data, attribute)]
 
 
+def validate_knowledge_roles(data, attr_a: str, attr_b: str, target: str) -> None:
+    """Reject target/label knowledge and overlapping attribute encodings."""
+    roles = (attr_a, attr_b, target)
+    if len(set(roles)) != 3:
+        raise ValueError("A, B and T must be distinct")
+    if data.y.name in (attr_a, attr_b) or "income" in (attr_a, attr_b):
+        raise ValueError("Y cannot be background knowledge")
+    groups = [set(known_columns_for(data, role)) for role in roles]
+    if any(groups[i] & groups[j] for i in range(3) for j in range(i)):
+        raise ValueError("A, B and T encodings must be disjoint")
+
+
 def known_mask_for_condition(
     data: BinarizedDataset, condition: str, attr_a: str, attr_b: str
 ) -> np.ndarray:
@@ -68,6 +80,7 @@ def run_condition(
     seed: int = 0,
     n_threads: int = 0,
 ) -> ConditionResult:
+    validate_knowledge_roles(data, attr_a, attr_b, target)
     X = data.X.to_numpy()
     y = data.y.to_numpy()
     classes = sorted(data.y.unique().tolist())

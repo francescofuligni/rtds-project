@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 from datetime import datetime
@@ -14,8 +15,9 @@ RESULTS_ROOT = ROOT / "results"
 TIMESTAMP_PATTERN = re.compile(r"\d{8}_\d{6}(?:_\d+)?\Z")
 
 
-def new_timestamp(results_root: Path = RESULTS_ROOT) -> str:
+def new_timestamp(results_root: Path | None = None) -> str:
     """Return a Stockholm-local timestamp not already used under results."""
+    results_root = RESULTS_ROOT if results_root is None else results_root
     base = datetime.now(ZoneInfo("Europe/Stockholm")).strftime("%Y%m%d_%H%M%S")
     timestamp = base
     suffix = 1
@@ -27,7 +29,7 @@ def new_timestamp(results_root: Path = RESULTS_ROOT) -> str:
 
 def experiment_result_dir(experiment: str, timestamp: str | None = None) -> Path:
     """Return and create one experiment directory in a shared run folder."""
-    run_timestamp = timestamp or new_timestamp()
+    run_timestamp = timestamp or os.environ.get("RTDS_RUN_TIMESTAMP") or new_timestamp()
     if not TIMESTAMP_PATTERN.fullmatch(run_timestamp):
         raise ValueError(f"Invalid RTDS run timestamp: {run_timestamp!r}")
     path = RESULTS_ROOT / run_timestamp / experiment

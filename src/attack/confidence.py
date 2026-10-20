@@ -26,7 +26,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from attack.conditions import known_mask_for_condition
+from attack.conditions import known_mask_for_condition, validate_knowledge_roles
 from attack.metrics import match_rows
 from attack.reconstruct import reconstruct
 from rashomon.data import BinarizedDataset, known_columns_for
@@ -59,6 +59,7 @@ def repeated_reconstruct_with_confidence(
     agreement rate (the row's confidence score) and whether that majority
     value is actually correct. Also returns the list of solve statuses.
     """
+    validate_knowledge_roles(data, attr_a, attr_b, target)
     X = data.X.to_numpy()
     y = data.y.to_numpy()
     classes = sorted(data.y.unique().tolist())

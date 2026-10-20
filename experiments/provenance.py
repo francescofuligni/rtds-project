@@ -82,7 +82,7 @@ def _git(*args: str) -> str | None:
     return out.stdout.strip()
 
 
-def run_info(argv: list[str] | None = None) -> dict:
+def run_info(argv: list[str] | None = None, invocation: dict | None = None) -> dict:
     """How this invocation was produced."""
     dirty = _git("status", "--porcelain", "--", "src", "experiments")
     versions = {}
@@ -96,6 +96,7 @@ def run_info(argv: list[str] | None = None) -> dict:
         "git_commit": _git("rev-parse", "HEAD"),
         "uncommitted_code_changes": None if dirty is None else bool(dirty),
         "command": [Path(sys.argv[0]).name, *(sys.argv[1:] if argv is None else argv)],
+        "invocation": invocation or {},
         "host": socket.gethostname(),
         "python": platform.python_version(),
         "packages": versions,
@@ -114,6 +115,7 @@ def stamp(
     protocol: dict,
     data: str,
     argv: list[str] | None = None,
+    invocation: dict | None = None,
 ) -> dict:
     """Create result_dir's manifest, or add this run to it if the protocol
     matches; raise ProtocolMismatch if it does not."""
@@ -132,7 +134,7 @@ def stamp(
                 f"{result_dir} already holds results under a different protocol "
                 f"({_diff(manifest['protocol'], protocol)}); write to a new directory instead"
             )
-        manifest["runs"].append(run_info(argv))
+        manifest["runs"].append(run_info(argv, invocation))
     elif any(result_dir.iterdir()):
         # Resuming would treat these files as finished seeds of this protocol.
         raise ProtocolMismatch(
@@ -143,7 +145,7 @@ def stamp(
             "experiment": experiment,
             "protocol": protocol,
             "data": data,
-            "runs": [run_info(argv)],
+            "runs": [run_info(argv, invocation)],
         }
     _write_manifest(path, manifest)
     return manifest
@@ -220,6 +222,15 @@ def write_rows(path: Path, rows: list[dict]) -> None:
         writer.writeheader()
         writer.writerows(rows)
     tmp.replace(path)
+
+
+def seed_indices(seed_start: int, n_seeds: int) -> range:
+    """Return the requested contiguous reproducible seed sequence."""
+    if seed_start < 0:
+        raise ValueError("seed-start must be non-negative")
+    if n_seeds < 1:
+        raise ValueError("n-seeds must be positive")
+    return range(seed_start, seed_start + n_seeds)
 
 
 def seed_path(result_dir: Path, seed: int) -> Path:

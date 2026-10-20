@@ -42,10 +42,8 @@ CONTINUOUS_COLUMNS = [
     "capital-loss",
     "hours-per-week",
 ]
-# fnlwgt (census sampling weight) and education-num (a redundant integer
-# encoding of `education`) are dropped: they add columns without adding
-# modelling signal, and for n=100 laptop-scale Rashomon sets, feature
-# count matters a lot for tractability.
+# Drop the census sampling weight and redundant education-num encoding to
+# keep the feature schema compact and Rashomon-set search tractable.
 
 CATEGORICAL_COLUMNS = [
     "workclass",
@@ -152,15 +150,8 @@ def binarize_adult(df: pd.DataFrame, n_quantile_bins: int = 3) -> BinarizedDatas
     )
 
 
-# Collapsed categories for the curated, laptop-tractable feature set.
-# TreeFARMS's exhaustive Rashomon-set search does not scale to the full
-# ~60-column binarization on n=100 rows within a reasonable time on a
-# laptop (see commit message / project notes): at a regularization loose
-# enough to produce a non-trivial Rashomon set, trees never got deep
-# enough to split on T=sex at all among 62 competing features, making
-# every background-knowledge condition identical by construction. This
-# curated set keeps T, A, B plus a handful of the next-most-predictive
-# attributes, trading completeness for trees that actually use T.
+# Collapse categories to keep the curated feature set tractable while retaining
+# T, A, B, and selected predictive features for the experiment.
 _MARITAL_STATUS_GROUPS = {
     "Married-civ-spouse": "Married",
     "Married-AF-spouse": "Married",
@@ -241,7 +232,7 @@ def binarize_adult_curated(
 def sample_rows(
     data: BinarizedDataset, n: int = 100, seed: int = 0
 ) -> BinarizedDataset:
-    """Draw a fixed-seed subsample of n rows (used for the n=100 pilot/final setup)."""
+    """Draw a reproducible sample of n rows using the supplied seed."""
     idx = data.X.sample(n=n, random_state=seed).index
     return BinarizedDataset(
         X=data.X.loc[idx].reset_index(drop=True),
@@ -259,4 +250,8 @@ def known_columns_for(data: BinarizedDataset, attribute: str) -> list[str]:
         return [data.binary_columns[attribute]]
     if attribute in data.one_hot_groups:
         return data.one_hot_groups[attribute]
+    if attribute in CONTINUOUS_COLUMNS:
+        columns = [c for c in data.X if c.startswith(f"{attribute}>=")]
+        if columns:
+            return columns
     raise KeyError(f"Unknown attribute: {attribute}")
