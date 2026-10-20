@@ -1,0 +1,32 @@
+{
+  "command": [
+    "run_record_confidence.py",
+    "--selection",
+    "random",
+    "--seed-end",
+    "20",
+    "--samples",
+    "20",
+    "--workers",
+    "2",
+    "--threads",
+    "6",
+    "--m",
+    "10",
+    "25",
+    "50"
+  ],
+  "git_commit": "95ab8f6e3525b9de76d85e5f4b2f9039bf11ebd0",
+  "host": "hendrik-Legion-5-15ACH6H",
+  "packages": {
+    "numpy": "2.5.4",
+    "ortools": "9.15.6755",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.8.0",
+    "scipy": "1.18.1",
+    "treefarms": "0.2.4"
+  },
+  "python": "3.12.11",
+  "started": "2026-10-20T13:54:12+00:00",
+  "uncommitted_code_changes": false
+}
