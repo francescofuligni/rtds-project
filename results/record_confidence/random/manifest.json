@@ -1,0 +1,25 @@
+{
+  "data": "m*/seed*.csv",
+  "experiment": "record_confidence",
+  "protocol": {
+    "background_knowledge": "none",
+    "dataset": "adult_curated_13col",
+    "labels": "given_per_row",
+    "methods": [
+      "per_tree_absolute",
+      "per_tree_occurrence",
+      "per_tree_presence",
+      "prior_guided",
+      "prior_only",
+      "seed_only"
+    ],
+    "pilot_n": 100,
+    "prior_alpha": 0.1,
+    "public_n": 2000,
+    "rashomon_bound_multiplier": 0.1,
+    "regularization": 0.01,
+    "samples": 20,
+    "solve_timeout": 30.0,
+    "tree_selection": "random"
+  }
+}
