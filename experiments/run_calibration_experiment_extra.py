@@ -9,7 +9,6 @@ if __name__ == "__main__":
             "20",
             "--seed-end",
             "35",
-            "--output",
-            "results/calibration_experiment_part2.csv",
-        ]
+        ],
+        output_name="calibration_experiment_part2.csv",
     )

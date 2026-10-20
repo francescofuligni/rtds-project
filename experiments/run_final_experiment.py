@@ -11,7 +11,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from experiment_io import RESULTS_DIR, metadata, write_rows
+from experiment_io import experiment_output, metadata, write_rows
 
 from attack.baselines import marginal_baseline, uniform_random_guess
 from attack.conditions import CONDITIONS, run_condition
@@ -123,27 +123,31 @@ def run_seed(seed: int) -> list[dict]:
     return rows
 
 
-def main(argv: list[str] | None = None):
+def main(argv: list[str] | None = None, *, output_name: str = "final_experiment.csv"):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--seed-start", type=int, default=0)
     parser.add_argument("--seed-end", type=int, default=N_SEEDS)
     parser.add_argument("--workers", type=int, default=N_WORKERS)
     parser.add_argument(
-        "--output", type=Path, default=RESULTS_DIR / "final_experiment.csv"
+        "--output",
+        type=Path,
+        help="CSV parent/name; a fresh timestamp directory is inserted before the filename",
     )
     args = parser.parse_args(argv)
     if args.seed_start < 0 or args.seed_end <= args.seed_start or args.workers <= 0:
         parser.error("require 0 <= seed-start < seed-end and positive workers")
     start = time.perf_counter()
+    output = experiment_output(output_name, args.output)
+    print(f"Experiment output: {output}", flush=True)
     rows = []
     with Pool(processes=args.workers) as pool:
         for batch in pool.imap_unordered(
             run_seed, range(args.seed_start, args.seed_end)
         ):
             rows.extend(batch)
-    write_rows(rows, args.output)
+    write_rows(rows, output)
     print(
-        f"Wrote {len(rows)} results to {args.output} in {time.perf_counter() - start:.1f}s"
+        f"Wrote {len(rows)} results to {output} in {time.perf_counter() - start:.1f}s"
     )
 
 
