@@ -30,9 +30,10 @@ EXPERIMENT_DIR = ROOT / "results" / EXPERIMENT
 N_BINS = 10
 MIN_BIN_ROWS = 20  # bins with fewer rows are too noisy to plot
 
-# Probability-valued scores; per_tree_absolute is a count, so it gets no calibration metrics.
-PROBABILITY_METHODS = ["prior_guided", "prior_only", "per_tree_occurrence", "per_tree_presence", "seed_only"]
-ALL_METHODS = PROBABILITY_METHODS + ["per_tree_absolute"]
+# Display order; other attackers (e.g. prior-guided variants) follow alphabetically.
+METHOD_ORDER = ["prior_guided", "prior_only", "per_tree_occurrence", "per_tree_presence", "seed_only",
+                "per_tree_absolute"]
+NON_PROBABILITY_METHODS = {"per_tree_absolute"}  # a count: no calibration metrics
 PLOTTED = {  # fixed categorical order; marker shape is the non-color identity cue
     "prior_guided": ("Prior-guided sampling", "#2a78d6", "o"),
     "prior_only": ("Public statistics only (no trees)", "#eb6834", "s"),
@@ -59,7 +60,7 @@ def per_seed_metrics(df: pd.DataFrame) -> pd.DataFrame:
     for (selection, m, method, seed), g in df.groupby(["selection", "m", "method", "seed"]):
         conf, ok = g["confidence"].to_numpy(), g["correct"].to_numpy().astype(float)
         rows.append({"selection": selection, "m": m, "method": method, "seed": seed, "accuracy": ok.mean(), "auroc": auroc(conf, ok),
-                     "brier": float(np.mean((conf - ok) ** 2)) if method in PROBABILITY_METHODS else np.nan})
+                     "brier": float(np.mean((conf - ok) ** 2)) if method not in NON_PROBABILITY_METHODS else np.nan})
     return pd.DataFrame(rows)
 
 
@@ -68,7 +69,7 @@ def summary_table(df: pd.DataFrame, seeds: pd.DataFrame) -> pd.DataFrame:
     for (selection, m, method), g in df.groupby(["selection", "m", "method"]):
         conf, ok = g["confidence"].to_numpy(), g["correct"].to_numpy().astype(float)
         s = seeds[(seeds["selection"] == selection) & (seeds["m"] == m) & (seeds["method"] == method)]
-        is_prob = method in PROBABILITY_METHODS
+        is_prob = method not in NON_PROBABILITY_METHODS
         rows.append({
             "selection": selection, "m": m, "method": method, "seeds": g["seed"].nunique(),
             "accuracy": ok.mean(), "acc_sem": s["accuracy"].sem(),
@@ -79,7 +80,8 @@ def summary_table(df: pd.DataFrame, seeds: pd.DataFrame) -> pd.DataFrame:
             "auroc_pooled": auroc(conf, ok), "auroc_seed_mean": s["auroc"].mean(),
         })
     out = pd.DataFrame(rows)
-    out["method"] = pd.Categorical(out["method"], ALL_METHODS, ordered=True)
+    order = [m for m in METHOD_ORDER if m in set(out["method"])] + sorted(set(out["method"]) - set(METHOD_ORDER))
+    out["method"] = pd.Categorical(out["method"], order, ordered=True)
     return out.sort_values(["selection", "m", "method"])
 
 

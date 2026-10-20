@@ -70,13 +70,13 @@ EXPERIMENT = "record_confidence"
 DEFAULT_OUT = ROOT / "results" / EXPERIMENT
 
 
-def protocol(selection: str, samples: int, timeout: float) -> dict:
+def protocol(selection: str, samples: int, timeout: float, methods: list[str]) -> dict:
     """Every setting that changes what this experiment's numbers mean."""
     return {
         "dataset": "adult_curated_13col", "pilot_n": PILOT_N, "public_n": PUBLIC_N,
         "regularization": REGULARIZATION, "rashomon_bound_multiplier": RASHOMON_BOUND_MULTIPLIER,
         "tree_selection": selection, "samples": samples, "solve_timeout": timeout,
-        "prior_alpha": PRIOR_ALPHA, "methods": METHODS, "background_knowledge": "none",
+        "prior_alpha": PRIOR_ALPHA, "methods": methods, "background_knowledge": "none",
         "labels": "given_per_row",
     }
 
@@ -86,7 +86,20 @@ PER_TREE_SCORES = {
     "per_tree_absolute": lambda c, k: float(c.sum()),
     "per_tree_occurrence": lambda c, k: float(np.mean(c >= k)),
 }
-METHODS = [*PER_TREE_SCORES, "seed_only", "prior_guided", "prior_only"]
+# Prior-guided sampling variants: (random tie-break, samples that pick the table,
+# samples that score it), as [start, stop) in units of --samples K. Scoring the
+# table with the same samples that picked it favours claims whose frequency came
+# out high by chance (winner's curse); a split scores with independent samples.
+PRIOR_GUIDED_VARIANTS = {
+    "prior_guided": (False, (0, 1), (0, 1)),
+    "prior_guided_2k": (False, (0, 2), (0, 2)),
+    "prior_guided_split": (False, (0, 1), (1, 2)),
+    "prior_guided_tb": (True, (0, 1), (0, 1)),
+    "prior_guided_tb_2k": (True, (0, 2), (0, 2)),
+    "prior_guided_tb_split": (True, (0, 1), (1, 2)),
+}
+METHODS = [*PER_TREE_SCORES, "seed_only", "prior_guided", "prior_only"]  # default set
+METHOD_CHOICES = METHODS + [name for name in PRIOR_GUIDED_VARIANTS if name not in METHODS]
 
 
 def _scores_from_support(support: dict, score) -> dict:
@@ -115,7 +128,8 @@ def run_seed(seed: int, m: int, n_samples: int, n_threads: int, timeout: float,
     vectors = enumerate_feature_vectors(len(cols), groups)
     prior = RecordPrior(public_X, public_y, class_totals, len(vectors), alpha=PRIOR_ALPHA)
 
-    scored: dict[str, tuple[dict, int]] = {}
+    # name -> (scores that pick the table, number of candidates, scores reported as confidence)
+    scored: dict[str, tuple[dict, int, dict]] = {}
     if "prior_only" in methods:  # needs no trees, so also no Rashomon set
         prior_scores = {}
         for v in vectors:
@@ -125,7 +139,7 @@ def run_seed(seed: int, m: int, n_samples: int, n_threads: int, timeout: float,
                     if p < PRIOR_MIN_PROBABILITY:
                         break
                     prior_scores[(v + (c,), k)] = p
-        scored["prior_only"] = (prior_scores, 0)
+        scored["prior_only"] = (prior_scores, 0, prior_scores)
 
     if methods - {"prior_only"}:
         model = build_rashomon_set(data_full.X.loc[idx].reset_index(drop=True),
@@ -143,23 +157,40 @@ def run_seed(seed: int, m: int, n_samples: int, n_threads: int, timeout: float,
             per_tree, _ = per_tree_candidates(branches, y, classes, len(cols), groups, **solve)
             support = support_matrix(per_tree)
             for name in methods & PER_TREE_SCORES.keys():
-                scored[name] = (_scores_from_support(support, PER_TREE_SCORES[name]), _n_solved(support))
+                scores = _scores_from_support(support, PER_TREE_SCORES[name])
+                scored[name] = (scores, _n_solved(support), scores)
 
-        for name, public_data in [("seed_only", (None, None)), ("prior_guided", (public_X, public_y))]:
-            if name not in methods:
-                continue
-            candidates, _ = sampled_candidates(branches, y, classes, len(cols), groups, n_samples=n_samples,
-                                               public_X=public_data[0], public_y=public_data[1], **solve)
+        occurrence = lambda c, k: float(np.mean(c >= k))  # noqa: E731
+        if "seed_only" in methods:
+            candidates, _ = sampled_candidates(branches, y, classes, len(cols), groups, n_samples=n_samples, **solve)
             support = support_matrix(candidates)
-            scored[name] = (_scores_from_support(support, lambda c, k: float(np.mean(c >= k))),
-                            _n_solved(support))
+            scores = _scores_from_support(support, occurrence)
+            scored["seed_only"] = (scores, _n_solved(support), scores)
+
+        variants = [name for name in methods if name in PRIOR_GUIDED_VARIANTS]
+        for tie_break in (False, True):
+            names = [name for name in variants if PRIOR_GUIDED_VARIANTS[name][0] == tie_break]
+            if not names:
+                continue
+            # One pool of samples per tie-break setting; variants use slices of it.
+            blocks = max(max(PRIOR_GUIDED_VARIANTS[n][1][1], PRIOR_GUIDED_VARIANTS[n][2][1]) for n in names)
+            candidates, _ = sampled_candidates(branches, y, classes, len(cols), groups,
+                                               n_samples=blocks * n_samples, public_X=public_X,
+                                               public_y=public_y, random_tie_break=tie_break, **solve)
+            for name in names:
+                _, (p0, p1), (s0, s1) = PRIOR_GUIDED_VARIANTS[name]
+                pick = support_matrix(candidates[p0 * n_samples:p1 * n_samples])
+                score = support_matrix(candidates[s0 * n_samples:s1 * n_samples])
+                scored[name] = (_scores_from_support(pick, occurrence), _n_solved(score),
+                                _scores_from_support(score, occurrence))
 
     # Ground truth is used only from here on, to score the tables.
     truth = record_counts(X, y)
     rows = []
-    for name, (scores, n_candidates) in scored.items():
+    for name, (scores, n_candidates, reported) in scored.items():
         tiebreak = {key: prior.probability(*key) for key in scores}
-        for record, k, confidence in best_table_claims(scores, class_totals, tiebreak):
+        for record, k, _ in best_table_claims(scores, class_totals, tiebreak):
+            confidence = reported.get((record, k), 0.0)  # a split scores claims its half never saw as 0
             rows.append({
                 "seed": seed, "m": m, "method": name,
                 "record": "".join(map(str, record[:-1])) + f"|{record[-1]}", "k": k,
@@ -179,7 +210,7 @@ def _run_and_write(seed: int, m: int, args) -> str:
     if out.exists() and not only:
         return f"[m={m} seed {seed}] already done"
     t0 = time.time()
-    rows = run_seed(seed, m, args.samples, args.threads, args.timeout, methods=only or set(METHODS),
+    rows = run_seed(seed, m, args.samples, args.threads, args.timeout, methods=only or set(args.methods),
                     selection=args.selection)
     out.parent.mkdir(parents=True, exist_ok=True)
     if rows is None:
@@ -206,11 +237,16 @@ def main(argv: list[str] | None = None) -> None:
                         help="which m trees of the Rashomon set are released")
     parser.add_argument("--timeout", type=float, default=30.0, help="seconds per solve")
     parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
-    parser.add_argument("--only", nargs="+", choices=METHODS,
+    parser.add_argument("--methods", nargs="+", choices=METHOD_CHOICES, default=METHODS,
+                        help="attackers to run (part of the protocol)")
+    parser.add_argument("--only", nargs="+", choices=METHOD_CHOICES,
                         help="recompute just these attackers inside existing per-seed files")
     args = parser.parse_args(argv)
+    if args.only and not set(args.only) <= set(args.methods):
+        parser.error("--only must name attackers that are part of --methods")
 
-    stamp(args.out_dir / args.selection, EXPERIMENT, protocol(args.selection, args.samples, args.timeout),
+    stamp(args.out_dir / args.selection, EXPERIMENT,
+          protocol(args.selection, args.samples, args.timeout, sorted(args.methods)),
           data="m*/seed*.csv", argv=argv)
     jobs = [(seed, m) for m in args.m for seed in range(args.seed_start, args.seed_end)]
     t_start = time.time()

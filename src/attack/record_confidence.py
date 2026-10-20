@@ -31,6 +31,7 @@ from scipy.stats import binom
 from attack.reconstruct import reconstruct
 
 RecordKey = tuple[int, ...]
+TIE_BREAK_JITTER = 8  # random tie-break weights add 0..7 per mismatched cell
 
 
 def record_counts(X: np.ndarray, y: np.ndarray) -> Counter:
@@ -93,6 +94,7 @@ def sampled_candidates(
     timeout: float = 30.0,
     seed: int = 0,
     n_threads: int = 1,
+    random_tie_break: bool = False,
 ) -> tuple[list[Counter | None], list[str]]:
     """Several candidates from the joint release (all trees at once).
 
@@ -101,15 +103,28 @@ def sampled_candidates(
     public sample, so cells the release pins down agree across samples and
     free cells vary the way the population does (perturb-and-MAP style).
     Without public data: only the solver's random seed varies.
+
+    Several consistent tables are often equally close to the random table,
+    and the solver would pick among them by its own search order. With
+    random_tie_break, each cell's mismatch weight gets a small random
+    jitter, too small to outweigh one whole cell of distance, so ties are
+    broken at random while a strictly closer table still always wins.
     """
     rng = np.random.default_rng(seed)
+    n_cells = len(y) * n_features
     candidates, statuses = [], []
     for s in range(n_samples):
-        target = None if public_X is None else draw_prior_table(public_X, public_y, y, rng)
+        target = weights = None
+        if public_X is not None:
+            target = draw_prior_table(public_X, public_y, y, rng)
+            if random_tie_break:
+                base = (TIE_BREAK_JITTER - 1) * n_cells + 1  # total jitter < one unit of distance
+                weights = base + rng.integers(0, TIE_BREAK_JITTER, size=target.shape)
         result = reconstruct(
             trees_branches, y, classes, n_features, one_hot_groups,
             known_mask=known_mask, known_values=known_values,
-            timeout=timeout, seed=seed * 1000 + s, n_threads=n_threads, target=target,
+            timeout=timeout, seed=seed * 1000 + s, n_threads=n_threads,
+            target=target, target_weights=weights,
         )
         statuses.append(result.status)
         candidates.append(None if result.reconstructed is None else record_counts(result.reconstructed, y))

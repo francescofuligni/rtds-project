@@ -94,6 +94,7 @@ def reconstruct(
     seed: int = 0,
     verbosity: bool = False,
     target: np.ndarray | None = None,
+    target_weights: np.ndarray | None = None,
 ) -> ReconstructionResult:
     """Solve the CP-SAT reconstruction model.
 
@@ -111,6 +112,8 @@ def reconstruct(
         consistent table with minimum Hamming distance to it (within the
         timeout) instead of an arbitrary one, so cells the release leaves
         free take the target's values rather than solver defaults.
+    target_weights: optional (N, M) positive integers weighting each cell's
+        mismatch in that distance (default: all 1).
     """
     start = time.time()
     N = len(y)
@@ -153,12 +156,13 @@ def reconstruct(
                 model.Add(cp_model.LinearExpr.Sum(examples_capts[k]) == 1)
 
     if target is not None:
-        mismatches = []
+        mismatches, weights = [], []
         for k in range(N):
             for i in range(M):
                 model.AddHint(x_vars[k][i], int(target[k, i]))
                 mismatches.append(1 - x_vars[k][i] if target[k, i] else x_vars[k][i])
-        model.Minimize(cp_model.LinearExpr.Sum(mismatches))
+                weights.append(1 if target_weights is None else int(target_weights[k, i]))
+        model.Minimize(cp_model.LinearExpr.WeightedSum(mismatches, weights))
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = timeout
