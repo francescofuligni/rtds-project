@@ -42,7 +42,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import numpy as np
-from configuration import DEFAULT_SOLVER_THREADS, add_threads_argument
+from configuration import RECORD_CONFIDENCE_SOLVER_THREADS, add_threads_argument
 from output_paths import experiment_result_dir
 from provenance import seed_indices, stamp, write_rows
 
@@ -88,7 +88,7 @@ def protocol(
     methods: list[str] | None = None,
     m_values: list[int] | None = None,
     workers: int = 2,
-    threads: int = DEFAULT_SOLVER_THREADS,
+    threads: int = RECORD_CONFIDENCE_SOLVER_THREADS,
     public_n: int = PUBLIC_N,
     public_prior: str = "records",
 ) -> dict:
@@ -104,8 +104,8 @@ def protocol(
         "samples": samples,
         "m_values": sorted(m_values or [10]),
         "solve_timeout": timeout,
-        # One search worker finds no prior-guided table within the timeout at
-        # m=50 (and no optimum at m=10); see configuration.DEFAULT_SOLVER_THREADS.
+        # Too few search workers find no prior-guided table, or never prove the
+        # closest one, within the timeout; see configuration.py.
         "solver_threads": threads,
         "seed_workers": workers,
         "tree_selection_seed_offset": TREE_SELECTION_SEED_OFFSET,
@@ -160,7 +160,7 @@ def run_seed(
     n_samples: int,
     timeout: float,
     methods: set[str] = frozenset(METHODS),
-    threads: int = DEFAULT_SOLVER_THREADS,
+    threads: int = RECORD_CONFIDENCE_SOLVER_THREADS,
     public_n: int = PUBLIC_N,
     public_prior: str = "records",
 ) -> list[dict] | None:
@@ -341,7 +341,7 @@ def main(argv: list[str] | None = None) -> None:
         "--workers", type=int, default=2, help="seeds solved in parallel"
     )
     parser.add_argument("--timeout", type=float, default=30.0, help="seconds per solve")
-    add_threads_argument(parser)
+    add_threads_argument(parser, default=RECORD_CONFIDENCE_SOLVER_THREADS)
     parser.add_argument(
         "--public-n",
         type=int,

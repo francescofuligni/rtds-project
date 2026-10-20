@@ -279,7 +279,7 @@ def test_runner_default_protocols():
     assert protocol["k"] == 2
     assert protocol["include_all_trees"] is False
     record_protocol = record.protocol(20, 30, ["prior_only"], [10], 2)
-    assert record_protocol["solver_threads"] == 4
+    assert record_protocol["solver_threads"] == 8
     assert record_protocol["methods"] == ["prior_only"]
     assert record_protocol["m_values"] == [10]
     assert record_protocol["seed_workers"] == 2

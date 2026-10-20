@@ -110,7 +110,8 @@ Record-confidence settings: `RECORD_M` (default 10), `RECORD_SAMPLES` (20),
 `RECORD_TIMEOUT` (30s),
 `RECORD_WORKERS` (2), `RECORD_N_SEEDS` (20), `RECORD_SEED_START` (0), and
 `RECORD_ONLY` (optional method subset). Its private sample remains n=100.
-`THREADS` sets CP-SAT search workers per solve for every family (default 4).
+`THREADS` sets CP-SAT search workers per solve for every family (default 4;
+record confidence 8).
 Calibration settings: `CALIBRATION_N` (100), `CALIBRATION_K` (2) or
 `CALIBRATION_K_STEPS` (linear increment; mutually exclusive),
 `CALIBRATION_M_MAX` (500), `CALIBRATION_ATTR_A/B` (marital-status/education),
@@ -148,14 +149,15 @@ uv sync --locked --python 3.12
 ```
 
 Parallelism: `--workers` sets how many seeds run at once and `--threads` how many
-CP-SAT search workers each solve uses (default 4; `--workers` defaults to the
-available CPUs divided by `--threads`). Both are saved in the run manifest.
+CP-SAT search workers each solve uses (default 4, record confidence 8;
+`--workers` defaults to the available CPUs divided by `--threads`). Both are saved in the run manifest.
 Several search workers are needed, not just faster: they run different
 strategies in parallel, and one worker alone stalls on larger releases. At
 n=100 with 50 random trees, one worker found no table in 180 s (condition
 None) while three found the optimum in 16 s; for prior-guided sampling one
 worker found no table within 30 s at m=50 and never proved the optimum at
-m=10. Runs that reach a wall-clock timeout, use several search workers, or use
+m=10; even 4 workers never proved it at m=10 (the portfolio then lacks the
+strategies that bound the distance), while 6 and 8 did in 8-16 s. Runs that reach a wall-clock timeout, use several search workers, or use
 different hardware/software versions are not guaranteed to be bitwise
 identical; with several workers, which of several equally good tables is
 returned can vary between runs.

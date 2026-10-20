@@ -14,14 +14,21 @@ from rashomon.build import DEFAULT_RANDOM_TREE_POOL
 # n=100 with 50 random trees one worker found no table in 180 s, three found
 # the optimum in 16 s. Recorded in every protocol as solver_threads.
 DEFAULT_SOLVER_THREADS = 4
+# Prior-guided sampling minimises the distance to a random table, and proving
+# that minimum needs workers a 4-worker portfolio does not run: at n=100, m=10,
+# 4 workers hit the 30 s timeout on every sample (feasible, never optimal),
+# 6 and 8 workers proved the optimum in 8-16 s on the same, loaded machine.
+RECORD_CONFIDENCE_SOLVER_THREADS = 8
 
 
-def add_threads_argument(parser: argparse.ArgumentParser) -> None:
+def add_threads_argument(
+    parser: argparse.ArgumentParser, default: int = DEFAULT_SOLVER_THREADS
+) -> None:
     parser.add_argument(
         "--threads",
         type=int,
-        default=DEFAULT_SOLVER_THREADS,
-        help=f"CP-SAT search workers per solve (default {DEFAULT_SOLVER_THREADS})",
+        default=default,
+        help=f"CP-SAT search workers per solve (default {default})",
     )
 
 
