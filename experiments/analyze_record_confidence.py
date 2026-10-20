@@ -29,6 +29,8 @@ EXPERIMENT = "record_confidence"
 EXPERIMENT_DIR = ROOT / "results" / EXPERIMENT
 N_BINS = 10
 MIN_BIN_ROWS = 20  # bins with fewer rows are too noisy to plot
+SELECTIVE_THRESHOLDS = [0.5, 0.7, 0.8, 0.9, 0.95]
+TOP_K = [10, 25, 50]
 
 # Display order; other attackers (e.g. prior-guided variants) follow alphabetically.
 METHOD_ORDER = ["prior_guided", "prior_only", "per_tree_occurrence", "per_tree_presence", "seed_only",
@@ -94,6 +96,41 @@ def paired_tests(seeds: pd.DataFrame, a: str = "prior_guided", b: str = "prior_o
             p = wilcoxon(diff).pvalue if len(diff) >= 5 and diff.abs().sum() > 0 else float("nan")
             print(f"  {selection:<6} m={m:<4} {metric:<9} mean diff {diff.mean():+.4f} (n={len(diff)}, "
                   f"{(diff > 0).sum()} seeds up, {(diff < 0).sum()} down) p={p:.3g}")
+
+
+def selective_accuracy(df: pd.DataFrame, seeds: pd.DataFrame, a: str = "prior_guided",
+                       b: str = "prior_only", threshold: float = 0.9) -> None:
+    """Local error in practice: if the attacker keeps only the rows it is
+    most confident about, how often are those right, and how many are left?"""
+    print("\nSelective accuracy: keep rows with confidence >= t -> share correct / share of the table kept")
+    for (selection, m), g in df.groupby(["selection", "m"]):
+        print(f"  {selection} m={m}")
+        for method, h in g.groupby("method"):
+            if method in NON_PROBABILITY_METHODS:
+                continue
+            cells = []
+            for t in SELECTIVE_THRESHOLDS:
+                kept = h[h["confidence"] >= t]
+                cells.append(f">={t:.2f} {kept['correct'].mean():.2f}/{len(kept) / len(h):3.0%}" if len(kept)
+                             else f">={t:.2f}  -  /  0%")
+            ranked = h.sort_values(["seed", "confidence"], ascending=[True, False])
+            tops = [f"top{k} {ranked.groupby('seed').head(k)['correct'].mean():.2f}" for k in TOP_K]
+            print(f"    {method:22s} " + " | ".join(cells) + "   most confident: " + ", ".join(tops))
+    print(f"\nRows an attacker can vouch for at confidence >= {threshold} (per seed), {a} vs {b} (Wilcoxon):")
+    per_seed = (df[df["method"].isin([a, b])]
+                .assign(kept=lambda d: d["confidence"] >= threshold)
+                .groupby(["selection", "m", "method", "seed"])
+                .agg(coverage=("kept", "mean"),
+                     kept_correct=("correct", lambda c: c[df.loc[c.index, "confidence"] >= threshold].mean()))
+                .reset_index())
+    for (selection, m), g in per_seed.groupby(["selection", "m"]):
+        wide = g.pivot(index="seed", columns="method", values="coverage").dropna()
+        if {a, b} <= set(wide.columns) and len(wide) >= 5:
+            diff = wide[a] - wide[b]
+            p = wilcoxon(diff).pvalue if diff.abs().sum() > 0 else float("nan")
+            acc = g.groupby("method")["kept_correct"].mean()
+            print(f"  {selection:<6} m={m:<4} coverage {a} {wide[a].mean():.0%} (correct {acc.get(a, np.nan):.2f}) vs "
+                  f"{b} {wide[b].mean():.0%} (correct {acc.get(b, np.nan):.2f}); diff {diff.mean():+.0%} p={p:.3g}")
 
 
 def selection_effect(seeds: pd.DataFrame, method: str = "prior_guided") -> None:
@@ -171,6 +208,7 @@ def main(result_dirs: list[Path], out_dir: Path) -> None:
         print(table.round(3).to_string(index=False))
 
     paired_tests(seeds)
+    selective_accuracy(df, seeds)
     selection_effect(seeds)
     print(f"\nWrote {reliability_figure(df, out_dir)}")
 
