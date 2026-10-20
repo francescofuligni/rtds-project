@@ -1,0 +1,80 @@
+Result set: record_confidence
+  background_knowledge = none
+  dataset = adult_curated_13col
+  labels = given_per_row
+  methods = ['prior_guided', 'prior_guided_2k', 'prior_guided_split', 'prior_guided_tb', 'prior_guided_tb_2k', 'prior_guided_tb_split', 'prior_only']
+  pilot_n = 100
+  prior_alpha = 0.1
+  public_n = 2000
+  rashomon_bound_multiplier = 0.1
+  regularization = 0.01
+  samples = 20
+  solve_timeout = 30.0
+  tree_selection = random
+  produced by 1 run(s) at commit(s) 95ab8f6e
+  directory: ../results/record_confidence_variants/random
+  7000 output rows; skipped (Rashomon set < m): none
+
+
+Per attacker: accuracy = 1 - global error of its 100-row table; gap = mean confidence - accuracy
+(positive gap = overconfident). per_tree_absolute is a count, not a probability.
+selection  m                method  seeds  accuracy  acc_sem  mean_conf    gap   ece  brier  auroc_pooled  auroc_seed_mean
+   random 10          prior_guided     10     0.704    0.019      0.720  0.016 0.022  0.161         0.797            0.793
+   random 10            prior_only     10     0.589    0.012      0.594  0.005 0.024  0.209         0.717            0.722
+   random 10       prior_guided_2k     10     0.707    0.019      0.714  0.007 0.027  0.163         0.790            0.783
+   random 10    prior_guided_split     10     0.704    0.019      0.697 -0.007 0.053  0.168         0.784            0.775
+   random 10       prior_guided_tb     10     0.700    0.023      0.723  0.023 0.025  0.165         0.792            0.790
+   random 10    prior_guided_tb_2k     10     0.704    0.019      0.718  0.014 0.028  0.162         0.799            0.794
+   random 10 prior_guided_tb_split     10     0.700    0.023      0.703  0.003 0.039  0.165         0.795            0.793
+
+Paired per-seed comparison, prior_guided minus prior_only (Wilcoxon signed-rank; abs_gap = calibration error):
+  random m=10   accuracy  mean diff +0.1150 (n=10, 10 seeds up, 0 down) p=0.00195
+  random m=10   auroc     mean diff +0.0709 (n=10, 10 seeds up, 0 down) p=0.00195
+  random m=10   brier     mean diff -0.0474 (n=10, 0 seeds up, 10 down) p=0.00195
+  random m=10   abs_gap   mean diff -0.0069 (n=10, 3 seeds up, 7 down) p=0.131
+
+Paired per-seed comparison, prior_guided_2k minus prior_guided (Wilcoxon signed-rank; abs_gap = calibration error):
+  random m=10   accuracy  mean diff +0.0030 (n=10, 5 seeds up, 3 down) p=0.672
+  random m=10   auroc     mean diff -0.0103 (n=10, 4 seeds up, 6 down) p=0.275
+  random m=10   brier     mean diff +0.0012 (n=10, 6 seeds up, 4 down) p=0.492
+  random m=10   abs_gap   mean diff -0.0018 (n=10, 3 seeds up, 7 down) p=0.432
+
+Paired per-seed comparison, prior_guided_split minus prior_guided (Wilcoxon signed-rank; abs_gap = calibration error):
+  random m=10   accuracy  mean diff +0.0000 (n=10, 0 seeds up, 0 down) p=nan
+  random m=10   auroc     mean diff -0.0180 (n=10, 3 seeds up, 7 down) p=0.084
+  random m=10   brier     mean diff +0.0069 (n=10, 8 seeds up, 2 down) p=0.131
+  random m=10   abs_gap   mean diff -0.0079 (n=10, 3 seeds up, 7 down) p=0.375
+
+Paired per-seed comparison, prior_guided_tb minus prior_guided (Wilcoxon signed-rank; abs_gap = calibration error):
+  random m=10   accuracy  mean diff -0.0040 (n=10, 4 seeds up, 5 down) p=0.754
+  random m=10   auroc     mean diff -0.0033 (n=10, 4 seeds up, 6 down) p=0.77
+  random m=10   brier     mean diff +0.0035 (n=10, 8 seeds up, 2 down) p=0.16
+  random m=10   abs_gap   mean diff +0.0131 (n=10, 8 seeds up, 2 down) p=0.105
+
+Paired per-seed comparison, prior_guided_tb_2k minus prior_guided (Wilcoxon signed-rank; abs_gap = calibration error):
+  random m=10   accuracy  mean diff -0.0000 (n=10, 4 seeds up, 4 down) p=1
+  random m=10   auroc     mean diff +0.0012 (n=10, 6 seeds up, 4 down) p=0.557
+  random m=10   brier     mean diff +0.0003 (n=10, 5 seeds up, 5 down) p=0.846
+  random m=10   abs_gap   mean diff +0.0059 (n=10, 7 seeds up, 3 down) p=0.322
+
+Paired per-seed comparison, prior_guided_tb_split minus prior_guided (Wilcoxon signed-rank; abs_gap = calibration error):
+  random m=10   accuracy  mean diff -0.0040 (n=10, 4 seeds up, 5 down) p=0.754
+  random m=10   auroc     mean diff -0.0000 (n=10, 4 seeds up, 6 down) p=0.922
+  random m=10   brier     mean diff +0.0040 (n=10, 7 seeds up, 3 down) p=0.375
+  random m=10   abs_gap   mean diff +0.0091 (n=10, 6 seeds up, 4 down) p=0.557
+
+Selective accuracy: keep rows with confidence >= t -> share correct / share of the table kept
+  random m=10
+    prior_guided           >=0.50 0.76/82% | >=0.70 0.88/54% | >=0.80 0.93/44% | >=0.90 0.96/34% | >=0.95 0.97/28%   most confident: top10 0.97, top25 0.97, top50 0.89
+    prior_guided_2k        >=0.50 0.77/80% | >=0.70 0.89/52% | >=0.80 0.94/42% | >=0.90 0.97/31% | >=0.95 0.98/26%   most confident: top10 0.97, top25 0.96, top50 0.89
+    prior_guided_split     >=0.50 0.78/77% | >=0.70 0.87/54% | >=0.80 0.92/44% | >=0.90 0.96/33% | >=0.95 0.98/28%   most confident: top10 0.98, top25 0.95, top50 0.88
+    prior_guided_tb        >=0.50 0.76/83% | >=0.70 0.86/55% | >=0.80 0.92/43% | >=0.90 0.96/32% | >=0.95 0.97/28%   most confident: top10 0.98, top25 0.96, top50 0.88
+    prior_guided_tb_2k     >=0.50 0.78/79% | >=0.70 0.87/54% | >=0.80 0.94/42% | >=0.90 0.98/30% | >=0.95 0.99/26%   most confident: top10 1.00, top25 0.97, top50 0.89
+    prior_guided_tb_split  >=0.50 0.78/78% | >=0.70 0.86/56% | >=0.80 0.92/44% | >=0.90 0.97/33% | >=0.95 0.99/28%   most confident: top10 1.00, top25 0.98, top50 0.89
+    prior_only             >=0.50 0.70/60% | >=0.70 0.81/32% | >=0.80 0.86/22% | >=0.90 0.91/10% | >=0.95 0.90/ 5%   most confident: top10 0.92, top25 0.84, top50 0.75
+
+Rows an attacker can vouch for at confidence >= 0.9 (per seed), prior_guided vs prior_only (Wilcoxon):
+  random m=10   coverage prior_guided 34% (correct 0.96) vs prior_only 10% (correct 0.92); diff +23% p=0.00195
+
+Wrote ../results/record_confidence_variants/random/record_confidence_reliability.pdf
+Wrote ../results/record_confidence_variants/random/record_confidence_selective_accuracy.pdf
