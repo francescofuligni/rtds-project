@@ -35,7 +35,9 @@ RecordKey = tuple[int, ...]
 
 def record_counts(X: np.ndarray, y: np.ndarray) -> Counter:
     """Multiset of records, each record being (features..., label)."""
-    return Counter(tuple(int(v) for v in row) + (int(label),) for row, label in zip(X, y))
+    return Counter(
+        tuple(int(v) for v in row) + (int(label),) for row, label in zip(X, y)
+    )
 
 
 def per_tree_candidates(
@@ -59,16 +61,29 @@ def per_tree_candidates(
     candidates, statuses = [], []
     for branches in trees_branches:
         result = reconstruct(
-            [branches], y, classes, n_features, one_hot_groups,
-            known_mask=known_mask, known_values=known_values,
-            timeout=timeout, seed=seed, n_threads=n_threads,
+            [branches],
+            y,
+            classes,
+            n_features,
+            one_hot_groups,
+            known_mask=known_mask,
+            known_values=known_values,
+            timeout=timeout,
+            seed=seed,
+            n_threads=n_threads,
         )
         statuses.append(result.status)
-        candidates.append(None if result.reconstructed is None else record_counts(result.reconstructed, y))
+        candidates.append(
+            None
+            if result.reconstructed is None
+            else record_counts(result.reconstructed, y)
+        )
     return candidates, statuses
 
 
-def draw_prior_table(public_X: np.ndarray, public_y: np.ndarray, y: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+def draw_prior_table(
+    public_X: np.ndarray, public_y: np.ndarray, y: np.ndarray, rng: np.random.Generator
+) -> np.ndarray:
     """A plausible random table: for each row, a public record with the same label."""
     table = np.empty((len(y), public_X.shape[1]), dtype=int)
     for label in np.unique(y):
@@ -105,14 +120,28 @@ def sampled_candidates(
     rng = np.random.default_rng(seed)
     candidates, statuses = [], []
     for s in range(n_samples):
-        target = None if public_X is None else draw_prior_table(public_X, public_y, y, rng)
+        target = (
+            None if public_X is None else draw_prior_table(public_X, public_y, y, rng)
+        )
         result = reconstruct(
-            trees_branches, y, classes, n_features, one_hot_groups,
-            known_mask=known_mask, known_values=known_values,
-            timeout=timeout, seed=seed * 1000 + s, n_threads=n_threads, target=target,
+            trees_branches,
+            y,
+            classes,
+            n_features,
+            one_hot_groups,
+            known_mask=known_mask,
+            known_values=known_values,
+            timeout=timeout,
+            seed=seed * 1000 + s,
+            n_threads=n_threads,
+            target=target,
         )
         statuses.append(result.status)
-        candidates.append(None if result.reconstructed is None else record_counts(result.reconstructed, y))
+        candidates.append(
+            None
+            if result.reconstructed is None
+            else record_counts(result.reconstructed, y)
+        )
     return candidates, statuses
 
 
@@ -141,11 +170,15 @@ def record_claims(support: dict[RecordKey, np.ndarray]) -> list[RecordClaim]:
         presence = float(np.mean(mult >= 1))
         absolute = int(mult.sum())
         for k in range(1, int(mult.max()) + 1):
-            claims.append(RecordClaim(record, k, presence, absolute, float(np.mean(mult >= k))))
+            claims.append(
+                RecordClaim(record, k, presence, absolute, float(np.mean(mult >= k)))
+            )
     return claims
 
 
-def enumerate_feature_vectors(n_features: int, one_hot_groups: list[list[int]]) -> list[tuple[int, ...]]:
+def enumerate_feature_vectors(
+    n_features: int, one_hot_groups: list[list[int]]
+) -> list[tuple[int, ...]]:
     """Every feature vector the schema allows (each one-hot group picks one column)."""
     grouped = {i for group in one_hot_groups for i in group}
     free = [i for i in range(n_features) if i not in grouped]
@@ -173,7 +206,14 @@ class RecordPrior:
     0.063 over 20 seeds vs 0.010 at alpha=0.1), which would handicap it.
     """
 
-    def __init__(self, public_X, public_y, class_totals: dict, n_feature_vectors: int, alpha: float = 0.1):
+    def __init__(
+        self,
+        public_X,
+        public_y,
+        class_totals: dict,
+        n_feature_vectors: int,
+        alpha: float = 0.1,
+    ):
         self.class_totals = class_totals
         self.public_counts = record_counts(public_X, public_y)
         self.label_totals = Counter(int(v) for v in public_y)
@@ -183,7 +223,9 @@ class RecordPrior:
     def probability(self, record: RecordKey, k: int) -> float:
         label = record[-1]
         n_c = self.class_totals.get(label, 0)
-        p = (self.public_counts[record] + self.alpha) / (self.label_totals[label] + self.alpha * self.n_feature_vectors)
+        p = (self.public_counts[record] + self.alpha) / (
+            self.label_totals[label] + self.alpha * self.n_feature_vectors
+        )
         return float(binom.sf(k - 1, n_c, p))
 
 
@@ -202,6 +244,8 @@ def best_table_claims(
     table = []
     for label, n_c in class_totals.items():
         options = [key for key in scores if key[0][-1] == label]
-        options.sort(key=lambda key: (scores[key], tiebreak.get(key, 0.0)), reverse=True)
+        options.sort(
+            key=lambda key: (scores[key], tiebreak.get(key, 0.0)), reverse=True
+        )
         table.extend((record, k, scores[(record, k)]) for record, k in options[:n_c])
     return table

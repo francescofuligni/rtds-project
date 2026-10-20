@@ -67,7 +67,9 @@ def repeated_reconstruct_with_confidence(
 
     known_mask = known_mask_for_condition(data, condition, attr_a, attr_b)
     known_values = np.where(known_mask, X, 0)
-    one_hot_groups = [[col_index[c] for c in cols] for cols in data.one_hot_groups.values()]
+    one_hot_groups = [
+        [col_index[c] for c in cols] for cols in data.one_hot_groups.values()
+    ]
 
     n_rows = len(X)
     votes: list[list[tuple]] = [[] for _ in range(n_rows)]
@@ -75,9 +77,16 @@ def repeated_reconstruct_with_confidence(
 
     for r in range(n_repeats):
         result = reconstruct(
-            trees_branches, y, classes, n_features=X.shape[1], one_hot_groups=one_hot_groups,
-            known_mask=known_mask, known_values=known_values,
-            timeout=timeout, seed=base_seed + r, n_threads=n_threads,
+            trees_branches,
+            y,
+            classes,
+            n_features=X.shape[1],
+            one_hot_groups=one_hot_groups,
+            known_mask=known_mask,
+            known_values=known_values,
+            timeout=timeout,
+            seed=base_seed + r,
+            n_threads=n_threads,
         )
         statuses.append(result.status)
         if result.reconstructed is None:
@@ -95,7 +104,13 @@ def repeated_reconstruct_with_confidence(
         mode_value, mode_count = counts.most_common(1)[0]
         agreement = mode_count / len(votes[j])
         true_value = tuple(X[j, target_cols])
-        rows.append(ConfidenceRow(row=j, n_votes=len(votes[j]), agreement=agreement,
-                                   correct=(mode_value == true_value)))
+        rows.append(
+            ConfidenceRow(
+                row=j,
+                n_votes=len(votes[j]),
+                agreement=agreement,
+                correct=(mode_value == true_value),
+            )
+        )
 
     return rows, statuses

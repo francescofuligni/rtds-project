@@ -13,10 +13,13 @@ giving the attacker a per-record confidence it can compute without ground truth.
 | `run_calibration_experiment.py` | Evaluator-side diagnostic: does solver agreement (aligned to the true table) track correctness? Not usable by an attacker. | `analyze_calibration.py`, `calibrate_confidence.py` |
 
 Which m trees are released matters. TreeFARMS decodes tree indices like an
-odometer over shared subtrees, so the first m trees are near-copies and leak
-far less than m distinct trees would. All runners therefore release a random
-ordering's first m trees by default (`--selection random`, nested across m);
-`--selection first` reproduces the legacy behaviour.
+odometer over shared subtrees, so sequential indices are near-copies and leak
+far less than m distinct trees would. All runners therefore use one seeded
+random ordering without replacement, releasing nested prefixes for each m.
+The random prefix uses `seed + 20000` and a nested ordering of up to 1000
+indices sampled without replacement from the full set. The manifest records
+the selection policy, offset and pool size; package versions and run seed are
+also recorded for reproducibility.
 
 ## Results and protocol stamping
 
@@ -43,12 +46,26 @@ results/<experiment>/<selection>/
   sets whose protocols differ beyond what is being compared.
 - Stamped result sets are committed; scratch runs go in `results/dev/` (ignored).
 
-`results/legacy/` holds the results produced before stamping (first-m tree
+`results/legacy/` holds results produced before stamping (sequential tree
 selection, per-row labels given). Their manifests describe how they were
 produced; they are superseded once the experiments are rerun with random
 selection.
 
 ## Running
+
+The Makefile provides the agreed project commands:
+
+```sh
+make help
+make setup
+make test
+make run   # full experiments, analyses, and generated artifacts
+```
+
+`make run` executes each pipeline stage in sequence and stops if a command fails.
+It uses the experiment defaults below, so the full run can take a long time.
+
+For individual or bounded runs, call the scripts directly:
 
 ```sh
 uv sync                                                           # or: pip install -e . into .venv

@@ -14,7 +14,7 @@ from attack.record_confidence import (
     sampled_candidates,
     support_matrix,
 )
-from rashomon.build import build_rashomon_set, select_random_trees, select_trees
+from rashomon.build import build_rashomon_set, select_random_trees
 
 
 @pytest.fixture(scope="module")
@@ -22,9 +22,13 @@ def toy():
     rng = np.random.default_rng(0)
     X = rng.integers(0, 2, size=(30, 5))
     y = ((X[:, 0] == 1) & (X[:, 1] == 0)).astype(int)
-    model = build_rashomon_set(pd.DataFrame(X, columns=[f"f{i}" for i in range(5)]), pd.Series(y),
-                               regularization=0.05, rashomon_bound_multiplier=0.1)
-    trees = select_trees(model, min(3, model.get_tree_count()))
+    model = build_rashomon_set(
+        pd.DataFrame(X, columns=[f"f{i}" for i in range(5)]),
+        pd.Series(y),
+        regularization=0.05,
+        rashomon_bound_multiplier=0.1,
+    )
+    trees = select_random_trees(model, min(3, model.get_tree_count()), seed=0)
     branches = [extract_branches(t, X, y, [0, 1]) for t in trees]
     return X, y, trees, branches
 
@@ -54,7 +58,11 @@ def test_prior_favours_common_public_records_and_decreases_with_k():
     prior = RecordPrior(public_X, public_y, class_totals={0: 5}, n_feature_vectors=4)
     common, rare = (1, 0, 0), (1, 1, 0)
     assert prior.probability(common, 1) > prior.probability(rare, 1)
-    assert prior.probability(common, 1) >= prior.probability(common, 2) >= prior.probability(common, 3)
+    assert (
+        prior.probability(common, 1)
+        >= prior.probability(common, 2)
+        >= prior.probability(common, 3)
+    )
     assert prior.probability(common, 6) == 0.0  # only 5 rows carry label 0
 
 
@@ -67,7 +75,9 @@ def test_best_table_respects_class_totals_and_score_order():
 
 def test_target_equal_to_truth_is_returned_exactly(toy):
     X, y, _, branches = toy
-    result = reconstruct(branches, y, [0, 1], X.shape[1], [], timeout=20, n_threads=4, target=X)
+    result = reconstruct(
+        branches, y, [0, 1], X.shape[1], [], timeout=20, n_threads=4, target=X
+    )
     assert result.status == "OPTIMAL"
     np.testing.assert_array_equal(result.reconstructed, X)
 
@@ -77,14 +87,26 @@ def test_prior_guided_samples_stay_consistent_with_the_release(toy):
     rng = np.random.default_rng(1)
     public_X = rng.integers(0, 2, size=(50, 5))
     public_y = rng.integers(0, 2, size=50)
-    candidates, statuses = sampled_candidates(branches, y, [0, 1], X.shape[1], [], n_samples=3,
-                                              public_X=public_X, public_y=public_y, timeout=20, n_threads=4)
+    candidates, statuses = sampled_candidates(
+        branches,
+        y,
+        [0, 1],
+        X.shape[1],
+        [],
+        n_samples=3,
+        public_X=public_X,
+        public_y=public_y,
+        timeout=20,
+        n_threads=4,
+    )
     assert len(candidates) == 3 and all(s == "OPTIMAL" for s in statuses)
     for candidate in candidates:
         rows = np.array([r[:-1] for r, c in candidate.items() for _ in range(c)])
         labels = np.array([r[-1] for r, c in candidate.items() for _ in range(c)])
         for tree, original in zip(trees, branches):
-            assert sorted(b[1] for b in extract_branches(tree, rows, labels, [0, 1])) == sorted(b[1] for b in original)
+            assert sorted(
+                b[1] for b in extract_branches(tree, rows, labels, [0, 1])
+            ) == sorted(b[1] for b in original)
 
 
 def test_prior_table_keeps_each_rows_label():
@@ -99,12 +121,18 @@ def test_random_tree_selection_is_reproducible_and_nested():
     rng = np.random.default_rng(0)
     X = rng.integers(0, 2, size=(40, 6))
     y = ((X[:, 0] + X[:, 1] + X[:, 2]) >= 2).astype(int)
-    model = build_rashomon_set(pd.DataFrame(X, columns=[f"f{i}" for i in range(6)]), pd.Series(y),
-                               regularization=0.01, rashomon_bound_multiplier=0.3)
-    assert model.get_tree_count() >= 50  # large enough for random picks to differ from the first ones
-    small, big = select_random_trees(model, 3, seed=7), select_random_trees(model, 6, seed=7)
+    model = build_rashomon_set(
+        pd.DataFrame(X, columns=[f"f{i}" for i in range(6)]),
+        pd.Series(y),
+        regularization=0.01,
+        rashomon_bound_multiplier=0.3,
+    )
+    assert model.get_tree_count() >= 6
+    small, big = (
+        select_random_trees(model, 3, seed=7),
+        select_random_trees(model, 6, seed=7),
+    )
     assert big[:3] == small  # growing m adds trees, it does not swap them
     assert select_random_trees(model, 6, seed=7) == big
-    assert big != select_trees(model, 6)
     with pytest.raises(ValueError):
         select_random_trees(model, 4, seed=7, pool=3)

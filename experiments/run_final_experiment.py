@@ -8,13 +8,11 @@ the *same* sample and *same* trees -- this is the "paired" part: within
 a repetition, condition differences are directly comparable because
 everything else is held fixed (meeting notes Sec. 3/6).
 
-Which m trees are released is part of the protocol (--selection). The
-default, random, releases a random ordering's first m trees (nested
-across m). "first" reproduces the legacy runs, which released the first m
-trees in TreeFARMS order -- near-copies of each other that understate
-how much m trees leak.
+Which m trees are released is part of the protocol. The runner samples one
+random ordering without replacement and releases its first m trees, nested
+across m. Sequential TreeFARMS enumeration is not used.
 
-Results go to results/final_experiment/<selection>/, one CSV per seed
+Results go to results/final_experiment/random/, one CSV per seed
 next to a manifest.json recording the protocol (see provenance.py), so
 rerunning the same command resumes an interrupted run and results from
 different settings never end up in the same directory.
@@ -31,21 +29,28 @@ Usage: .venv/bin/python experiments/run_final_experiment.py --seed-end 350
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 import time
-from functools import partial
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from provenance import available_cpu_count, run_seeds, stamp
+
 from attack.baselines import marginal_baseline, uniform_random_guess
 from attack.conditions import CONDITIONS, run_condition
 from attack.reconstruct import _walk_leaves, extract_branches
-from rashomon.build import build_rashomon_set, select_random_trees, select_trees
-from rashomon.data import binarize_adult_curated, known_columns_for, load_adult_raw, sample_rows
-
-from provenance import run_seeds, stamp
+from rashomon.build import (
+    DEFAULT_RANDOM_TREE_POOL,
+    build_rashomon_set,
+    select_random_trees,
+)
+from rashomon.data import (
+    binarize_adult_curated,
+    known_columns_for,
+    load_adult_raw,
+    sample_rows,
+)
 
 TARGET, ATTR_A, ATTR_B = "sex", "marital-status", "education"
 M_VALUES = [5, 10, 25, 50, 100]
@@ -60,18 +65,31 @@ ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENT = "final_experiment"
 
 
-def protocol(selection: str) -> dict:
+def protocol() -> dict:
     """Every setting that changes what this experiment's numbers mean."""
     return {
-        "dataset": "adult_curated_13col", "target": TARGET, "attr_a": ATTR_A, "attr_b": ATTR_B,
-        "pilot_n": PILOT_N, "holdout_n": HOLDOUT_N, "m_values": M_VALUES,
-        "regularization": REGULARIZATION, "rashomon_bound_multiplier": RASHOMON_BOUND_MULTIPLIER,
-        "tree_selection": selection, "solve_timeout": SOLVE_TIMEOUT,
-        "conditions": CONDITIONS, "labels": "given_per_row",
+        "dataset": "adult_curated_13col",
+        "target": TARGET,
+        "attr_a": ATTR_A,
+        "attr_b": ATTR_B,
+        "pilot_n": PILOT_N,
+        "holdout_n": HOLDOUT_N,
+        "m_values": M_VALUES,
+        "regularization": REGULARIZATION,
+        "rashomon_bound_multiplier": RASHOMON_BOUND_MULTIPLIER,
+        "tree_selection": "random",
+        "solve_timeout": SOLVE_TIMEOUT,
+        "tree_selection_seed_offset": TREE_SELECTION_SEED_OFFSET,
+        "tree_selection_pool": DEFAULT_RANDOM_TREE_POOL,
+        "tree_selection_order": "uniform_without_replacement_nested_prefix",
+        "conditions": CONDITIONS,
+        "labels": "given_per_row",
     }
 
 
-def joint_split_fraction(trees: list[dict], target_cols: set[int], other_cols: set[int]) -> float:
+def joint_split_fraction(
+    trees: list[dict], target_cols: set[int], other_cols: set[int]
+) -> float:
     """Fraction of trees with at least one leaf whose root-to-leaf path
     splits on a target column AND an "other" column together -- the
     structural precondition for background knowledge of "other" to
@@ -88,17 +106,23 @@ def joint_split_fraction(trees: list[dict], target_cols: set[int], other_cols: s
     return n_joint / len(trees)
 
 
-def run_seed(seed: int, selection: str = "random") -> list[dict]:
+def run_seed(seed: int) -> list[dict]:
     df = load_adult_raw(ROOT / "data")
     data_full = binarize_adult_curated(df)
 
     pilot_idx = data_full.X.sample(n=PILOT_N, random_state=seed).index
     pilot = sample_rows(data_full, n=PILOT_N, seed=seed)
-    holdout_df = data_full.X.drop(index=pilot_idx).sample(n=HOLDOUT_N, random_state=seed + 10_000)
+    holdout_df = data_full.X.drop(index=pilot_idx).sample(
+        n=HOLDOUT_N, random_state=seed + 10_000
+    )
 
     t0 = time.time()
-    model = build_rashomon_set(pilot.X, pilot.y, regularization=REGULARIZATION,
-                                rashomon_bound_multiplier=RASHOMON_BOUND_MULTIPLIER)
+    model = build_rashomon_set(
+        pilot.X,
+        pilot.y,
+        regularization=REGULARIZATION,
+        rashomon_bound_multiplier=RASHOMON_BOUND_MULTIPLIER,
+    )
     n_available = model.get_tree_count()
     build_time = time.time() - t0
 
@@ -108,16 +132,19 @@ def run_seed(seed: int, selection: str = "random") -> list[dict]:
     X = pilot.X.to_numpy()
     uniform = uniform_random_guess(PILOT_N, target_idx, pilot.X.shape[1], seed=seed)
     marginal = marginal_baseline(pilot, TARGET, PILOT_N, holdout_df, seed=seed)
-    uniform_error = float((uniform[:, target_idx] != X[:, target_idx]).any(axis=1).mean())
-    marginal_error = float((marginal[:, target_idx] != X[:, target_idx]).any(axis=1).mean())
+    uniform_error = float(
+        (uniform[:, target_idx] != X[:, target_idx]).any(axis=1).mean()
+    )
+    marginal_error = float(
+        (marginal[:, target_idx] != X[:, target_idx]).any(axis=1).mean()
+    )
 
     rows = []
     for m in M_VALUES:
         if m > n_available:
             continue
 
-        trees = (select_trees(model, m) if selection == "first"
-                 else select_random_trees(model, m, seed=seed + TREE_SELECTION_SEED_OFFSET))
+        trees = select_random_trees(model, m, seed=seed + TREE_SELECTION_SEED_OFFSET)
         y = pilot.y.to_numpy()
         classes = sorted(pilot.y.unique().tolist())
         trees_branches = [extract_branches(t, X, y, classes) for t in trees]
@@ -126,41 +153,68 @@ def run_seed(seed: int, selection: str = "random") -> list[dict]:
 
         for condition in CONDITIONS:
             t0 = time.time()
-            result = run_condition(condition, trees_branches, pilot, ATTR_A, ATTR_B, TARGET,
-                                    timeout=SOLVE_TIMEOUT, seed=seed, n_threads=1)
+            result = run_condition(
+                condition,
+                trees_branches,
+                pilot,
+                ATTR_A,
+                ATTR_B,
+                TARGET,
+                timeout=SOLVE_TIMEOUT,
+                seed=seed,
+                n_threads=1,
+            )
             duration = time.time() - t0
-            rows.append({
-                "seed": seed, "m": m, "n_trees_available": n_available,
-                "condition": condition, "status": result.status,
-                "duration_s": round(duration, 3),
-                "reconstruction_error": result.reconstruction_error,
-                "uniform_baseline_error": uniform_error,
-                "marginal_baseline_error": marginal_error,
-                "joint_split_frac_A": round(joint_a_frac, 4),
-                "joint_split_frac_B": round(joint_b_frac, 4),
-            })
+            rows.append(
+                {
+                    "seed": seed,
+                    "m": m,
+                    "n_trees_available": n_available,
+                    "condition": condition,
+                    "status": result.status,
+                    "duration_s": round(duration, 3),
+                    "reconstruction_error": result.reconstruction_error,
+                    "uniform_baseline_error": uniform_error,
+                    "marginal_baseline_error": marginal_error,
+                    "joint_split_frac_A": round(joint_a_frac, 4),
+                    "joint_split_frac_B": round(joint_b_frac, 4),
+                }
+            )
 
-    print(f"[seed {seed}] done: {n_available} trees (build {build_time:.1f}s), {len(rows)} rows", flush=True)
+    print(
+        f"[seed {seed}] done: {n_available} trees (build {build_time:.1f}s), {len(rows)} rows",
+        flush=True,
+    )
     return rows
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--selection", choices=["random", "first"], default="random",
-                        help="which m trees of the Rashomon set are released")
     parser.add_argument("--seed-start", type=int, default=0)
     parser.add_argument("--seed-end", type=int, default=350, help="exclusive")
-    parser.add_argument("--workers", type=int, default=len(os.sched_getaffinity(0)),
-                        help="seeds solved in parallel (each solve uses one thread)")
-    parser.add_argument("--out-dir", type=Path, default=None,
-                        help=f"defaults to results/{EXPERIMENT}/<selection>")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=available_cpu_count(),
+        help="seeds solved in parallel (each solve uses one thread)",
+    )
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help=f"defaults to results/{EXPERIMENT}/random",
+    )
     args = parser.parse_args(argv)
 
-    result_dir = args.out_dir or ROOT / "results" / EXPERIMENT / args.selection
-    stamp(result_dir, EXPERIMENT, protocol(args.selection), data="seed*.csv", argv=argv)
+    result_dir = args.out_dir or ROOT / "results" / EXPERIMENT / "random"
+    stamp(result_dir, EXPERIMENT, protocol(), data="seed*.csv", argv=argv)
     t_start = time.time()
-    run_seeds(result_dir, range(args.seed_start, args.seed_end), partial(run_seed, selection=args.selection),
-              workers=args.workers)
+    run_seeds(
+        result_dir,
+        range(args.seed_start, args.seed_end),
+        run_seed,
+        workers=args.workers,
+    )
     print(f"\nFinished in {time.time() - t_start:.0f}s -> {result_dir}")
 
 

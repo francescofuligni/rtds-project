@@ -1,10 +1,10 @@
 import json
 
 import pytest
-
 from provenance import (
     MANIFEST,
     ProtocolMismatch,
+    available_cpu_count,
     describe,
     load_results,
     require_comparable,
@@ -14,9 +14,26 @@ from provenance import (
 )
 
 
+def test_available_cpu_count_falls_back_when_affinity_is_unavailable(monkeypatch):
+    monkeypatch.delattr("provenance.os.sched_getaffinity", raising=False)
+    monkeypatch.setattr("provenance.os.cpu_count", lambda: 6)
+    assert available_cpu_count() == 6
+
+
 def test_stamp_creates_manifest_and_records_each_run(tmp_path):
-    stamp(tmp_path, "exp", {"tree_selection": "random", "m_values": (10, 50)}, data="seed*.csv", argv=["--a"])
-    manifest = stamp(tmp_path, "exp", {"tree_selection": "random", "m_values": [10, 50]}, data="seed*.csv")
+    stamp(
+        tmp_path,
+        "exp",
+        {"tree_selection": "random", "m_values": (10, 50)},
+        data="seed*.csv",
+        argv=["--a"],
+    )
+    manifest = stamp(
+        tmp_path,
+        "exp",
+        {"tree_selection": "random", "m_values": [10, 50]},
+        data="seed*.csv",
+    )
     assert manifest["protocol"] == {"tree_selection": "random", "m_values": [10, 50]}
     assert len(manifest["runs"]) == 2
     assert manifest["runs"][0]["command"][1:] == ["--a"]
@@ -24,11 +41,11 @@ def test_stamp_creates_manifest_and_records_each_run(tmp_path):
 
 
 def test_stamp_refuses_a_different_protocol(tmp_path):
-    stamp(tmp_path, "exp", {"tree_selection": "first"}, data="seed*.csv")
-    with pytest.raises(ProtocolMismatch, match="tree_selection"):
-        stamp(tmp_path, "exp", {"tree_selection": "random"}, data="seed*.csv")
+    stamp(tmp_path, "exp", {"setting": "old"}, data="seed*.csv")
+    with pytest.raises(ProtocolMismatch, match="setting"):
+        stamp(tmp_path, "exp", {"setting": "new"}, data="seed*.csv")
     with pytest.raises(ProtocolMismatch):
-        stamp(tmp_path, "other", {"tree_selection": "first"}, data="seed*.csv")
+        stamp(tmp_path, "other", {"setting": "old"}, data="seed*.csv")
 
 
 def test_stamp_refuses_a_directory_with_unstamped_files(tmp_path):
@@ -52,22 +69,35 @@ def test_load_results_reads_only_stamped_data(tmp_path):
 
 
 def test_require_comparable_allows_only_named_differences():
-    a = {"protocol": {"tree_selection": "first", "samples": 20}}
-    b = {"protocol": {"tree_selection": "random", "samples": 20}}
-    c = {"protocol": {"tree_selection": "random", "samples": 10}}
-    require_comparable([a, b], may_differ={"tree_selection"})
+    a = {"protocol": {"setting": "uniform", "samples": 20}}
+    b = {"protocol": {"setting": "weighted", "samples": 20}}
+    c = {"protocol": {"setting": "weighted", "samples": 10}}
+    require_comparable([a, b], may_differ={"setting"})
     with pytest.raises(ProtocolMismatch, match="samples"):
-        require_comparable([a, c], may_differ={"tree_selection"})
+        require_comparable([a, c], may_differ={"setting"})
 
 
 def _rows_for(seed):
     return [] if seed == 2 else [{"seed": seed}]
 
 
+def _raising_rows(seed):
+    raise ValueError(f"seed {seed} failed")
+
+
 def test_run_seeds_writes_one_file_per_seed_and_resumes(tmp_path, capsys):
     run_seeds(tmp_path, range(3), _rows_for, workers=1)
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["seed000.csv", "seed001.csv", "seed002.skip"]
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "seed000.csv",
+        "seed001.csv",
+        "seed002.skip",
+    ]
     capsys.readouterr()
     run_seeds(tmp_path, range(3), _rows_for, workers=1)
     assert "3 of 3 seeds already done" in capsys.readouterr().out
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_run_seeds_propagates_worker_errors(tmp_path):
+    with pytest.raises(ValueError, match="seed 0 failed"):
+        run_seeds(tmp_path, [0], _raising_rows, workers=1)
