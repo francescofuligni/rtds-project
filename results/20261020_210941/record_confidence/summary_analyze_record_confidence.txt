@@ -1,0 +1,47 @@
+Result set: record_confidence
+  background_knowledge = none
+  dataset = adult_curated_13col
+  labels = given_per_row
+  m_values = [10]
+  methods = ['prior_guided', 'prior_only']
+  pilot_n = 100
+  prior_alpha = 0.1
+  public_n = 200
+  public_prior = records
+  rashomon_bound_multiplier = 0.1
+  regularization = 0.01
+  samples = 20
+  seed_workers = 1
+  solve_timeout = 30.0
+  solver_threads = 6
+  tree_selection = random
+  tree_selection_order = uniform_without_replacement_nested_prefix
+  tree_selection_pool = 1000
+  tree_selection_seed_offset = 20000
+  produced by 1 run(s) at commit(s) 83fb7f94
+  directory: results/20261020_210941/record_confidence
+  4000 output rows; skipped (Rashomon set < m): none
+
+
+Per attacker: accuracy = 1 - global error of its 100-row table; gap = mean confidence - accuracy
+(positive gap = overconfident). per_tree_absolute is a count, not a probability.
+setting  m       method  seeds  accuracy  acc_sem  mean_conf   gap   ece  brier  auroc_pooled  auroc_seed_mean
+ random 10 prior_guided     20     0.651    0.016      0.737 0.086 0.087  0.192         0.763            0.756
+ random 10   prior_only     20     0.482    0.009      0.556 0.073 0.073  0.210         0.745            0.746
+
+Paired per-seed comparison, prior_guided minus prior_only (Wilcoxon signed-rank; abs_gap = calibration error):
+  random m=10   accuracy  mean diff +0.1685 (n=20, 20 seeds up, 0 down) p=8.75e-05
+  random m=10   auroc     mean diff +0.0098 (n=20, 9 seeds up, 11 down) p=0.869
+  random m=10   brier     mean diff -0.0184 (n=20, 7 seeds up, 13 down) p=0.0759
+  random m=10   abs_gap   mean diff +0.0130 (n=20, 13 seeds up, 7 down) p=0.245
+
+Selective accuracy: keep rows with confidence >= t -> share correct / share of the table kept
+  random m=10
+    prior_guided           >=0.50 0.69/88% | >=0.70 0.80/58% | >=0.80 0.85/46% | >=0.90 0.90/33% | >=0.95 0.93/27%   most confident: top10 0.96, top25 0.91, top50 0.82
+    prior_only             >=0.50 0.65/55% | >=0.70 0.76/27% | >=0.80 0.82/17% | >=0.90 0.88/ 7% | >=0.95 0.94/ 4%   most confident: top10 0.87, top25 0.77, top50 0.66
+
+Rows an attacker can vouch for at confidence >= 0.9 (per seed), prior_guided vs prior_only (Wilcoxon):
+  random m=10   coverage prior_guided 33% (correct 0.89) vs prior_only 7% (correct 0.89); diff +26% p=8.84e-05
+
+Wrote results/20261020_210941/record_confidence/record_confidence_reliability.pdf
+Wrote results/20261020_210941/record_confidence/record_confidence_selective_accuracy.pdf

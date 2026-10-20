@@ -69,6 +69,9 @@ ablation) stay under `results/record_confidence/<selection>/` and
 `results/record_confidence_variants/random/`. Analyze them with
 `analyze_record_confidence.py --results-dirs <dir> [<dir> ...]`; several
 directories that differ only in tree selection are compared per selection.
+Sets that differ in tree selection, `public_n` or `public_prior` are compared
+setting by setting, paired by seed; `--out-dir` puts such a comparison in its
+own folder (committed comparisons live under `results/comparisons/`).
 
 ## Running
 

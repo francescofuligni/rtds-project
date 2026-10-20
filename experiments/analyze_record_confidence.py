@@ -495,12 +495,20 @@ if __name__ == "__main__":
         default=None,
         help="stamped result sets to compare (default: latest record_confidence run)",
     )
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="where the summary and figures go (default: next to a single result "
+        "set, or the common parent of several)",
+    )
     args = parser.parse_args()
     dirs = args.results_dirs or [latest_result_dir(EXPERIMENT)]
     # One result set: outputs go next to it. Several: into their common parent.
-    out = (
+    out = args.out_dir or (
         dirs[0]
         if len(dirs) == 1
         else Path(os.path.commonpath([d.resolve() for d in dirs]))
     )
+    out.mkdir(parents=True, exist_ok=True)
     run_analysis(lambda: main(dirs, out), out / "summary_analyze_record_confidence.txt")

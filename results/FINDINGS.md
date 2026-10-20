@@ -1,6 +1,6 @@
 # Findings: attacker-side, per-record confidence
 
-Status 2026-10-20. Numbers below come from the stamped result sets listed at
+Status 2026-10-21. Numbers below come from the stamped result sets listed at
 the end; each set's `summary_analyze_record_confidence.txt` has the full tables.
 
 ## Question
@@ -102,11 +102,48 @@ This is what a per-record confidence shows and a global error hides.
 and doubling the samples all leave accuracy, calibration and AUROC unchanged
 within noise (paired p>=0.13). Plain prior-guided sampling is used.
 
+**6. Weaker public data: the leak stays, the calibration loosens.** Same 20
+seeds, m=10, random trees, 6 solver threads, prior-guided sampling and the
+no-trees baseline under the same public knowledge:
+
+| what the attacker knows | prior-guided accuracy | stated - accuracy | public statistics accuracy | trees add | vouched at >= 0.9 (correct) |
+|---|---|---|---|---|---|
+| 2,000 other people's records (reference) | 69.4% | +2.1 | 58.5% | +10.9 | 31% (95%) |
+| 200 other people's records | 65.1% | +8.6 | 48.3% | +16.9 | 33% (89%) |
+| per-attribute shares within each income class (from 2,000 people) | 64.5% | +5.3 | 50.6% | +13.9 | 28% (93%) |
+
+The reference rerun reproduces the official m=10 result (69.2%, +2.3).
+With less public knowledge both attackers get worse, the no-trees baseline
+more so, so the released trees add more (all prior-guided vs. baseline
+differences p<0.0001). But the out-of-the-box calibration loosens:
+per-seed calibration error 3.2 -> 8.6 points with 200 records (p=0.00004)
+and 3.2 -> 5.6 points with shares only (p=0.015). With few public records
+the random tables repeat the same people, so samples agree too often.
+
+**7. Carrying the public data's own uncertainty into the confidence
+restores calibration.** Instead of drawing random tables from the public
+records as they are, each prior-guided sample first draws a record
+distribution from a Dirichlet posterior over all possible records (public
+counts + 0.1 per record), then the rows from it; the no-trees baseline
+becomes the matching beta-binomial (`--public-prior records_dirichlet`).
+With 200 public records (m=10, same 20 seeds):
+
+| | prior-guided accuracy | stated - accuracy | ECE | vouched at >= 0.9 (correct) | public statistics: stated - accuracy |
+|---|---|---|---|---|---|
+| plain records | 65.1% | +8.6 | 0.087 | 33% (89%) | +7.3 |
+| Dirichlet | 65.2% | +1.6 | 0.025 | 24% (95%) | +1.9 |
+
+Accuracy and ranking are unchanged (p>=0.8); only the confidences become
+honest again (per-seed calibration error 8.6 -> 3.0 points, p=0.00003).
+Whether the Dirichlet prior costs anything with 2,000 records is still
+running (13 of 20 seeds done).
+
 ## Caveats
 
 - The strong public-data assumption drives the calibration: free cells follow
-  the public sample. How calibration degrades with a smaller or shifted public
-  sample, or with only per-attribute percentages, is untested.
+  the public sample. With a 10x smaller sample or per-attribute shares only,
+  the confidences turn 5-9 points overconfident (result 6); a shifted
+  public sample (different population) is untested.
 - The public-statistics baseline's smoothing (alpha=0.1) was chosen by looking
   at its calibration against the private tables (alpha=1 made it
   underconfident). That tuning favours the baseline, so it is conservative for
@@ -124,8 +161,14 @@ within noise (paired p>=0.13). Plain prior-guided sampling is used.
 
 | directory | contents |
 |---|---|
-| `results/record_confidence/random/` | official run: random trees, all standard attackers, m = 10, 25, 50 (100 running) |
+| `results/record_confidence/random/` | official run: random trees, all standard attackers, m = 10, 25, 50 (100 to follow) |
 | `results/record_confidence/first/` | official run: first m trees (TreeFARMS order), m = 10, 25; compared with the random set in `results/record_confidence/summary_analyze_record_confidence.txt` |
 | `results/record_confidence_variants/random/` | ablation of prior-guided variants, m=10 |
-| `results/legacy/` | pre-stamping results (first-m trees); superseded |
+| `results/20261020_202208/record_confidence/` | public data: 2,000 records (reference rerun), m=10, prior-guided + public statistics, 6 solver threads |
+| `results/20261020_210941/record_confidence/` | public data: 200 records |
+| `results/20261020_215840/record_confidence/` | public data: per-attribute shares only (from 2,000 people) |
+| `results/20261020_224806/record_confidence/` | public data: 200 records, Dirichlet record prior |
+| `results/comparisons/record_confidence_public_data_m10/` | paired comparison of the first three (result 6) |
+| `results/comparisons/record_confidence_dirichlet_200_m10/` | paired comparison, 200 records plain vs. Dirichlet (result 7) |
+| `results/20261020_141927/` | pre-stamping results (first-m trees, archived); superseded |
 | `results/dev/` (not committed) | development runs, incl. the first-m vs random comparison |
