@@ -19,12 +19,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from analysis_output import run_analysis
+from output_paths import latest_result_dir
 from provenance import describe, load_results
 from sklearn.isotonic import IsotonicRegression
 
-ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENT = "calibration_experiment"
-DEFAULT_RESULT_DIR = ROOT / "results" / EXPERIMENT / "random"
 
 TEST_SEED_FRACTION = 0.3
 SPLIT_SEED = 0
@@ -255,11 +254,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--results-dir",
         type=Path,
-        default=DEFAULT_RESULT_DIR,
+        default=None,
         help="a stamped result set (directory with manifest.json)",
     )
     args = parser.parse_args()
+    result_dir = args.results_dir or latest_result_dir(EXPERIMENT)
     run_analysis(
-        lambda: main(args.results_dir),
-        args.results_dir / "summary_calibrate_confidence.txt",
+        lambda: main(result_dir),
+        result_dir / "summary_calibrate_confidence.txt",
     )

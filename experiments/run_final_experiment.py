@@ -12,10 +12,9 @@ Which m trees are released is part of the protocol. The runner samples one
 random ordering without replacement and releases its first m trees, nested
 across m. Sequential TreeFARMS enumeration is not used.
 
-Results go to results/final_experiment/random/, one CSV per seed
-next to a manifest.json recording the protocol (see provenance.py), so
-rerunning the same command resumes an interrupted run and results from
-different settings never end up in the same directory.
+Results go to results/{timestamp}/final_experiment/, one CSV per seed next to
+a manifest.json recording the protocol (see provenance.py). Pass the same
+--out-dir to resume a previous run.
 
 Seeds are independent of each other, so they're farmed out across a
 process pool (one seed's full pipeline -- Rashomon-set build + every m +
@@ -35,6 +34,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from output_paths import experiment_result_dir
 from provenance import available_cpu_count, run_seeds, stamp
 
 from attack.baselines import marginal_baseline, uniform_random_guess
@@ -202,11 +202,11 @@ def main(argv: list[str] | None = None) -> None:
         "--out-dir",
         type=Path,
         default=None,
-        help=f"defaults to results/{EXPERIMENT}/random",
+        help="defaults to a new results/{timestamp}/final_experiment directory",
     )
     args = parser.parse_args(argv)
 
-    result_dir = args.out_dir or ROOT / "results" / EXPERIMENT / "random"
+    result_dir = args.out_dir or experiment_result_dir(EXPERIMENT)
     stamp(result_dir, EXPERIMENT, protocol(), data="seed*.csv", argv=argv)
     t_start = time.time()
     run_seeds(

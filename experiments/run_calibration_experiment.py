@@ -14,8 +14,8 @@ run_record_confidence.py for that).
 
 Tree selection is random without replacement, using the same seeded nested
 prefix as the main experiment. Results go to
-results/calibration_experiment/random/, one CSV per seed next to a
-manifest.json (see provenance.py), so reruns resume and settings never mix.
+results/{timestamp}/calibration_experiment/, one CSV per seed next to a
+manifest.json (see provenance.py). Pass the same --out-dir to resume a run.
 
 Usage: .venv/bin/python experiments/run_calibration_experiment.py --seed-end 35
 """
@@ -30,6 +30,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from output_paths import experiment_result_dir
 from provenance import available_cpu_count, run_seeds, stamp
 
 from attack.conditions import CONDITIONS
@@ -161,11 +162,11 @@ def main(argv: list[str] | None = None) -> None:
         "--out-dir",
         type=Path,
         default=None,
-        help=f"defaults to results/{EXPERIMENT}/random",
+        help="defaults to a new results/{timestamp}/calibration_experiment directory",
     )
     args = parser.parse_args(argv)
 
-    result_dir = args.out_dir or ROOT / "results" / EXPERIMENT / "random"
+    result_dir = args.out_dir or experiment_result_dir(EXPERIMENT)
     stamp(result_dir, EXPERIMENT, protocol(), data="seed*.csv", argv=argv)
     t_start = time.time()
     run_seeds(

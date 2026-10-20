@@ -23,33 +23,41 @@ also recorded for reproducibility.
 
 ## Results and protocol stamping
 
-Every result set is its own directory with a `manifest.json` (see
-`experiments/provenance.py`):
+Every `make run` creates one Stockholm-local timestamp directory, shared by the
+experiment families in that run. Results are organized by timestamp, then type:
 
 ```
-results/<experiment>/<selection>/
-  manifest.json      protocol (every setting that changes what the numbers mean)
-                     + one entry per run: git commit, uncommitted changes, command,
-                     host, package versions
-  seed000.csv ...    one file per seed (record_confidence: m010/seed000.csv ...)
-  summary_*.txt      analysis output, starting with the protocol it came from
-  *.pdf              figures
+results/<timestamp>/
+  final_experiment/
+    manifest.json, seed000.csv ...
+    summary_*.txt, *.pdf
+  record_confidence/
+    manifest.json, m010/seed000.csv ...
+    summary_*.txt, *.pdf
+  calibration_experiment/
+    manifest.json, seed000.csv ...
+    summary_*.txt, *.pdf
 ```
 
+- Timestamps use Stockholm local time in `YYYYMMDD_HHMMSS` format. Direct runner
+  calls create their own timestamp; `make run` shares one across its full pipeline.
+- A manifest records the protocol and each run's Git state, command, host and package versions.
 - A runner refuses to write into a directory whose protocol differs from its own,
   or that holds unstamped files. Changing a setting means a new directory
   (`--out-dir`).
-- Runs are resumable: rerunning the same command skips finished seeds. Seed
-  ranges (`--seed-start/--seed-end`) can be split across machines or cluster
-  array jobs and land in the same directory.
+- Each default invocation creates a new timestamp, preserving earlier results.
+  To resume or split seed ranges across machines, pass the same `--out-dir`.
 - Analyses only read data through the manifest and refuse to compare result
   sets whose protocols differ beyond what is being compared.
+- Analyses default to the latest timestamp for their experiment and save summaries
+  and figures beside its CSVs. Their tables also print to the terminal.
+- Before a new run exists, that latest folder can be an archived legacy run; check
+  its manifest and protocol summary before interpreting the output.
 - Stamped result sets are committed; scratch runs go in `results/dev/` (ignored).
 
-`results/legacy/` holds results produced before stamping (sequential tree
-selection, per-row labels given). Their manifests describe how they were
-produced; they are superseded once the experiments are rerun with random
-selection.
+Archived legacy results are kept in the same layout under their archive timestamp.
+Their manifests preserve the original protocol, including sequential tree
+selection and per-row labels where applicable.
 
 ## Running
 
@@ -72,14 +80,14 @@ uv sync                                                           # or: pip inst
 .venv/bin/python -m pytest -q
 
 .venv/bin/python experiments/run_record_confidence.py --m 10 50 100 --seed-end 20
-.venv/bin/python experiments/analyze_record_confidence.py         # compares all result sets found
+.venv/bin/python experiments/analyze_record_confidence.py         # analyzes latest set
 
 .venv/bin/python experiments/run_final_experiment.py --seed-end 350
 .venv/bin/python experiments/analyze_results.py                   # --results-dir picks another set
 .venv/bin/python experiments/analyze_mechanism.py
 
-# Re-analyse the legacy results
-.venv/bin/python experiments/analyze_results.py --results-dir results/legacy/final_experiment
+# Re-analyse archived results
+.venv/bin/python experiments/analyze_results.py --results-dir results/<archive-timestamp>/final_experiment
 ```
 
 Parallelism: `--workers` sets how many seeds run at once; for the record-confidence

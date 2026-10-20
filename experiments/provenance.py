@@ -1,6 +1,6 @@
 """Stamp every result set with the protocol that produced it.
 
-Each result set lives in its own directory, next to a manifest.json:
+Each timestamped experiment directory contains a manifest.json:
 
   experiment  which experiment wrote it
   protocol    every setting that changes what the numbers mean: tree

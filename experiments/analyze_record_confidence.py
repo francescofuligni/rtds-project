@@ -19,13 +19,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from analysis_output import run_analysis
+from output_paths import latest_result_dir
 from provenance import describe, load_results, require_comparable
 from scipy.stats import wilcoxon
 from sklearn.metrics import roc_auc_score
 
-ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENT = "record_confidence"
-EXPERIMENT_DIR = ROOT / "results" / EXPERIMENT
 N_BINS = 10
 MIN_BIN_ROWS = 20  # bins with fewer rows are too noisy to plot
 
@@ -243,15 +242,10 @@ if __name__ == "__main__":
         type=Path,
         nargs="+",
         default=None,
-        help="stamped random-selection result sets (default: "
-        "results/record_confidence/random)",
+        help="timestamped result sets (default: latest record_confidence run)",
     )
     args = parser.parse_args()
-    dirs = args.results_dirs or [EXPERIMENT_DIR / "random"]
-    if not dirs:
-        raise SystemExit(
-            f"no stamped result sets under {EXPERIMENT_DIR}; run run_record_confidence.py first"
-        )
+    dirs = args.results_dirs or [latest_result_dir(EXPERIMENT)]
     # One result set: outputs go next to it. Several: into their common parent.
     out = (
         dirs[0]

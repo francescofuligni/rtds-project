@@ -1,7 +1,7 @@
 {
   "data": "calibration_experiment.csv",
   "experiment": "calibration_experiment",
-  "notes": "Produced 2026-10-12 before protocol stamping: seeds 0-19, then seeds 20-34 in a second batch, merged by hand. Agreement is aligned to the true table, so it is an evaluator-side diagnostic, not a confidence an attacker could compute. tree_selection=first (near-copy trees). Superseded by results/calibration_experiment/random once rerun.",
+  "notes": "Produced 2026-10-12 before protocol stamping: seeds 0-19, then 20-34 in a second batch, merged by hand. Agreement is aligned to the true table and is an evaluator-side diagnostic; used the first m TreeFARMS indices. See protocol fields. Archived on 2026-10-20 under this timestamp. The folder timestamp is the archive date.",
   "protocol": {
     "attr_a": "marital-status",
     "attr_b": "education",

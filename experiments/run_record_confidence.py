@@ -20,10 +20,9 @@ many copies of the record (features + label). Attackers:
                        closest to a random table drawn from the public sample
   prior_only           no trees: P(at least k copies) from public frequencies
 
-Results go to results/record_confidence/random/m<m>/seed<seed>.csv
-next to a manifest.json recording the protocol (see provenance.py): an
-interrupted run resumes where it stopped, and a run with different
-settings refuses to write into the same directory.
+Results go to results/{timestamp}/record_confidence/m<m>/seed<seed>.csv
+next to a manifest.json recording the protocol (see provenance.py). Pass the
+same --out-dir to resume a previous run.
 
 Usage: .venv/bin/python experiments/run_record_confidence.py --m 10 --seed-end 20
 """
@@ -40,6 +39,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import numpy as np
+from output_paths import experiment_result_dir
 from provenance import available_cpu_count, stamp, write_rows
 
 from attack.reconstruct import extract_branches
@@ -71,7 +71,6 @@ TREE_SELECTION_SEED_OFFSET = 20_000  # keeps tree choice independent of the row 
 
 ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENT = "record_confidence"
-DEFAULT_OUT = ROOT / "results" / EXPERIMENT
 
 
 def protocol(samples: int, timeout: float) -> dict:
@@ -228,7 +227,7 @@ def run_seed(
 
 
 def _run_and_write(seed: int, m: int, args) -> str:
-    out = args.out_dir / "random" / f"m{m:03d}" / f"seed{seed:03d}.csv"
+    out = args.out_dir / f"m{m:03d}" / f"seed{seed:03d}.csv"
     if out.with_suffix(".skip").exists():
         return f"[m={m} seed {seed}] skipped earlier: Rashomon set smaller than m"
     only = set(args.only or [])
@@ -272,7 +271,7 @@ def main(argv: list[str] | None = None) -> None:
         help="CP-SAT threads per solve",
     )
     parser.add_argument("--timeout", type=float, default=30.0, help="seconds per solve")
-    parser.add_argument("--out-dir", type=Path, default=DEFAULT_OUT)
+    parser.add_argument("--out-dir", type=Path, default=None)
     parser.add_argument(
         "--only",
         nargs="+",
@@ -281,8 +280,9 @@ def main(argv: list[str] | None = None) -> None:
     )
     args = parser.parse_args(argv)
 
+    args.out_dir = args.out_dir or experiment_result_dir(EXPERIMENT)
     stamp(
-        args.out_dir / "random",
+        args.out_dir,
         EXPERIMENT,
         protocol(args.samples, args.timeout),
         data="m*/seed*.csv",

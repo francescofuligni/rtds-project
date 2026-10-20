@@ -1,7 +1,7 @@
 {
   "data": "final_experiment.csv",
   "experiment": "final_experiment",
-  "notes": "Produced 2026-10-12 before protocol stamping: seeds 0-199 (commit 82d7b26 and earlier), then seeds 200-349 in a second batch, merged by hand. tree_selection=first released the first m trees in TreeFARMS order, which are near-copies, so leakage as a function of m is understated. Superseded by results/final_experiment/random once rerun.",
+  "notes": "Produced 2026-10-12 before protocol stamping: seeds 0-199 (commit 82d7b26 and earlier), then 200-349 in a second batch, merged by hand. Used the first m TreeFARMS indices and per-row labels; see protocol fields. Archived on 2026-10-20 under this timestamp. The folder timestamp is the archive date.",
   "protocol": {
     "attr_a": "marital-status",
     "attr_b": "education",

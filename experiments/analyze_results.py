@@ -10,12 +10,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 from analysis_output import run_analysis
+from output_paths import latest_result_dir
 from provenance import describe, load_results
 from scipy.stats import wilcoxon
 
-ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENT = "final_experiment"
-DEFAULT_RESULT_DIR = ROOT / "results" / EXPERIMENT / "random"
 
 
 def holm_bonferroni(pvalues: list[float], alpha: float = 0.05) -> list[bool]:
@@ -155,10 +154,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--results-dir",
         type=Path,
-        default=DEFAULT_RESULT_DIR,
+        default=None,
         help="a stamped result set (directory with manifest.json)",
     )
     args = parser.parse_args()
-    run_analysis(
-        lambda: main(args.results_dir), args.results_dir / "summary_analyze_results.txt"
-    )
+    result_dir = args.results_dir or latest_result_dir(EXPERIMENT)
+    run_analysis(lambda: main(result_dir), result_dir / "summary_analyze_results.txt")

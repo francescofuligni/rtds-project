@@ -12,12 +12,11 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 from analysis_output import run_analysis
+from output_paths import latest_result_dir
 from provenance import describe, load_results
 from scipy.stats import pearsonr, spearmanr
 
-ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENT = "final_experiment"
-DEFAULT_RESULT_DIR = ROOT / "results" / EXPERIMENT / "random"
 
 
 def main(result_dir: Path):
@@ -86,11 +85,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--results-dir",
         type=Path,
-        default=DEFAULT_RESULT_DIR,
+        default=None,
         help="a stamped result set (directory with manifest.json)",
     )
     args = parser.parse_args()
+    result_dir = args.results_dir or latest_result_dir(EXPERIMENT)
     run_analysis(
-        lambda: main(args.results_dir),
-        args.results_dir / "summary_analyze_mechanism.txt",
+        lambda: main(result_dir),
+        result_dir / "summary_analyze_mechanism.txt",
     )
