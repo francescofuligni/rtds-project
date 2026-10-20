@@ -61,8 +61,11 @@ def per_seed_metrics(df: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for (selection, m, method, seed), g in df.groupby(["selection", "m", "method", "seed"]):
         conf, ok = g["confidence"].to_numpy(), g["correct"].to_numpy().astype(float)
-        rows.append({"selection": selection, "m": m, "method": method, "seed": seed, "accuracy": ok.mean(), "auroc": auroc(conf, ok),
-                     "brier": float(np.mean((conf - ok) ** 2)) if method not in NON_PROBABILITY_METHODS else np.nan})
+        is_prob = method not in NON_PROBABILITY_METHODS
+        rows.append({"selection": selection, "m": m, "method": method, "seed": seed, "accuracy": ok.mean(),
+                     "auroc": auroc(conf, ok), "brier": float(np.mean((conf - ok) ** 2)) if is_prob else np.nan,
+                     # per-seed calibration error: |mean stated confidence - share correct|
+                     "abs_gap": abs(conf.mean() - ok.mean()) if is_prob else np.nan})
     return pd.DataFrame(rows)
 
 
@@ -88,10 +91,12 @@ def summary_table(df: pd.DataFrame, seeds: pd.DataFrame) -> pd.DataFrame:
 
 
 def paired_tests(seeds: pd.DataFrame, a: str = "prior_guided", b: str = "prior_only") -> None:
-    print(f"\nPaired per-seed comparison, {a} minus {b} (Wilcoxon signed-rank):")
+    if not {a, b} <= set(seeds["method"]):
+        return
+    print(f"\nPaired per-seed comparison, {a} minus {b} (Wilcoxon signed-rank; abs_gap = calibration error):")
     for (selection, m), g in seeds.groupby(["selection", "m"]):
         wide = g.pivot(index="seed", columns="method")
-        for metric in ["accuracy", "auroc", "brier"]:
+        for metric in ["accuracy", "auroc", "brier", "abs_gap"]:
             diff = (wide[(metric, a)] - wide[(metric, b)]).dropna()
             p = wilcoxon(diff).pvalue if len(diff) >= 5 and diff.abs().sum() > 0 else float("nan")
             print(f"  {selection:<6} m={m:<4} {metric:<9} mean diff {diff.mean():+.4f} (n={len(diff)}, "
@@ -250,6 +255,9 @@ def main(result_dirs: list[Path], out_dir: Path) -> None:
         print(table.round(3).to_string(index=False))
 
     paired_tests(seeds)
+    # Prior-guided variants (split scoring, random tie-breaks, ...) against the plain sampler.
+    for variant in sorted(m for m in seeds["method"].unique() if m.startswith("prior_guided_")):
+        paired_tests(seeds, variant, "prior_guided")
     selective_accuracy(df, seeds)
     selection_effect(seeds)
     print(f"\nWrote {reliability_figure(df, out_dir)}")
