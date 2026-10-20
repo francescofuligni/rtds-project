@@ -93,6 +93,7 @@ def reconstruct(
     n_threads: int = 0,
     seed: int = 0,
     verbosity: bool = False,
+    target: np.ndarray | None = None,
 ) -> ReconstructionResult:
     """Solve the CP-SAT reconstruction model.
 
@@ -106,6 +107,10 @@ def reconstruct(
     known_mask / known_values: optional (N, M) arrays. Where known_mask is
         True, x_vars[k][i] is fixed to known_values[k][i] -- this is the
         attacker's background knowledge (None/A/B/A+B conditions).
+    target: optional (N, M) 0/1 array. If given, the solver returns the
+        consistent table with minimum Hamming distance to it (within the
+        timeout) instead of an arbitrary one, so cells the release leaves
+        free take the target's values rather than solver defaults.
     """
     start = time.time()
     N = len(y)
@@ -146,6 +151,14 @@ def reconstruct(
         for k in range(N):
             if examples_capts[k]:
                 model.Add(cp_model.LinearExpr.Sum(examples_capts[k]) == 1)
+
+    if target is not None:
+        mismatches = []
+        for k in range(N):
+            for i in range(M):
+                model.AddHint(x_vars[k][i], int(target[k, i]))
+                mismatches.append(1 - x_vars[k][i] if target[k, i] else x_vars[k][i])
+        model.Minimize(cp_model.LinearExpr.Sum(mismatches))
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = timeout

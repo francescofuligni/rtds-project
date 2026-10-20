@@ -52,3 +52,5 @@ data/
 /results/.RESULTS_GUIDE.md
 .notes/
 .wiki/
+results/record_confidence/
+results/record_confidence_reliability.pdf
