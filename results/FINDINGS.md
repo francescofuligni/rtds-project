@@ -48,11 +48,18 @@ on 34% at a stated 86%. The old ~30% global error on sex was largely "the
 solver says male".
 
 **2. Which trees are released matters a lot.** TreeFARMS decodes tree indices
-like an odometer, so the first m trees are near-copies. Releasing m trees at
-random instead (development runs, m=10, 20 seeds): prior-guided accuracy
-60.6% -> 69.6% (+9 points, p=0.0001, paired by seed) and its overconfidence
-halves (+4.1 -> +2.0 points). All results below use random selection;
-earlier experiments that used the first m trees understate leakage.
+like an odometer, so the first m trees are near-copies. Official runs, same
+20 seeds, paired:
+
+| m | first m trees | m random trees | difference |
+|---|---|---|---|
+| 10 | 60.8% (overconfident by 4.0 points) | 69.2% (2.3) | +8.4 points, p=0.0002 |
+| 25 | 61.7% (3.9) | 73.9% (1.6) | +12.2 points, p=0.00009 |
+
+With the first m trees, 25 trees tell the attacker barely more than 10;
+with random trees accuracy keeps rising. All results below use random
+selection; earlier experiments that used the first m trees understate
+leakage.
 
 **3. Prior-guided sampling is calibrated out of the box and beats public
 statistics.** Official run, random trees, 20 seeds:
@@ -118,6 +125,7 @@ within noise (paired p>=0.13). Plain prior-guided sampling is used.
 | directory | contents |
 |---|---|
 | `results/record_confidence/random/` | official run: random trees, all standard attackers, m = 10, 25, 50 (100 running) |
+| `results/record_confidence/first/` | official run: first m trees (TreeFARMS order), m = 10, 25; compared with the random set in `results/record_confidence/summary_analyze_record_confidence.txt` |
 | `results/record_confidence_variants/random/` | ablation of prior-guided variants, m=10 |
 | `results/legacy/` | pre-stamping results (first-m trees); superseded |
 | `results/dev/` (not committed) | development runs, incl. the first-m vs random comparison |
