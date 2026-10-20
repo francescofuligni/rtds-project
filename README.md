@@ -29,13 +29,17 @@ experiment families in that run. Results are organized by timestamp, then type:
 ```
 results/<timestamp>/
   final_experiment/
-    manifest.json, seed000.csv ...
-    summary_*.txt, *.pdf
+    manifest.json      protocol: every setting that changes what the numbers mean
+    runs/*.json        one file per run: git commit, uncommitted changes, command,
+                       host, package versions (safe for concurrent cluster array jobs)
+    seed000.csv ...    one file per seed
+    summary_*.txt      analysis output, starting with the protocol it came from
+    *.pdf              figures
   record_confidence/
-    manifest.json, m010/seed000.csv ...
+    manifest.json, runs/, m010/seed000.csv ...
     summary_*.txt, *.pdf
   calibration_experiment/
-    manifest.json, seed000.csv ...
+    manifest.json, runs/, seed000.csv ...
     summary_*.txt, *.pdf
 ```
 
@@ -58,6 +62,13 @@ results/<timestamp>/
 Archived legacy results are kept in the same layout under their archive timestamp.
 Their manifests preserve the original protocol, including sequential tree
 selection and per-row labels where applicable.
+
+The record-confidence result sets produced before timestamped directories
+(2026-10-20; random and first-m tree selection, and the prior-guided variant
+ablation) stay under `results/record_confidence/<selection>/` and
+`results/record_confidence_variants/random/`. Analyze them with
+`analyze_record_confidence.py --results-dirs <dir> [<dir> ...]`; several
+directories that differ only in tree selection are compared per selection.
 
 ## Running
 
@@ -140,6 +151,24 @@ Parallelism: `--workers` sets how many seeds run at once. Each CP-SAT solve uses
 one fixed search thread. Effective worker counts and all protocol settings are
 saved in the run manifest. Runs that reach a wall-clock timeout, or use different
 hardware/software versions, are not guaranteed to be bitwise identical.
+
+Resuming: set `RTDS_RUN_TIMESTAMP` to an existing timestamp and rerun the same
+command; finished seeds are skipped, and the runner refuses if the protocol
+differs (including `--workers`, which is part of the protocol).
+
+## Cluster runs
+
+`hpc/seed_array.sh` runs one seed per array task, all tasks writing into one
+shared timestamp directory (see the usage lines at its top; adapt the resource
+and module lines to the cluster). Before submitting: create the virtualenv with
+the cluster's Python module, run `pytest -q` in an interactive job, and download
+the Adult data once on a login node, since compute nodes often have no internet
+access:
+
+```sh
+.venv/bin/python -c "import sys; sys.path.insert(0, 'src'); from rashomon.data import load_adult_raw; load_adult_raw('data')"
+mkdir -p hpc/logs
+```
 
 ## Background-knowledge configuration
 

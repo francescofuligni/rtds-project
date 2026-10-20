@@ -136,3 +136,57 @@ def test_random_tree_selection_is_reproducible_and_nested():
     assert select_random_trees(model, 6, seed=7) == big
     with pytest.raises(ValueError):
         select_random_trees(model, 4, seed=7, pool=3)
+
+
+def test_tie_break_weights_never_trade_away_distance(toy):
+    X, y, _, branches = toy
+    rng = np.random.default_rng(3)
+    for _ in range(3):
+        target = rng.integers(0, 2, size=X.shape)
+        plain = reconstruct(
+            branches, y, [0, 1], X.shape[1], [], timeout=20, n_threads=4, target=target
+        )
+        n_cells = X.size
+        weights = 7 * n_cells + 1 + rng.integers(0, 8, size=X.shape)
+        weighted = reconstruct(
+            branches,
+            y,
+            [0, 1],
+            X.shape[1],
+            [],
+            timeout=20,
+            n_threads=4,
+            target=target,
+            target_weights=weights,
+        )
+        assert plain.status == weighted.status == "OPTIMAL"
+        assert (weighted.reconstructed != target).sum() == (
+            plain.reconstructed != target
+        ).sum()
+
+
+def test_random_tie_break_samples_stay_consistent(toy):
+    X, y, trees, branches = toy
+    rng = np.random.default_rng(1)
+    public_X, public_y = rng.integers(0, 2, size=(50, 5)), rng.integers(0, 2, size=50)
+    candidates, statuses = sampled_candidates(
+        branches,
+        y,
+        [0, 1],
+        X.shape[1],
+        [],
+        n_samples=3,
+        public_X=public_X,
+        public_y=public_y,
+        timeout=20,
+        n_threads=4,
+        random_tie_break=True,
+    )
+    assert all(s == "OPTIMAL" for s in statuses)
+    for candidate in candidates:
+        rows = np.array([r[:-1] for r, c in candidate.items() for _ in range(c)])
+        labels = np.array([r[-1] for r, c in candidate.items() for _ in range(c)])
+        for tree, original in zip(trees, branches):
+            assert sorted(
+                b[1] for b in extract_branches(tree, rows, labels, [0, 1])
+            ) == sorted(b[1] for b in original)
