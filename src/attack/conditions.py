@@ -1,10 +1,4 @@
-"""The None/A/B/A+B background-knowledge ablation.
-
-For a fixed data sample, fixed released trees, and fixed target T, build
-the known-column mask for each of the four conditions and run the same
-reconstruction attack under each -- the controlled ablation described in
-the project's meeting notes (Sec. 3).
-"""
+"""Build None/A/B/A+B knowledge and evaluate reconstructed features."""
 
 from __future__ import annotations
 
@@ -12,33 +6,56 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from attack.metrics import reconstruction_error
-from attack.reconstruct import ReconstructionResult, reconstruct
+from attack.metrics import MatchingResult, reconstruction_error
+from attack.reconstruct import PublicRelease, reconstruct
 from rashomon.data import BinarizedDataset, known_columns_for
 
 CONDITIONS = ["none", "A", "B", "A+B"]
 
 
-def _group_columns(data: BinarizedDataset, attribute: str, col_index: dict[str, int]) -> list[int]:
-    return [col_index[c] for c in known_columns_for(data, attribute)]
+def _group_columns(data: BinarizedDataset, attribute: str) -> list[int]:
+    names = data.X.columns.to_list()
+    return [names.index(c) for c in known_columns_for(data, attribute)]
 
 
-def known_mask_for_condition(data: BinarizedDataset, condition: str, attr_a: str, attr_b: str) -> np.ndarray:
-    """(N, M) boolean mask: True where the attacker is given that
-    column's true value for every row, under the given condition."""
+def known_mask_for_condition(
+    data: BinarizedDataset, condition: str, attr_a: str, attr_b: str, *, target: str
+) -> np.ndarray:
+    """Select known feature groups, excluding T and overlapping attributes."""
     if condition not in CONDITIONS:
-        raise ValueError(f"Unknown condition {condition!r}, expected one of {CONDITIONS}")
-
-    n, m = data.X.shape
-    col_index = {c: i for i, c in enumerate(data.X.columns)}
-    mask = np.zeros((n, m), dtype=bool)
-
+        raise ValueError(
+            f"Unknown condition {condition!r}, expected one of {CONDITIONS}"
+        )
+    if len({attr_a, attr_b, target}) != 3:
+        raise ValueError("A, B and T must be distinct attributes")
+    a, b, t = (set(_group_columns(data, attr)) for attr in (attr_a, attr_b, target))
+    if a & b or a & t or b & t:
+        raise ValueError("A, B and T encoding groups must be disjoint")
+    mask = np.zeros(data.X.shape, dtype=bool)
     if condition in ("A", "A+B"):
-        mask[:, _group_columns(data, attr_a, col_index)] = True
+        mask[:, sorted(a)] = True
     if condition in ("B", "A+B"):
-        mask[:, _group_columns(data, attr_b, col_index)] = True
-
+        mask[:, sorted(b)] = True
     return mask
+
+
+def condition_knowledge(
+    release: PublicRelease,
+    data: BinarizedDataset,
+    condition: str,
+    attr_a: str,
+    attr_b: str,
+    target: str,
+) -> tuple[np.ndarray, np.ndarray, list[int]]:
+    """Prepare known cells and zero all undisclosed values."""
+    if (
+        data.X.shape != (release.n_rows, release.n_features)
+        or tuple(data.X.columns) != release.feature_names
+    ):
+        raise ValueError("evaluation/knowledge schema must match the public release")
+    mask = known_mask_for_condition(data, condition, attr_a, attr_b, target=target)
+    values = np.where(mask, data.X.to_numpy(), 0)
+    return mask, values, np.flatnonzero(mask.any(axis=0)).tolist()
 
 
 @dataclass
@@ -48,11 +65,12 @@ class ConditionResult:
     duration: float
     reconstruction_error: float | None
     reconstructed: np.ndarray | None
+    matching: MatchingResult | None = None
 
 
 def run_condition(
     condition: str,
-    trees_branches,
+    release: PublicRelease,
     data: BinarizedDataset,
     attr_a: str,
     attr_b: str,
@@ -62,24 +80,28 @@ def run_condition(
     seed: int = 0,
     n_threads: int = 0,
 ) -> ConditionResult:
-    X = data.X.to_numpy()
-    y = data.y.to_numpy()
-    classes = sorted(data.y.unique().tolist())
-    col_index = {c: i for i, c in enumerate(data.X.columns)}
-    target_cols = _group_columns(data, target, col_index)
-
-    known_mask = known_mask_for_condition(data, condition, attr_a, attr_b)
-    known_values = np.where(known_mask, X, 0)
-
-    result: ReconstructionResult = reconstruct(
-        trees_branches, y, classes, n_features=X.shape[1],
-        one_hot_groups=[_group_columns(data, g, col_index) for g in data.one_hot_groups],
-        known_mask=known_mask, known_values=known_values,
-        timeout=timeout, seed=seed, n_threads=n_threads,
+    """Solve from public inputs, then evaluate against private truth."""
+    mask, values, known_cols = condition_knowledge(
+        release, data, condition, attr_a, attr_b, target
     )
-
+    result = reconstruct(
+        release,
+        known_mask=mask,
+        known_values=values,
+        timeout=timeout,
+        seed=seed,
+        n_threads=n_threads,
+    )
     if result.reconstructed is None:
         return ConditionResult(condition, result.status, result.duration, None, None)
-
-    error, _perm = reconstruction_error(X, result.reconstructed, y, target_cols)
-    return ConditionResult(condition, result.status, result.duration, error, result.reconstructed)
+    if not np.array_equal(result.reconstructed[mask], values[mask]):
+        raise RuntimeError("candidate violates supplied knowledge")
+    error, matching = reconstruction_error(
+        data.X.to_numpy(),
+        result.reconstructed,
+        _group_columns(data, target),
+        known_cols=known_cols,
+    )
+    return ConditionResult(
+        condition, result.status, result.duration, error, result.reconstructed, matching
+    )

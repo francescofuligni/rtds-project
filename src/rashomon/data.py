@@ -1,10 +1,4 @@
-"""Loading and binarization for the UCI Adult dataset.
-
-Produces an all-binary feature table so TreeFARMS can build a Rashomon
-set, and keeps track of which binarized columns came from which original
-attribute so the reconstruction attack can treat a one-hot group as a
-single known/unknown unit (sex, marital-status, education, ...).
-"""
+"""Load Adult and encode its features for TreeFARMS."""
 
 from __future__ import annotations
 
@@ -14,33 +8,46 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-ADULT_TRAIN_URL = "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data"
+ADULT_TRAIN_URL = (
+    "https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data"
+)
 
 COLUMNS = [
-    "age", "workclass", "fnlwgt", "education", "education-num",
-    "marital-status", "occupation", "relationship", "race", "sex",
-    "capital-gain", "capital-loss", "hours-per-week", "native-country",
+    "age",
+    "workclass",
+    "fnlwgt",
+    "education",
+    "education-num",
+    "marital-status",
+    "occupation",
+    "relationship",
+    "race",
+    "sex",
+    "capital-gain",
+    "capital-loss",
+    "hours-per-week",
+    "native-country",
     "income",
 ]
 
 CONTINUOUS_COLUMNS = [
-    "age", "capital-gain", "capital-loss", "hours-per-week",
+    "age",
+    "capital-gain",
+    "capital-loss",
+    "hours-per-week",
 ]
-# fnlwgt (census sampling weight) and education-num (a redundant integer
-# encoding of `education`) are dropped: they add columns without adding
-# modelling signal, and for n=100 laptop-scale Rashomon sets, feature
-# count matters a lot for tractability.
+# Drop the sampling weight and redundant education-number encoding.
 
 CATEGORICAL_COLUMNS = [
-    "workclass", "education", "marital-status", "occupation",
-    "relationship", "race",
+    "workclass",
+    "education",
+    "marital-status",
+    "occupation",
+    "relationship",
+    "race",
 ]
 
-# sex is binary in the raw data, kept as a single 0/1 column.
-# native-country is collapsed to US-vs-other before binarization: in
-# raw form it has ~41 categories (mostly near-empty), which is a large,
-# low-signal contributor to feature count relative to its predictive
-# value -- a standard simplification for this dataset.
+# Encode sex directly and native country as US versus other.
 BINARY_COLUMNS = ["sex", "native-country"]
 
 LABEL_COLUMN = "income"
@@ -50,7 +57,9 @@ LABEL_COLUMN = "income"
 class BinarizedDataset:
     X: pd.DataFrame  # all-binary feature columns
     y: pd.Series  # binary label (income >50K = 1)
-    one_hot_groups: dict[str, list[str]]  # original categorical col -> binarized columns
+    one_hot_groups: dict[
+        str, list[str]
+    ]  # original categorical col -> binarized columns
     binary_columns: dict[str, str]  # original binary col -> its single binarized column
 
 
@@ -62,9 +71,15 @@ def load_adult_raw(cache_dir: str | Path = "data") -> pd.DataFrame:
 
     if cache_path.exists():
         df = pd.read_csv(cache_path)
+        df.columns = df.columns.str.strip()
     else:
-        df = pd.read_csv(ADULT_TRAIN_URL, header=None, names=COLUMNS,
-                          skipinitialspace=True, na_values="?")
+        df = pd.read_csv(
+            ADULT_TRAIN_URL,
+            header=None,
+            names=COLUMNS,
+            skipinitialspace=True,
+            na_values="?",
+        )
         df.to_csv(cache_path, index=False)
 
     df = df.dropna().reset_index(drop=True)
@@ -73,8 +88,7 @@ def load_adult_raw(cache_dir: str | Path = "data") -> pd.DataFrame:
     return df
 
 
-# The "positive" (==1) category used for each two-valued attribute's
-# single indicator column.
+# Positive category for single-column binary indicators.
 _BINARY_POSITIVE_CATEGORY = {
     "sex": "Female",
     "native-country": None,  # handled specially: "not United-States" -> 1
@@ -82,11 +96,7 @@ _BINARY_POSITIVE_CATEGORY = {
 
 
 def binarize_adult(df: pd.DataFrame, n_quantile_bins: int = 3) -> BinarizedDataset:
-    """Binarize every feature column; continuous columns become
-    `col >= q_k` threshold indicators at quantile cut points, categorical
-    columns become one-hot indicators, and each two-valued attribute
-    (sex, native-country) becomes a single indicator column.
-    """
+    """Encode numeric thresholds, categorical groups and binary indicators."""
     columns = []
     one_hot_groups: dict[str, list[str]] = {}
     binary_columns: dict[str, str] = {}
@@ -119,44 +129,47 @@ def binarize_adult(df: pd.DataFrame, n_quantile_bins: int = 3) -> BinarizedDatas
     y = (df[LABEL_COLUMN] == ">50K").astype(int)
     y.name = LABEL_COLUMN
 
-    return BinarizedDataset(X=X, y=y, one_hot_groups=one_hot_groups, binary_columns=binary_columns)
+    return BinarizedDataset(
+        X=X, y=y, one_hot_groups=one_hot_groups, binary_columns=binary_columns
+    )
 
 
-# Collapsed categories for the curated, laptop-tractable feature set.
-# TreeFARMS's exhaustive Rashomon-set search does not scale to the full
-# ~60-column binarization on n=100 rows within a reasonable time on a
-# laptop (see commit message / project notes): at a regularization loose
-# enough to produce a non-trivial Rashomon set, trees never got deep
-# enough to split on T=sex at all among 62 competing features, making
-# every background-knowledge condition identical by construction. This
-# curated set keeps T, A, B plus a handful of the next-most-predictive
-# attributes, trading completeness for trees that actually use T.
+# Collapsed categories for the compact experiment schema.
 _MARITAL_STATUS_GROUPS = {
-    "Married-civ-spouse": "Married", "Married-AF-spouse": "Married",
+    "Married-civ-spouse": "Married",
+    "Married-AF-spouse": "Married",
     "Married-spouse-absent": "Married",
     "Never-married": "Never-married",
     "Divorced": "Divorced",
-    "Separated": "Widowed-Separated", "Widowed": "Widowed-Separated",
+    "Separated": "Widowed-Separated",
+    "Widowed": "Widowed-Separated",
 }
 _EDUCATION_GROUPS = {
-    "Preschool": "Below-HS", "1st-4th": "Below-HS", "5th-6th": "Below-HS",
-    "7th-8th": "Below-HS", "9th": "Below-HS", "10th": "Below-HS",
-    "11th": "Below-HS", "12th": "Below-HS",
+    "Preschool": "Below-HS",
+    "1st-4th": "Below-HS",
+    "5th-6th": "Below-HS",
+    "7th-8th": "Below-HS",
+    "9th": "Below-HS",
+    "10th": "Below-HS",
+    "11th": "Below-HS",
+    "12th": "Below-HS",
     "HS-grad": "HS-grad",
-    "Some-college": "Some-college", "Assoc-acdm": "Some-college", "Assoc-voc": "Some-college",
+    "Some-college": "Some-college",
+    "Assoc-acdm": "Some-college",
+    "Assoc-voc": "Some-college",
     "Bachelors": "Bachelors",
-    "Masters": "Grad+", "Doctorate": "Grad+", "Prof-school": "Grad+",
+    "Masters": "Grad+",
+    "Doctorate": "Grad+",
+    "Prof-school": "Grad+",
 }
 
 CURATED_CONTINUOUS_COLUMNS = ["age", "hours-per-week"]
 
 
-def binarize_adult_curated(df: pd.DataFrame, n_quantile_bins: int = 2) -> BinarizedDataset:
-    """A small, laptop-tractable binarization: T=sex, A=marital-status
-    (collapsed to 4 categories), B=education (collapsed to 5 categories),
-    plus age/hours-per-week thresholds and a capital-gain>0 indicator as
-    the other predictive features available for the trees to split on.
-    """
+def binarize_adult_curated(
+    df: pd.DataFrame, n_quantile_bins: int = 2
+) -> BinarizedDataset:
+    """Encode the compact Adult feature set used by the experiment."""
     columns = []
     one_hot_groups: dict[str, list[str]] = {}
     binary_columns: dict[str, str] = {}
@@ -173,7 +186,10 @@ def binarize_adult_curated(df: pd.DataFrame, n_quantile_bins: int = 2) -> Binari
     columns.append(pd.Series((df["capital-gain"] > 0).astype(int), name=cap_gain_name))
     binary_columns["capital-gain"] = cap_gain_name
 
-    for col, groups in [("marital-status", _MARITAL_STATUS_GROUPS), ("education", _EDUCATION_GROUPS)]:
+    for col, groups in [
+        ("marital-status", _MARITAL_STATUS_GROUPS),
+        ("education", _EDUCATION_GROUPS),
+    ]:
         collapsed = df[col].map(groups)
         dummies = pd.get_dummies(collapsed, prefix=col).astype(int)
         one_hot_groups[col] = list(dummies.columns)
@@ -187,11 +203,15 @@ def binarize_adult_curated(df: pd.DataFrame, n_quantile_bins: int = 2) -> Binari
     y = (df[LABEL_COLUMN] == ">50K").astype(int)
     y.name = LABEL_COLUMN
 
-    return BinarizedDataset(X=X, y=y, one_hot_groups=one_hot_groups, binary_columns=binary_columns)
+    return BinarizedDataset(
+        X=X, y=y, one_hot_groups=one_hot_groups, binary_columns=binary_columns
+    )
 
 
-def sample_rows(data: BinarizedDataset, n: int = 100, seed: int = 0) -> BinarizedDataset:
-    """Draw a fixed-seed subsample of n rows (used for the n=100 pilot/final setup)."""
+def sample_rows(
+    data: BinarizedDataset, n: int = 100, seed: int = 0
+) -> BinarizedDataset:
+    """Sample n rows with a fixed seed and reset their indices."""
     idx = data.X.sample(n=n, random_state=seed).index
     return BinarizedDataset(
         X=data.X.loc[idx].reset_index(drop=True),
@@ -202,9 +222,7 @@ def sample_rows(data: BinarizedDataset, n: int = 100, seed: int = 0) -> Binarize
 
 
 def known_columns_for(data: BinarizedDataset, attribute: str) -> list[str]:
-    """Return the binarized column name(s) backing an original attribute
-    (e.g. 'sex' -> ['sex=Female'], 'marital-status' -> its one-hot group).
-    """
+    """Return encoded columns for an original attribute."""
     if attribute in data.binary_columns:
         return [data.binary_columns[attribute]]
     if attribute in data.one_hot_groups:

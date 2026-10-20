@@ -52,3 +52,11 @@ data/
 /results/.RESULTS_GUIDE.md
 .notes/
 .wiki/
+
+# Legacy operational paths
+AGENTS.md
+HANDOFF.md
+PLAN.md
+CLAUDE.md
+wiki/
+notes/
