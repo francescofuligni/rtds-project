@@ -12,17 +12,19 @@ disjoint set of held-out seeds.
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from analysis_output import run_analysis
+from provenance import describe, load_results
 from sklearn.isotonic import IsotonicRegression
 
 ROOT = Path(__file__).resolve().parent.parent
-RESULTS_CSV = ROOT / "results" / "calibration_experiment.csv"
-RESULTS_DIR = ROOT / "results"
+EXPERIMENT = "calibration_experiment"
+DEFAULT_RESULT_DIR = ROOT / "results" / EXPERIMENT / "random"
 
 TEST_SEED_FRACTION = 0.3
 SPLIT_SEED = 0
@@ -73,9 +75,9 @@ def bootstrap_ci(test_df: pd.DataFrame, iso: IsotonicRegression, n_boot: int = N
     return {k: (float(np.percentile(v, 2.5)), float(np.percentile(v, 97.5))) for k, v in results.items()}
 
 
-def main():
-    df = pd.read_csv(RESULTS_CSV)
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+def main(result_dir: Path):
+    df, manifest = load_results(result_dir, EXPERIMENT)
+    print(describe(manifest) + "\n")
 
     seeds = sorted(df["seed"].unique())
     rng = np.random.default_rng(SPLIT_SEED)
@@ -141,7 +143,7 @@ def main():
     fig.suptitle("Isotonic-calibrated confidence vs. raw agreement, evaluated on held-out seeds", fontsize=11)
     fig.tight_layout()
 
-    out_path = RESULTS_DIR / "calibration_isotonic.pdf"
+    out_path = result_dir / "calibration_isotonic.pdf"
     fig.savefig(out_path)
     plt.close(fig)
     print(f"\nWrote {out_path}")
@@ -174,4 +176,8 @@ def main():
 
 
 if __name__ == "__main__":
-    run_analysis(main, RESULTS_DIR / "summaries" / "calibrate_confidence_summary.txt")
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULT_DIR,
+                        help="a stamped result set (directory with manifest.json)")
+    args = parser.parse_args()
+    run_analysis(lambda: main(args.results_dir), args.results_dir / "summary_calibrate_confidence.txt")

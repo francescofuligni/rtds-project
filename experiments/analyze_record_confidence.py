@@ -12,18 +12,21 @@ tree selection (first m in TreeFARMS order vs. m at random).
 
 from __future__ import annotations
 
+import argparse
+import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from analysis_output import run_analysis
+from provenance import describe, load_results, require_comparable
 from scipy.stats import wilcoxon
 from sklearn.metrics import roc_auc_score
 
 ROOT = Path(__file__).resolve().parent.parent
-RAW_DIR = ROOT / "results" / "record_confidence"
-RESULTS_DIR = ROOT / "results"
+EXPERIMENT = "record_confidence"
+EXPERIMENT_DIR = ROOT / "results" / EXPERIMENT
 N_BINS = 10
 MIN_BIN_ROWS = 20  # bins with fewer rows are too noisy to plot
 
@@ -107,7 +110,7 @@ def selection_effect(seeds: pd.DataFrame, method: str = "prior_guided") -> None:
                   f"diff {diff.mean():+.4f} (n={len(diff)}) p={p:.3g}")
 
 
-def reliability_figure(df: pd.DataFrame) -> Path:
+def reliability_figure(df: pd.DataFrame, out_dir: Path) -> Path:
     m_values = sorted(df["m"].unique())
     selections = sorted(df["selection"].unique())
     fig, axes = plt.subplots(len(selections), len(m_values), figsize=(4.2 * len(m_values), 4.0 * len(selections)),
@@ -140,19 +143,23 @@ def reliability_figure(df: pd.DataFrame) -> Path:
     handles, labels = axes[0][0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False, fontsize=8, labelcolor=INK)
     fig.tight_layout(rect=(0, 0.1 / len(selections), 1, 1))
-    out = RESULTS_DIR / "record_confidence_reliability.pdf"
+    out = out_dir / "record_confidence_reliability.pdf"
     fig.savefig(out)
     return out
 
 
-def main() -> None:
-    files = sorted(RAW_DIR.glob("*/m*/seed*.csv"))  # <selection>/m<m>/seed<seed>.csv
-    if not files:
-        raise SystemExit(f"no results under {RAW_DIR}; run run_record_confidence.py first")
-    df = pd.concat([pd.read_csv(f).assign(selection=f.parent.parent.name) for f in files], ignore_index=True)
-    skipped = sorted(p.relative_to(RAW_DIR) for p in RAW_DIR.glob("*/m*/seed*.skip"))
-    print(f"Loaded {len(files)} (selection, m, seed) files, {len(df)} output rows; skipped (Rashomon set < m): "
-          f"{[str(s) for s in skipped] or 'none'}")
+def main(result_dirs: list[Path], out_dir: Path) -> None:
+    frames, manifests = [], []
+    for result_dir in result_dirs:
+        data, manifest = load_results(result_dir, EXPERIMENT)
+        frames.append(data.assign(selection=manifest["protocol"]["tree_selection"]))
+        manifests.append(manifest)
+        skipped = sorted(str(p.relative_to(result_dir)) for p in result_dir.glob("m*/seed*.skip"))
+        print(f"{describe(manifest)}\n  directory: {result_dir}\n  {len(data)} output rows; "
+              f"skipped (Rashomon set < m): {skipped or 'none'}\n")
+    # Result sets may differ in tree selection (that is what is compared) but in nothing else.
+    require_comparable(manifests, may_differ={"tree_selection"})
+    df = pd.concat(frames, ignore_index=True)
 
     seeds = per_seed_metrics(df)
     table = summary_table(df, seeds)
@@ -163,8 +170,18 @@ def main() -> None:
 
     paired_tests(seeds)
     selection_effect(seeds)
-    print(f"\nWrote {reliability_figure(df)}")
+    print(f"\nWrote {reliability_figure(df, out_dir)}")
 
 
 if __name__ == "__main__":
-    run_analysis(main, RESULTS_DIR / "summaries" / "analyze_record_confidence_summary.txt")
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--results-dirs", type=Path, nargs="+", default=None,
+                        help="stamped result sets to compare (default: every one under "
+                             "results/record_confidence/)")
+    args = parser.parse_args()
+    dirs = args.results_dirs or sorted(p.parent for p in EXPERIMENT_DIR.glob("*/manifest.json"))
+    if not dirs:
+        raise SystemExit(f"no stamped result sets under {EXPERIMENT_DIR}; run run_record_confidence.py first")
+    # One result set: outputs go next to it. Several: into their common parent.
+    out = dirs[0] if len(dirs) == 1 else Path(os.path.commonpath([d.resolve() for d in dirs]))
+    run_analysis(lambda: main(dirs, out), out / "summary_analyze_record_confidence.txt")

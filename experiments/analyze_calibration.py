@@ -7,21 +7,23 @@ higher empirical accuracy.
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 from analysis_output import run_analysis
+from provenance import describe, load_results
 from scipy.stats import spearmanr
 
 ROOT = Path(__file__).resolve().parent.parent
-RESULTS_CSV = ROOT / "results" / "calibration_experiment.csv"
-RESULTS_DIR = ROOT / "results"
+EXPERIMENT = "calibration_experiment"
+DEFAULT_RESULT_DIR = ROOT / "results" / EXPERIMENT / "random"
 
 
-def main():
-    df = pd.read_csv(RESULTS_CSV)
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+def main(result_dir: Path):
+    df, manifest = load_results(result_dir, EXPERIMENT)
+    print(describe(manifest) + "\n")
 
     m_values = sorted(df["m"].unique())
     fig, axes = plt.subplots(1, len(m_values), figsize=(5.5 * len(m_values), 4.2), sharey=True)
@@ -55,11 +57,15 @@ def main():
     axes[0].legend(fontsize=8, loc="lower right")
     fig.tight_layout()
 
-    out_path = RESULTS_DIR / "calibration_reliability.pdf"
+    out_path = result_dir / "calibration_reliability.pdf"
     fig.savefig(out_path)
     plt.close(fig)
     print(f"\nWrote {out_path}")
 
 
 if __name__ == "__main__":
-    run_analysis(main, RESULTS_DIR / "summaries" / "analyze_calibration_summary.txt")
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULT_DIR,
+                        help="a stamped result set (directory with manifest.json)")
+    args = parser.parse_args()
+    run_analysis(lambda: main(args.results_dir), args.results_dir / "summary_analyze_calibration.txt")

@@ -8,18 +8,26 @@ whether the majority-vote reconstruction is actually correct. This is
 the data a calibration curve (agreement rate vs. empirical accuracy) is
 built from in analyze_calibration.py.
 
-Usage: run from the repository root with the project venv, e.g.
-    .venv/bin/python experiments/run_calibration_experiment.py
+The agreement is aligned to the true table, so it is an evaluator-side
+diagnostic, not a confidence an attacker could compute (see
+run_record_confidence.py for that).
+
+Tree selection is part of the protocol (--selection, default random; see
+run_final_experiment.py). Results go to
+results/calibration_experiment/<selection>/, one CSV per seed next to a
+manifest.json (see provenance.py), so reruns resume and settings never mix.
+
+Usage: .venv/bin/python experiments/run_calibration_experiment.py --seed-end 35
 """
 
 from __future__ import annotations
 
-import csv
+import argparse
 import gc
 import os
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from functools import partial
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -27,11 +35,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from attack.confidence import repeated_reconstruct_with_confidence
 from attack.conditions import CONDITIONS
 from attack.reconstruct import extract_branches
-from rashomon.build import build_rashomon_set, select_trees
+from rashomon.build import build_rashomon_set, select_random_trees, select_trees
 from rashomon.data import binarize_adult_curated, load_adult_raw, sample_rows
 
+from provenance import run_seeds, stamp
+
 TARGET, ATTR_A, ATTR_B = "sex", "marital-status", "education"
-CALIBRATION_SEEDS = 20
 M_VALUES = [10, 100]
 PILOT_N = 100
 REGULARIZATION = 0.01
@@ -39,17 +48,25 @@ RASHOMON_BOUND_MULTIPLIER = 0.1
 N_REPEATS = 15  # odd, avoids ties in the binary-T majority vote; gives 8 distinct
 # agreement levels (8/15..15/15) instead of 7's 4 (4/7..7/7), for a finer isotonic fit
 SOLVE_TIMEOUT = 60.0
-N_WORKERS = min(6, os.cpu_count() or 1)  # matches the machine's 6 physical cores (12
-# threads); each worker does 2 m-values x 4 conditions x N_REPEATS solves sequentially
-# (more memory held per worker over a longer-lived process than the single-solve
-# experiments), so fewer concurrent workers trades wall-time for headroom after
-# repeated OOM-adjacent kills at N_REPEATS=7
+TREE_SELECTION_SEED_OFFSET = 20_000  # same tree choice as run_final_experiment.py for a seed
 
-RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
+ROOT = Path(__file__).resolve().parent.parent
+EXPERIMENT = "calibration_experiment"
 
 
-def run_seed(seed: int) -> list[dict]:
-    df = load_adult_raw()
+def protocol(selection: str) -> dict:
+    """Every setting that changes what this experiment's numbers mean."""
+    return {
+        "dataset": "adult_curated_13col", "target": TARGET, "attr_a": ATTR_A, "attr_b": ATTR_B,
+        "pilot_n": PILOT_N, "m_values": M_VALUES, "n_repeats": N_REPEATS,
+        "regularization": REGULARIZATION, "rashomon_bound_multiplier": RASHOMON_BOUND_MULTIPLIER,
+        "tree_selection": selection, "solve_timeout": SOLVE_TIMEOUT,
+        "conditions": CONDITIONS, "labels": "given_per_row",
+    }
+
+
+def run_seed(seed: int, selection: str = "random") -> list[dict]:
+    df = load_adult_raw(ROOT / "data")
     data_full = binarize_adult_curated(df)
     pilot = sample_rows(data_full, n=PILOT_N, seed=seed)
 
@@ -63,7 +80,8 @@ def run_seed(seed: int) -> list[dict]:
     for m in M_VALUES:
         if m > n_available:
             continue
-        trees = select_trees(model, m)
+        trees = (select_trees(model, m) if selection == "first"
+                 else select_random_trees(model, m, seed=seed + TREE_SELECTION_SEED_OFFSET))
         X = pilot.X.to_numpy()
         y = pilot.y.to_numpy()
         classes = sorted(pilot.y.unique().tolist())
@@ -91,28 +109,26 @@ def run_seed(seed: int) -> list[dict]:
     return rows_out
 
 
-def main():
-    RESULTS_DIR.mkdir(exist_ok=True)
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--selection", choices=["random", "first"], default="random",
+                        help="which m trees of the Rashomon set are released")
+    parser.add_argument("--seed-start", type=int, default=0)
+    parser.add_argument("--seed-end", type=int, default=35, help="exclusive")
+    # Each worker runs 2 m-values x 4 conditions x N_REPEATS solves and holds more
+    # memory than the single-solve experiment; half the cores kept it out of swap.
+    parser.add_argument("--workers", type=int, default=max(1, len(os.sched_getaffinity(0)) // 2),
+                        help="seeds solved in parallel (each solve uses one thread)")
+    parser.add_argument("--out-dir", type=Path, default=None,
+                        help=f"defaults to results/{EXPERIMENT}/<selection>")
+    args = parser.parse_args(argv)
+
+    result_dir = args.out_dir or ROOT / "results" / EXPERIMENT / args.selection
+    stamp(result_dir, EXPERIMENT, protocol(args.selection), data="seed*.csv", argv=argv)
     t_start = time.time()
-
-    all_rows = []
-    with ProcessPoolExecutor(max_workers=N_WORKERS) as pool:
-        futures = {pool.submit(run_seed, seed): seed for seed in range(CALIBRATION_SEEDS)}
-        for future in as_completed(futures):
-            seed = futures[future]
-            try:
-                all_rows.extend(future.result())
-            except Exception as e:
-                print(f"[seed {seed}] FAILED: {e}", flush=True)
-
-    out_path = RESULTS_DIR / "calibration_experiment.csv"
-    with open(out_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=list(all_rows[0].keys()))
-        writer.writeheader()
-        writer.writerows(all_rows)
-
-    print(f"\nWrote {len(all_rows)} rows to {out_path} in {time.time() - t_start:.1f}s "
-          f"({N_WORKERS} parallel workers, {CALIBRATION_SEEDS} seeds)")
+    run_seeds(result_dir, range(args.seed_start, args.seed_end), partial(run_seed, selection=args.selection),
+              workers=args.workers)
+    print(f"\nFinished in {time.time() - t_start:.0f}s -> {result_dir}")
 
 
 if __name__ == "__main__":

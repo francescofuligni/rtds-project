@@ -52,5 +52,6 @@ data/
 /results/.RESULTS_GUIDE.md
 .notes/
 .wiki/
-results/record_confidence/
-results/record_confidence_reliability.pdf
+# Stamped result sets under results/ are committed (data, manifest, figures,
+# summaries) so results travel between machines; scratch runs go in results/dev/.
+results/dev/

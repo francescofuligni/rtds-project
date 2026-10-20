@@ -5,16 +5,18 @@ background-knowledge condition, with baseline reference lines.
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 from analysis_output import run_analysis
+from provenance import describe, load_results
 from scipy.stats import wilcoxon
 
 ROOT = Path(__file__).resolve().parent.parent
-RESULTS_CSV = ROOT / "results" / "final_experiment.csv"
-RESULTS_DIR = ROOT / "results"
+EXPERIMENT = "final_experiment"
+DEFAULT_RESULT_DIR = ROOT / "results" / EXPERIMENT / "random"
 
 def holm_bonferroni(pvalues: list[float], alpha: float = 0.05) -> list[bool]:
     """Holm's step-down procedure. Returns, in the same order as
@@ -39,9 +41,9 @@ CONDITION_STYLE = {
 }
 
 
-def main():
-    df = pd.read_csv(RESULTS_CSV)
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+def main(result_dir: Path):
+    df, manifest = load_results(result_dir, EXPERIMENT)
+    print(describe(manifest) + "\n")
 
     agg = df.groupby(["m", "condition"])["reconstruction_error"].agg(["mean", "std", "count"]).reset_index()
     agg["sem"] = agg["std"] / agg["count"] ** 0.5
@@ -71,7 +73,7 @@ def main():
     ax.grid(alpha=0.3)
     fig.tight_layout()
 
-    out_path = RESULTS_DIR / "reconstruction_error_vs_m.pdf"
+    out_path = result_dir / "reconstruction_error_vs_m.pdf"
     fig.savefig(out_path)
     plt.close(fig)
     print(f"Wrote {out_path}")
@@ -120,4 +122,8 @@ def main():
 
 
 if __name__ == "__main__":
-    run_analysis(main, RESULTS_DIR / "summaries" / "analyze_results_summary.txt")
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULT_DIR,
+                        help="a stamped result set (directory with manifest.json)")
+    args = parser.parse_args()
+    run_analysis(lambda: main(args.results_dir), args.results_dir / "summary_analyze_results.txt")

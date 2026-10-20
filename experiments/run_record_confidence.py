@@ -20,8 +20,10 @@ many copies of the record (features + label). Attackers:
                        closest to a random table drawn from the public sample
   prior_only           no trees: P(at least k copies) from public frequencies
 
-One CSV per (selection, m, seed) so an interrupted run keeps every finished
-seed and resumes where it stopped.
+Results go to results/record_confidence/<selection>/m<m>/seed<seed>.csv
+next to a manifest.json recording the protocol (see provenance.py): an
+interrupted run resumes where it stopped, and a run with different
+settings refuses to write into the same directory.
 
 Usage: .venv/bin/python experiments/run_record_confidence.py --m 10 --seed-end 20
 """
@@ -53,16 +55,30 @@ from attack.record_confidence import (
 from rashomon.build import build_rashomon_set, select_random_trees, select_trees
 from rashomon.data import binarize_adult_curated, load_adult_raw
 
+from provenance import stamp, write_rows
+
 PILOT_N = 100
 PUBLIC_N = 2000
 REGULARIZATION = 0.01
 RASHOMON_BOUND_MULTIPLIER = 0.1
+PRIOR_ALPHA = 0.1  # add-alpha smoothing of the public record frequencies (see RecordPrior)
 PRIOR_MIN_PROBABILITY = 1e-4  # prior_only claims below this cannot reach any table
 TREE_SELECTION_SEED_OFFSET = 20_000  # keeps tree choice independent of the row sample
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_OUT = ROOT / "results" / "record_confidence"
-FIELDS = ["seed", "m", "method", "record", "k", "confidence", "correct", "true_count", "n_candidates"]
+EXPERIMENT = "record_confidence"
+DEFAULT_OUT = ROOT / "results" / EXPERIMENT
+
+
+def protocol(selection: str, samples: int, timeout: float) -> dict:
+    """Every setting that changes what this experiment's numbers mean."""
+    return {
+        "dataset": "adult_curated_13col", "pilot_n": PILOT_N, "public_n": PUBLIC_N,
+        "regularization": REGULARIZATION, "rashomon_bound_multiplier": RASHOMON_BOUND_MULTIPLIER,
+        "tree_selection": selection, "samples": samples, "solve_timeout": timeout,
+        "prior_alpha": PRIOR_ALPHA, "methods": METHODS, "background_knowledge": "none",
+        "labels": "given_per_row",
+    }
 
 
 PER_TREE_SCORES = {
@@ -97,7 +113,7 @@ def run_seed(seed: int, m: int, n_samples: int, n_threads: int, timeout: float,
     classes = sorted(np.unique(y).tolist())
     class_totals = {int(c): int((y == c).sum()) for c in classes}
     vectors = enumerate_feature_vectors(len(cols), groups)
-    prior = RecordPrior(public_X, public_y, class_totals, len(vectors))
+    prior = RecordPrior(public_X, public_y, class_totals, len(vectors), alpha=PRIOR_ALPHA)
 
     scored: dict[str, tuple[dict, int]] = {}
     if "prior_only" in methods:  # needs no trees, so also no Rashomon set
@@ -172,12 +188,7 @@ def _run_and_write(seed: int, m: int, args) -> str:
     if only:  # keep the other attackers' rows, replace only the recomputed ones
         with out.open(newline="") as f:
             rows = [r for r in csv.DictReader(f) if r["method"] not in only] + rows
-    tmp = out.with_suffix(".tmp")
-    with tmp.open("w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=FIELDS)
-        writer.writeheader()
-        writer.writerows(rows)
-    tmp.replace(out)
+    write_rows(out, rows)
     return f"[m={m} seed {seed}] done in {time.time() - t0:.0f}s"
 
 
@@ -199,6 +210,8 @@ def main(argv: list[str] | None = None) -> None:
                         help="recompute just these attackers inside existing per-seed files")
     args = parser.parse_args(argv)
 
+    stamp(args.out_dir / args.selection, EXPERIMENT, protocol(args.selection, args.samples, args.timeout),
+          data="m*/seed*.csv", argv=argv)
     jobs = [(seed, m) for m in args.m for seed in range(args.seed_start, args.seed_end)]
     t_start = time.time()
     with ProcessPoolExecutor(max_workers=args.workers) as pool:

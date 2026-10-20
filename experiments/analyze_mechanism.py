@@ -7,21 +7,23 @@ observed error reduction (None's error minus the condition's error).
 
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 from analysis_output import run_analysis
+from provenance import describe, load_results
 from scipy.stats import pearsonr, spearmanr
 
 ROOT = Path(__file__).resolve().parent.parent
-RESULTS_CSV = ROOT / "results" / "final_experiment.csv"
-RESULTS_DIR = ROOT / "results"
+EXPERIMENT = "final_experiment"
+DEFAULT_RESULT_DIR = ROOT / "results" / EXPERIMENT / "random"
 
 
-def main():
-    df = pd.read_csv(RESULTS_CSV)
-    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+def main(result_dir: Path):
+    df, manifest = load_results(result_dir, EXPERIMENT)
+    print(describe(manifest) + "\n")
 
     error = df.pivot_table(index=["seed", "m"], columns="condition", values="reconstruction_error")
     joint = df.groupby(["seed", "m"])[["joint_split_frac_A", "joint_split_frac_B"]].first()
@@ -49,11 +51,15 @@ def main():
     fig.suptitle("Does joint T+attribute splitting predict the background-knowledge benefit?", fontsize=11)
     fig.tight_layout()
 
-    out_path = RESULTS_DIR / "mechanism_joint_split_correlation.pdf"
+    out_path = result_dir / "mechanism_joint_split_correlation.pdf"
     fig.savefig(out_path)
     plt.close(fig)
     print(f"\nWrote {out_path}")
 
 
 if __name__ == "__main__":
-    run_analysis(main, RESULTS_DIR / "summaries" / "analyze_mechanism_summary.txt")
+    parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULT_DIR,
+                        help="a stamped result set (directory with manifest.json)")
+    args = parser.parse_args()
+    run_analysis(lambda: main(args.results_dir), args.results_dir / "summary_analyze_mechanism.txt")

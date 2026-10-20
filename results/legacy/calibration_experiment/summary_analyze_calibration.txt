@@ -1,3 +1,20 @@
+Result set: calibration_experiment
+  attr_a = marital-status
+  attr_b = education
+  conditions = ['none', 'A', 'B', 'A+B']
+  dataset = adult_curated_13col
+  labels = given_per_row
+  m_values = [10, 100]
+  n_repeats = 15
+  pilot_n = 100
+  rashomon_bound_multiplier = 0.1
+  regularization = 0.01
+  solve_timeout = 60.0
+  target = sex
+  tree_selection = first
+  no recorded runs (stamped after the fact)
+  notes: Produced 2026-10-12 before protocol stamping: seeds 0-19, then seeds 20-34 in a second batch, merged by hand. Agreement is aligned to the true table, so it is an evaluator-side diagnostic, not a confidence an attacker could compute. tree_selection=first (near-copy trees). Superseded by results/calibration_experiment/random once rerun.
+
 Agreement-rate reliability table (pooled across conditions/seeds):
 
 m=10:
@@ -41,4 +58,4 @@ m=100:
     1.0000            0.707028   9547
   row-level Spearman rho(agreement, correct) = 0.086 (p=1.18e-22, n=12900)
 
-Wrote /Users/francescomariafuligni/DEV/rtds-project/results/calibration_reliability.pdf
+Wrote ../results/legacy/calibration_experiment/calibration_reliability.pdf

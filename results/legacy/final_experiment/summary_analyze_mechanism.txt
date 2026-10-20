@@ -1,0 +1,21 @@
+Result set: final_experiment
+  attr_a = marital-status
+  attr_b = education
+  conditions = ['none', 'A', 'B', 'A+B']
+  dataset = adult_curated_13col
+  holdout_n = 2000
+  labels = given_per_row
+  m_values = [5, 10, 25, 50, 100]
+  pilot_n = 100
+  rashomon_bound_multiplier = 0.1
+  regularization = 0.01
+  solve_timeout = 120.0
+  target = sex
+  tree_selection = first
+  no recorded runs (stamped after the fact)
+  notes: Produced 2026-10-12 before protocol stamping: seeds 0-199 (commit 82d7b26 and earlier), then seeds 200-349 in a second batch, merged by hand. tree_selection=first released the first m trees in TreeFARMS order, which are near-copies, so leakage as a function of m is understated. Superseded by results/final_experiment/random once rerun.
+
+A: Pearson r=0.058 (p=0.0186), Spearman r=0.069 (p=0.00499), n=1668
+B: Pearson r=0.042 (p=0.0832), Spearman r=0.064 (p=0.00856), n=1668
+
+Wrote ../results/legacy/final_experiment/mechanism_joint_split_correlation.pdf
