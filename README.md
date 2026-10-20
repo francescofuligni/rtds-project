@@ -25,9 +25,9 @@ Every result set is its own directory with a `manifest.json` (see
 
 ```
 results/<experiment>/<selection>/
-  manifest.json      protocol (every setting that changes what the numbers mean)
-                     + one entry per run: git commit, uncommitted changes, command,
-                     host, package versions
+  manifest.json      protocol: every setting that changes what the numbers mean
+  runs/*.json        one file per run: git commit, uncommitted changes, command,
+                     host, package versions (safe for concurrent cluster array jobs)
   seed000.csv ...    one file per seed (record_confidence: m010/seed000.csv ...)
   summary_*.txt      analysis output, starting with the protocol it came from
   *.pdf              figures

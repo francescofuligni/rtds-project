@@ -1,4 +1,5 @@
 import json
+from multiprocessing import get_context
 
 import pytest
 
@@ -20,7 +21,9 @@ def test_stamp_creates_manifest_and_records_each_run(tmp_path):
     assert manifest["protocol"] == {"tree_selection": "random", "m_values": [10, 50]}
     assert len(manifest["runs"]) == 2
     assert manifest["runs"][0]["command"][1:] == ["--a"]
-    assert json.loads((tmp_path / MANIFEST).read_text()) == manifest
+    assert len(list((tmp_path / "runs").glob("*.json"))) == 2
+    on_disk = json.loads((tmp_path / MANIFEST).read_text())
+    assert on_disk == {"experiment": "exp", "protocol": manifest["protocol"], "data": "seed*.csv"}
 
 
 def test_stamp_refuses_a_different_protocol(tmp_path):
@@ -71,3 +74,23 @@ def test_run_seeds_writes_one_file_per_seed_and_resumes(tmp_path, capsys):
     run_seeds(tmp_path, range(3), _rows_for, workers=1)
     assert "3 of 3 seeds already done" in capsys.readouterr().out
     assert not list(tmp_path.glob("*.tmp"))
+
+
+def _stamp_same(result_dir):
+    return stamp(result_dir, "exp", {"k": 1}, data="seed*.csv")["protocol"]
+
+
+def test_concurrent_stamps_create_one_manifest_and_keep_every_run(tmp_path):
+    with get_context("fork").Pool(8) as pool:
+        protocols = pool.map(_stamp_same, [tmp_path] * 8)
+    assert protocols == [{"k": 1}] * 8
+    assert len(list((tmp_path / "runs").glob("*.json"))) == 8
+    assert not list(tmp_path.glob(".*.tmp"))
+    assert json.loads((tmp_path / MANIFEST).read_text())["protocol"] == {"k": 1}
+
+
+def test_inline_runs_of_older_manifests_are_still_read(tmp_path):
+    legacy = {"experiment": "exp", "protocol": {"k": 1}, "data": "seed*.csv", "runs": [{"git_commit": "abc"}]}
+    (tmp_path / MANIFEST).write_text(json.dumps(legacy))
+    manifest = stamp(tmp_path, "exp", {"k": 1}, data="seed*.csv")
+    assert manifest["runs"][0] == {"git_commit": "abc"} and len(manifest["runs"]) == 2

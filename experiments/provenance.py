@@ -7,8 +7,10 @@ Each result set lives in its own directory, next to a manifest.json:
               selection, Rashomon parameters, sample sizes, attacker
               knowledge, ... Result sets are comparable only if these match.
   data        glob (relative to the directory) matching the data files
-  runs        one entry per invocation: git commit, whether the code had
-              uncommitted changes, command, start time, host, package versions
+
+and a runs/ directory with one JSON file per invocation: git commit,
+whether the code had uncommitted changes, command, start time, host,
+package versions.
 
 A run refuses to write into a directory whose protocol differs from its
 own, and analyses load data only through the manifest and print the
@@ -21,10 +23,12 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import platform
 import socket
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Iterable
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
@@ -35,6 +39,7 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = "manifest.json"
+RUNS_DIR = "runs"  # one JSON file per invocation
 TRACKED_PACKAGES = ["numpy", "pandas", "scipy", "scikit-learn", "ortools", "treefarms"]
 
 
@@ -79,36 +84,55 @@ def run_info(argv: list[str] | None = None) -> dict:
     }
 
 
-def _write_manifest(path: Path, manifest: dict) -> None:
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-    tmp.replace(path)
+def _create_exclusively(path: Path, content: str) -> None:
+    """Write `path` only if it does not exist yet, atomically: concurrent
+    callers never see a partial file and exactly one of them creates it."""
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    tmp.write_text(content)
+    try:
+        os.link(tmp, path)
+    except FileExistsError:
+        pass
+    finally:
+        tmp.unlink()
 
 
 def stamp(result_dir: Path, experiment: str, protocol: dict, data: str, argv: list[str] | None = None) -> dict:
-    """Create result_dir's manifest, or add this run to it if the protocol
-    matches; raise ProtocolMismatch if it does not."""
+    """Create result_dir's manifest, or check this run's protocol against the
+    existing one (ProtocolMismatch if it differs), and record this run in its
+    own file under runs/.
+
+    Safe when several processes start at once (e.g. cluster array jobs): the
+    manifest is created exclusively and never rewritten afterwards, and every
+    run writes a separate file instead of appending to a shared one.
+    """
     result_dir = Path(result_dir)
     result_dir.mkdir(parents=True, exist_ok=True)
     path = result_dir / MANIFEST
     protocol = _normalise(protocol)
-    if path.exists():
-        manifest = json.loads(path.read_text())
-        if manifest["experiment"] != experiment or manifest["data"] != data:
-            raise ProtocolMismatch(f"{result_dir} holds {manifest['experiment']} results, not {experiment}")
-        if manifest["protocol"] != protocol:
-            raise ProtocolMismatch(
-                f"{result_dir} already holds results under a different protocol "
-                f"({_diff(manifest['protocol'], protocol)}); write to a new directory instead"
-            )
-        manifest["runs"].append(run_info(argv))
-    elif any(result_dir.iterdir()):
-        # Resuming would treat these files as finished seeds of this protocol.
-        raise ProtocolMismatch(f"{result_dir} already contains unstamped files; move them away first")
-    else:
-        manifest = {"experiment": experiment, "protocol": protocol, "data": data, "runs": [run_info(argv)]}
-    _write_manifest(path, manifest)
-    return manifest
+    if not path.exists():
+        # A concurrent process may create the manifest (or its temp file) meanwhile; that is not unstamped data.
+        others = [p for p in result_dir.iterdir()
+                  if p.name not in (MANIFEST, RUNS_DIR) and not p.name.startswith(f".{MANIFEST}.")]
+        if others:
+            # Resuming would treat these files as finished seeds of this protocol.
+            raise ProtocolMismatch(f"{result_dir} already contains unstamped files; move them away first")
+        content = {"experiment": experiment, "protocol": protocol, "data": data}
+        _create_exclusively(path, json.dumps(content, indent=2, sort_keys=True) + "\n")
+    manifest = json.loads(path.read_text())
+    if manifest["experiment"] != experiment or manifest["data"] != data:
+        raise ProtocolMismatch(f"{result_dir} holds {manifest['experiment']} results, not {experiment}")
+    if manifest["protocol"] != protocol:
+        raise ProtocolMismatch(
+            f"{result_dir} already holds results under a different protocol "
+            f"({_diff(manifest['protocol'], protocol)}); write to a new directory instead"
+        )
+    run = run_info(argv)
+    runs_dir = result_dir / RUNS_DIR
+    runs_dir.mkdir(exist_ok=True)
+    name = f"{time.time_ns()}-{run['host']}-{os.getpid()}.json"  # sorts by start time, unique per process
+    (runs_dir / name).write_text(json.dumps(run, indent=2, sort_keys=True) + "\n")
+    return read_manifest(result_dir, experiment)
 
 
 def read_manifest(result_dir: Path, experiment: str) -> dict:
@@ -118,6 +142,9 @@ def read_manifest(result_dir: Path, experiment: str) -> dict:
     manifest = json.loads(path.read_text())
     if manifest["experiment"] != experiment:
         raise ProtocolMismatch(f"{result_dir} holds {manifest['experiment']} results, not {experiment}")
+    # Runs live in runs/*.json; older manifests list them inline.
+    run_files = sorted((Path(result_dir) / RUNS_DIR).glob("*.json"))
+    manifest["runs"] = manifest.get("runs", []) + [json.loads(f.read_text()) for f in run_files]
     return manifest
 
 
