@@ -110,7 +110,7 @@ Record-confidence settings: `RECORD_M` (default 10), `RECORD_SAMPLES` (20),
 `RECORD_TIMEOUT` (30s),
 `RECORD_WORKERS` (2), `RECORD_N_SEEDS` (20), `RECORD_SEED_START` (0), and
 `RECORD_ONLY` (optional method subset). Its private sample remains n=100.
-CP-SAT uses one fixed search thread; solver thread count is not configurable.
+`THREADS` sets CP-SAT search workers per solve for every family (default 4).
 Calibration settings: `CALIBRATION_N` (100), `CALIBRATION_K` (2) or
 `CALIBRATION_K_STEPS` (linear increment; mutually exclusive),
 `CALIBRATION_M_MAX` (500), `CALIBRATION_ATTR_A/B` (marital-status/education),
@@ -147,10 +147,18 @@ uv sync --locked --python 3.12
 .venv/bin/python experiments/analyze_results.py --results-dir results/<archive-timestamp>/final_experiment
 ```
 
-Parallelism: `--workers` sets how many seeds run at once. Each CP-SAT solve uses
-one fixed search thread. Effective worker counts and all protocol settings are
-saved in the run manifest. Runs that reach a wall-clock timeout, or use different
-hardware/software versions, are not guaranteed to be bitwise identical.
+Parallelism: `--workers` sets how many seeds run at once and `--threads` how many
+CP-SAT search workers each solve uses (default 4; `--workers` defaults to the
+available CPUs divided by `--threads`). Both are saved in the run manifest.
+Several search workers are needed, not just faster: they run different
+strategies in parallel, and one worker alone stalls on larger releases. At
+n=100 with 50 random trees, one worker found no table in 180 s (condition
+None) while three found the optimum in 16 s; for prior-guided sampling one
+worker found no table within 30 s at m=50 and never proved the optimum at
+m=10. Runs that reach a wall-clock timeout, use several search workers, or use
+different hardware/software versions are not guaranteed to be bitwise
+identical; with several workers, which of several equally good tables is
+returned can vary between runs.
 
 Resuming: set `RTDS_RUN_TIMESTAMP` to an existing timestamp and rerun the same
 command; finished seeds are skipped, and the runner refuses if the protocol

@@ -31,6 +31,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from configuration import (
     ExperimentConfig,
     add_configuration_arguments,
+    DEFAULT_SOLVER_THREADS,
+    add_threads_argument,
     configuration_from_args,
 )
 from output_paths import experiment_result_dir
@@ -65,6 +67,7 @@ def protocol(
     config: ExperimentConfig | None = None,
     timeout: float = SOLVE_TIMEOUT,
     workers: int | None = None,
+    threads: int = DEFAULT_SOLVER_THREADS,
 ) -> dict:
     """Every setting that changes what this experiment's numbers mean."""
     config = config or ExperimentConfig(
@@ -83,6 +86,7 @@ def protocol(
         "rashomon_bound_multiplier": RASHOMON_BOUND_MULTIPLIER,
         "tree_selection": "random",
         "solve_timeout": timeout,
+        "solver_threads": threads,
         "seed_workers": workers,
         "tree_selection_seed_offset": TREE_SELECTION_SEED_OFFSET,
         "tree_selection_pool": (
@@ -99,6 +103,7 @@ def run_seed(
     *,
     config: ExperimentConfig | None = None,
     timeout: float = SOLVE_TIMEOUT,
+    threads: int = DEFAULT_SOLVER_THREADS,
 ) -> list[dict]:
     config = config or ExperimentConfig(
         n=PILOT_N,
@@ -150,7 +155,7 @@ def run_seed(
                 n_repeats=N_REPEATS,
                 timeout=timeout,
                 base_seed=seed * 1000,
-                n_threads=1,
+                n_threads=threads,
             )
             n_solved = sum(1 for s in statuses if s in ("OPTIMAL", "FEASIBLE"))
             for r in rows:
@@ -182,14 +187,15 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--seed-start", type=int, default=0, help="first seed index")
     parser.add_argument("--n-seeds", type=int, default=35, help="number of seeds")
-    # Workers retain solver state across the configured grid, conditions, and repeats.
-    # Limiting the default to half the available CPUs reduces memory pressure.
+    # Workers retain solver state across the configured grid, conditions, and repeats;
+    # the default (CPUs // threads) also bounds memory pressure.
     parser.add_argument(
         "--workers",
         type=int,
-        default=max(1, available_cpu_count() // 2),
-        help="seeds solved in parallel (each solve uses one thread)",
+        default=None,
+        help="seeds solved in parallel (default: available CPUs // threads)",
     )
+    add_threads_argument(parser)
     parser.add_argument(
         "--timeout", type=float, default=SOLVE_TIMEOUT, help="seconds per solve"
     )
@@ -202,6 +208,10 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
+    if args.threads < 1:
+        parser.error("--threads must be positive")
+    if args.workers is None:
+        args.workers = max(1, available_cpu_count() // args.threads)
     if args.workers < 1:
         parser.error("--workers must be positive")
     try:
@@ -213,7 +223,7 @@ def main(argv: list[str] | None = None) -> None:
     stamp(
         result_dir,
         EXPERIMENT,
-        protocol(config, args.timeout, args.workers),
+        protocol(config, args.timeout, args.workers, args.threads),
         data="seed*.csv",
         argv=argv,
         invocation={
@@ -227,7 +237,7 @@ def main(argv: list[str] | None = None) -> None:
     run_seeds(
         result_dir,
         seeds,
-        partial(run_seed, config=config, timeout=args.timeout),
+        partial(run_seed, config=config, timeout=args.timeout, threads=args.threads),
         workers=args.workers,
     )
     print(f"\nFinished in {time.time() - t_start:.0f}s -> {result_dir}")

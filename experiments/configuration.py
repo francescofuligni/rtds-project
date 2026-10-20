@@ -9,6 +9,21 @@ import numpy as np
 
 from rashomon.build import DEFAULT_RANDOM_TREE_POOL
 
+# CP-SAT search workers per solve. Several workers run different strategies in
+# parallel (a portfolio), which is what finds a table on larger releases: at
+# n=100 with 50 random trees one worker found no table in 180 s, three found
+# the optimum in 16 s. Recorded in every protocol as solver_threads.
+DEFAULT_SOLVER_THREADS = 4
+
+
+def add_threads_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=DEFAULT_SOLVER_THREADS,
+        help=f"CP-SAT search workers per solve (default {DEFAULT_SOLVER_THREADS})",
+    )
+
 
 @dataclass(frozen=True)
 class ExperimentConfig:

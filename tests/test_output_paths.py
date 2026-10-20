@@ -166,12 +166,14 @@ def test_record_method_subset_writes_a_fresh_run(tmp_path, monkeypatch):
 
     captured = {}
 
-    def run_seed(seed, m, samples, timeout, methods):
+    def run_seed(seed, m, samples, timeout, methods, threads):
         captured["methods"] = methods
         return [{"seed": seed, "m": m, "method": "prior_only"}]
 
     monkeypatch.setattr(runner, "run_seed", run_seed)
-    args = SimpleNamespace(out_dir=tmp_path, only=["prior_only"], samples=2, timeout=1)
+    args = SimpleNamespace(
+        out_dir=tmp_path, only=["prior_only"], samples=2, timeout=1, threads=1
+    )
     runner._run_and_write(0, 10, args)
     assert captured["methods"] == {"prior_only"}
     assert (tmp_path / "m010" / "seed000.csv").is_file()

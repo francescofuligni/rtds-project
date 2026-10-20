@@ -39,6 +39,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import numpy as np
+from configuration import DEFAULT_SOLVER_THREADS, add_threads_argument
 from output_paths import experiment_result_dir
 from provenance import seed_indices, stamp, write_rows
 
@@ -67,7 +68,6 @@ PRIOR_ALPHA = (
     0.1  # add-alpha smoothing of the public record frequencies (see RecordPrior)
 )
 PRIOR_MIN_PROBABILITY = 1e-4  # prior_only claims below this cannot reach any table
-SOLVER_THREADS = 1  # fixed to keep seeded CP-SAT search deterministic
 TREE_SELECTION_SEED_OFFSET = 20_000  # keeps tree choice independent of the row sample
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -80,6 +80,7 @@ def protocol(
     methods: list[str] | None = None,
     m_values: list[int] | None = None,
     workers: int = 2,
+    threads: int = DEFAULT_SOLVER_THREADS,
 ) -> dict:
     """Every setting that changes what this experiment's numbers mean."""
     return {
@@ -92,8 +93,9 @@ def protocol(
         "samples": samples,
         "m_values": sorted(m_values or [10]),
         "solve_timeout": timeout,
-        # CP-SAT search stays single-threaded for repeatable seeded search.
-        "solver_threads": SOLVER_THREADS,
+        # One search worker finds no prior-guided table within the timeout at
+        # m=50 (and no optimum at m=10); see configuration.DEFAULT_SOLVER_THREADS.
+        "solver_threads": threads,
         "seed_workers": workers,
         "tree_selection_seed_offset": TREE_SELECTION_SEED_OFFSET,
         "tree_selection_pool": DEFAULT_RANDOM_TREE_POOL,
@@ -147,6 +149,7 @@ def run_seed(
     n_samples: int,
     timeout: float,
     methods: set[str] = frozenset(METHODS),
+    threads: int = DEFAULT_SOLVER_THREADS,
 ) -> list[dict] | None:
     data_full = binarize_adult_curated(load_adult_raw(ROOT / "data"))
     cols = list(data_full.X.columns)
@@ -197,7 +200,7 @@ def run_seed(
         solve = {
             "timeout": timeout,
             "seed": seed,
-            "n_threads": SOLVER_THREADS,
+            "n_threads": threads,
         }
 
         if methods & PER_TREE_SCORES.keys():
@@ -283,7 +286,12 @@ def _run_and_write(seed: int, m: int, args) -> str:
         return f"[m={m} seed {seed}] already done"
     t0 = time.time()
     rows = run_seed(
-        seed, m, args.samples, args.timeout, methods=only or set(args.methods)
+        seed,
+        m,
+        args.samples,
+        args.timeout,
+        methods=only or set(args.methods),
+        threads=args.threads,
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     if rows is None:
@@ -310,6 +318,7 @@ def main(argv: list[str] | None = None) -> None:
         "--workers", type=int, default=2, help="seeds solved in parallel"
     )
     parser.add_argument("--timeout", type=float, default=30.0, help="seconds per solve")
+    add_threads_argument(parser)
     parser.add_argument(
         "--methods",
         nargs="+",
@@ -336,6 +345,8 @@ def main(argv: list[str] | None = None) -> None:
         parser.error("--workers must be positive")
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
+    if args.threads < 1:
+        parser.error("--threads must be positive")
     if args.only and not set(args.only) <= set(args.methods):
         parser.error("--only must name attackers that are part of --methods")
 
@@ -343,7 +354,14 @@ def main(argv: list[str] | None = None) -> None:
     stamp(
         args.out_dir,
         EXPERIMENT,
-        protocol(args.samples, args.timeout, args.methods, args.m, args.workers),
+        protocol(
+            args.samples,
+            args.timeout,
+            args.methods,
+            args.m,
+            args.workers,
+            args.threads,
+        ),
         data="m*/seed*.csv",
         argv=argv,
         invocation={

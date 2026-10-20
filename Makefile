@@ -24,7 +24,7 @@ $(error Set only one of CALIBRATION_K or CALIBRATION_K_STEPS)
 endif
 endif
 ifneq ($(origin RECORD_THREADS),undefined)
-$(error RECORD_THREADS was removed; CP-SAT solver threads are fixed at 1)
+$(error RECORD_THREADS was removed; use THREADS, which applies to every family)
 endif
 override RUN_TIMESTAMP := $(if $(RTDS_RUN_TIMESTAMP),$(RTDS_RUN_TIMESTAMP),$(shell python3 experiments/output_paths.py))
 export RTDS_RUN_TIMESTAMP := $(RUN_TIMESTAMP)
@@ -37,6 +37,9 @@ ifneq ($(origin SEED_END),undefined)
 $(error SEED_END was removed; use N_SEEDS)
 endif
 WORKERS ?=
+# CP-SAT search workers per solve (default 4, see experiments/configuration.py).
+THREADS ?=
+THREAD_ARGS = $(if $(strip $(THREADS)),--threads $(THREADS),)
 
 # Main paired experiment defaults.
 N ?= 1000
@@ -106,19 +109,19 @@ setup:
 
 # The pilot is one seed, but otherwise uses the same main protocol overrides.
 pilot:
-	$(PYTHON) experiments/run_final_experiment.py --seed-start $(PILOT_SEED) --n-seeds 1 --workers $(PILOT_WORKERS) --n $(N) $(FINAL_M_ARGS) --attr-a $(ATTR_A) --attr-b $(ATTR_B) $(FINAL_TREE_ARGS) --timeout $(TIMEOUT)
+	$(PYTHON) experiments/run_final_experiment.py $(THREAD_ARGS) --seed-start $(PILOT_SEED) --n-seeds 1 --workers $(PILOT_WORKERS) --n $(N) $(FINAL_M_ARGS) --attr-a $(ATTR_A) --attr-b $(ATTR_B) $(FINAL_TREE_ARGS) --timeout $(TIMEOUT)
 
 run-final:
-	$(PYTHON) experiments/run_final_experiment.py --seed-start $(FINAL_SEED_START) --n-seeds $(FINAL_N_SEEDS) $(if $(strip $(FINAL_WORKER_ARGS)),--workers $(FINAL_WORKER_ARGS),) --n $(N) $(FINAL_M_ARGS) --attr-a $(ATTR_A) --attr-b $(ATTR_B) $(FINAL_TREE_ARGS) --timeout $(TIMEOUT)
+	$(PYTHON) experiments/run_final_experiment.py $(THREAD_ARGS) --seed-start $(FINAL_SEED_START) --n-seeds $(FINAL_N_SEEDS) $(if $(strip $(FINAL_WORKER_ARGS)),--workers $(FINAL_WORKER_ARGS),) --n $(N) $(FINAL_M_ARGS) --attr-a $(ATTR_A) --attr-b $(ATTR_B) $(FINAL_TREE_ARGS) --timeout $(TIMEOUT)
 	$(PYTHON) experiments/analyze_results.py --results-dir $(RESULT_DIR)/final_experiment
 	$(PYTHON) experiments/analyze_mechanism.py --results-dir $(RESULT_DIR)/final_experiment
 
 run-record-confidence:
-	$(PYTHON) experiments/run_record_confidence.py --m $(RECORD_M) --seed-start $(RECORD_SEED_START) --n-seeds $(RECORD_N_SEEDS) --samples $(RECORD_SAMPLES) --workers $(RECORD_WORKERS) --timeout $(RECORD_TIMEOUT) $(if $(strip $(RECORD_ONLY)),--only $(RECORD_ONLY),)
+	$(PYTHON) experiments/run_record_confidence.py $(THREAD_ARGS) --m $(RECORD_M) --seed-start $(RECORD_SEED_START) --n-seeds $(RECORD_N_SEEDS) --samples $(RECORD_SAMPLES) --workers $(RECORD_WORKERS) --timeout $(RECORD_TIMEOUT) $(if $(strip $(RECORD_ONLY)),--only $(RECORD_ONLY),)
 	$(PYTHON) experiments/analyze_record_confidence.py --results-dirs $(RESULT_DIR)/record_confidence
 
 run-calibration:
-	$(PYTHON) experiments/run_calibration_experiment.py --seed-start $(CALIBRATION_SEED_START) --n-seeds $(CALIBRATION_N_SEEDS) $(if $(strip $(CALIBRATION_WORKERS)),--workers $(CALIBRATION_WORKERS),) --n $(CALIBRATION_N) $(CALIBRATION_M_ARGS) --attr-a $(CALIBRATION_ATTR_A) --attr-b $(CALIBRATION_ATTR_B) $(CALIBRATION_TREE_ARGS) --timeout $(CALIBRATION_TIMEOUT)
+	$(PYTHON) experiments/run_calibration_experiment.py $(THREAD_ARGS) --seed-start $(CALIBRATION_SEED_START) --n-seeds $(CALIBRATION_N_SEEDS) $(if $(strip $(CALIBRATION_WORKERS)),--workers $(CALIBRATION_WORKERS),) --n $(CALIBRATION_N) $(CALIBRATION_M_ARGS) --attr-a $(CALIBRATION_ATTR_A) --attr-b $(CALIBRATION_ATTR_B) $(CALIBRATION_TREE_ARGS) --timeout $(CALIBRATION_TIMEOUT)
 	$(PYTHON) experiments/analyze_calibration.py --results-dir $(RESULT_DIR)/calibration_experiment
 	$(PYTHON) experiments/calibrate_confidence.py --results-dir $(RESULT_DIR)/calibration_experiment
 

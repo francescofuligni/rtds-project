@@ -279,15 +279,20 @@ def test_runner_default_protocols():
     assert protocol["k"] == 2
     assert protocol["include_all_trees"] is False
     record_protocol = record.protocol(20, 30, ["prior_only"], [10], 2)
-    assert record_protocol["solver_threads"] == 1
+    assert record_protocol["solver_threads"] == 4
     assert record_protocol["methods"] == ["prior_only"]
     assert record_protocol["m_values"] == [10]
     assert record_protocol["seed_workers"] == 2
 
 
-def test_record_confidence_solver_threads_are_not_configurable():
+def test_solver_threads_are_part_of_every_protocol():
+    import run_calibration_experiment as calibration
+    import run_final_experiment as main
     import run_record_confidence as record
 
+    assert main.protocol(threads=2)["solver_threads"] == 2
+    assert calibration.protocol(threads=2)["solver_threads"] == 2
+    assert record.protocol(20, 30, threads=2)["solver_threads"] == 2
     with pytest.raises(SystemExit) as exc:
-        record.main(["--threads", "2"])
+        record.main(["--threads", "0"])
     assert exc.value.code == 2

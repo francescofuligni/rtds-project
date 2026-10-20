@@ -11,8 +11,8 @@ first m trees creates nested prefixes; sequential TreeFARMS enumeration is not
 used.
 
 Seeds run independently in a process pool. Each worker builds one Rashomon set
-and processes all release sizes and conditions. CP-SAT uses one thread per
-solve, so parallelism is across seeds.
+and processes all release sizes and conditions. Each CP-SAT solve uses
+--threads search workers (a portfolio of strategies; see configuration.py).
 
 Results are written to results/{timestamp}/final_experiment/, with one CSV per
 seed and a protocol manifest. Each invocation creates a fresh directory.
@@ -33,6 +33,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from configuration import (
     ExperimentConfig,
     add_configuration_arguments,
+    DEFAULT_SOLVER_THREADS,
+    add_threads_argument,
     configuration_from_args,
 )
 from output_paths import experiment_result_dir
@@ -69,6 +71,7 @@ def protocol(
     config: ExperimentConfig | None = None,
     timeout: float = SOLVE_TIMEOUT,
     workers: int | None = None,
+    threads: int = DEFAULT_SOLVER_THREADS,
 ) -> dict:
     """Every setting that changes what this experiment's numbers mean."""
     config = config or ExperimentConfig(n=PILOT_N, k=K)
@@ -84,6 +87,7 @@ def protocol(
         "rashomon_bound_multiplier": RASHOMON_BOUND_MULTIPLIER,
         "tree_selection": "random",
         "solve_timeout": timeout,
+        "solver_threads": threads,
         "seed_workers": workers,
         "tree_selection_seed_offset": TREE_SELECTION_SEED_OFFSET,
         "tree_selection_pool": (
@@ -119,6 +123,7 @@ def run_seed(
     *,
     config: ExperimentConfig | None = None,
     timeout: float = SOLVE_TIMEOUT,
+    threads: int = DEFAULT_SOLVER_THREADS,
 ) -> list[dict]:
     config = config or ExperimentConfig(n=PILOT_N, k=K)
     df = load_adult_raw(ROOT / "data")
@@ -191,7 +196,7 @@ def run_seed(
                 TARGET,
                 timeout=timeout,
                 seed=seed,
-                n_threads=1,
+                n_threads=threads,
             )
             duration = time.time() - t0
             rows.append(
@@ -225,9 +230,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--workers",
         type=int,
-        default=available_cpu_count(),
-        help="seeds solved in parallel (each solve uses one thread)",
+        default=None,
+        help="seeds solved in parallel (default: available CPUs // threads)",
     )
+    add_threads_argument(parser)
     parser.add_argument(
         "--timeout", type=float, default=SOLVE_TIMEOUT, help="seconds per solve"
     )
@@ -240,6 +246,10 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
+    if args.threads < 1:
+        parser.error("--threads must be positive")
+    if args.workers is None:
+        args.workers = max(1, available_cpu_count() // args.threads)
     if args.workers < 1:
         parser.error("--workers must be positive")
     try:
@@ -251,7 +261,7 @@ def main(argv: list[str] | None = None) -> None:
     stamp(
         result_dir,
         EXPERIMENT,
-        protocol(config, args.timeout, args.workers),
+        protocol(config, args.timeout, args.workers, args.threads),
         data="seed*.csv",
         argv=argv,
         invocation={
@@ -265,7 +275,7 @@ def main(argv: list[str] | None = None) -> None:
     run_seeds(
         result_dir,
         seeds,
-        partial(run_seed, config=config, timeout=args.timeout),
+        partial(run_seed, config=config, timeout=args.timeout, threads=args.threads),
         workers=args.workers,
     )
     print(f"\nFinished in {time.time() - t_start:.0f}s -> {result_dir}")
