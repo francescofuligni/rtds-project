@@ -32,3 +32,24 @@ def run_analysis(analysis: Callable[[], None], summary_path: Path) -> None:
     ):
         analysis()
     print(f"Wrote {summary_path}")
+
+
+def condition_labels(protocol: dict) -> dict[str, str]:
+    """Return compact, protocol-aware names for background-knowledge conditions."""
+    attr_a = protocol["attr_a"]
+    attr_b = protocol["attr_b"]
+    short_names = {
+        "marital-status": "marital",
+        "education": "education",
+        "age": "age",
+        "hours-per-week": "hours/week",
+        "capital-gain": "capital gain",
+    }
+    short_a = short_names.get(attr_a, attr_a)
+    short_b = short_names.get(attr_b, attr_b)
+    return {
+        "none": "No background",
+        "A": f"A: {short_a}",
+        "B": f"B: {short_b}",
+        "A+B": f"A+B: {short_a} + {short_b}",
+    }

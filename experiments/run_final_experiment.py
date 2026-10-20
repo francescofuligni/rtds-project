@@ -1,37 +1,28 @@
-"""Final experiment: the None/A/B/A+B background-knowledge ablation on
-Adult, repeated across seeds and swept over the number of released trees m.
+"""Run the paired None/A/B/A+B background-knowledge experiment on Adult.
 
-For each seed: sample a fresh n=100 pilot (disjoint from a holdout used
-only for the baselines), build one Rashomon set, and for each m in
-M_VALUES release m of its trees and run all four conditions against
-the *same* sample and *same* trees -- this is the "paired" part: within
-a repetition, condition differences are directly comparable because
-everything else is held fixed (meeting notes Sec. 3/6).
+For each seed, sample a private pilot and a disjoint holdout used only by the
+baselines, then build one Rashomon set. For every configured geometric or linear
+release size, use
+the same sample and selected trees in all four knowledge conditions. This
+pairing makes condition differences comparable within each seed and release.
 
-Which m trees are released is part of the protocol (--selection). The
-default, random, releases a random ordering's first m trees (nested
-across m). "first" reproduces the legacy runs, which released the first m
-trees in TreeFARMS order -- near-copies of each other that understate
-how much m trees leak.
+Tree selection uses one random ordering without replacement. Releasing its
+first m trees creates nested prefixes; sequential TreeFARMS enumeration is not
+used.
 
-Results go to results/final_experiment/<selection>/, one CSV per seed
-next to a manifest.json recording the protocol (see provenance.py), so
-rerunning the same command resumes an interrupted run and results from
-different settings never end up in the same directory.
+Seeds run independently in a process pool. Each worker builds one Rashomon set
+and processes all release sizes and conditions. CP-SAT uses one thread per
+solve, so parallelism is across seeds.
 
-Seeds are independent of each other, so they're farmed out across a
-process pool (one seed's full pipeline -- Rashomon-set build + every m +
-every condition -- per worker). Each worker pins its own CP-SAT solves
-to a single thread (n_threads=1): parallelism happens across seeds, not
-within a single solve, to avoid oversubscribing the machine's cores.
+Results are written to results/{timestamp}/final_experiment/, with one CSV per
+seed and a protocol manifest. Each invocation creates a fresh directory.
 
-Usage: .venv/bin/python experiments/run_final_experiment.py --seed-end 350
+Usage: .venv/bin/python experiments/run_final_experiment.py --n-seeds 350
 """
 
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 import time
 from functools import partial
@@ -39,39 +30,74 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from configuration import (
+    ExperimentConfig,
+    add_configuration_arguments,
+    configuration_from_args,
+)
+from output_paths import experiment_result_dir
+from provenance import available_cpu_count, run_seeds, seed_indices, stamp
+
 from attack.baselines import marginal_baseline, uniform_random_guess
 from attack.conditions import CONDITIONS, run_condition
 from attack.reconstruct import _walk_leaves, extract_branches
-from rashomon.build import build_rashomon_set, select_random_trees, select_trees
-from rashomon.data import binarize_adult_curated, known_columns_for, load_adult_raw, sample_rows
+from rashomon.build import (
+    build_rashomon_set,
+    select_random_trees,
+)
+from rashomon.data import (
+    binarize_adult_curated,
+    known_columns_for,
+    load_adult_raw,
+    sample_rows,
+)
 
-from provenance import run_seeds, stamp
-
-TARGET, ATTR_A, ATTR_B = "sex", "marital-status", "education"
-M_VALUES = [5, 10, 25, 50, 100]
-PILOT_N = 100
+TARGET = "sex"
+PILOT_N = 1000
+K = 40
 HOLDOUT_N = 2000
 REGULARIZATION = 0.01
 RASHOMON_BOUND_MULTIPLIER = 0.1
-SOLVE_TIMEOUT = 120.0
+SOLVE_TIMEOUT = 180.0
 TREE_SELECTION_SEED_OFFSET = 20_000  # keeps tree choice independent of the row sample
 
 ROOT = Path(__file__).resolve().parent.parent
 EXPERIMENT = "final_experiment"
 
 
-def protocol(selection: str) -> dict:
+def protocol(
+    config: ExperimentConfig | None = None,
+    timeout: float = SOLVE_TIMEOUT,
+    workers: int | None = None,
+) -> dict:
     """Every setting that changes what this experiment's numbers mean."""
+    config = config or ExperimentConfig(n=PILOT_N, k=K)
     return {
-        "dataset": "adult_curated_13col", "target": TARGET, "attr_a": ATTR_A, "attr_b": ATTR_B,
-        "pilot_n": PILOT_N, "holdout_n": HOLDOUT_N, "m_values": M_VALUES,
-        "regularization": REGULARIZATION, "rashomon_bound_multiplier": RASHOMON_BOUND_MULTIPLIER,
-        "tree_selection": selection, "solve_timeout": SOLVE_TIMEOUT,
-        "conditions": CONDITIONS, "labels": "given_per_row",
+        "dataset": "adult_curated_13col",
+        "target": TARGET,
+        "attr_a": config.attr_a,
+        "attr_b": config.attr_b,
+        "pilot_n": config.n,
+        "holdout_n": HOLDOUT_N,
+        **config.release_protocol(),
+        "regularization": REGULARIZATION,
+        "rashomon_bound_multiplier": RASHOMON_BOUND_MULTIPLIER,
+        "tree_selection": "random",
+        "solve_timeout": timeout,
+        "seed_workers": workers,
+        "tree_selection_seed_offset": TREE_SELECTION_SEED_OFFSET,
+        "tree_selection_pool": (
+            "all_available_per_seed" if config.include_all_trees else config.tree_pool
+        ),
+        "tree_selection_order": "uniform_without_replacement_nested_prefix",
+        "conditions": CONDITIONS,
+        "labels": "given_per_row",
     }
 
 
-def joint_split_fraction(trees: list[dict], target_cols: set[int], other_cols: set[int]) -> float:
+def joint_split_fraction(
+    trees: list[dict], target_cols: set[int], other_cols: set[int]
+) -> float:
     """Fraction of trees with at least one leaf whose root-to-leaf path
     splits on a target column AND an "other" column together -- the
     structural precondition for background knowledge of "other" to
@@ -88,36 +114,66 @@ def joint_split_fraction(trees: list[dict], target_cols: set[int], other_cols: s
     return n_joint / len(trees)
 
 
-def run_seed(seed: int, selection: str = "random") -> list[dict]:
+def run_seed(
+    seed: int,
+    *,
+    config: ExperimentConfig | None = None,
+    timeout: float = SOLVE_TIMEOUT,
+) -> list[dict]:
+    config = config or ExperimentConfig(n=PILOT_N, k=K)
     df = load_adult_raw(ROOT / "data")
     data_full = binarize_adult_curated(df)
 
-    pilot_idx = data_full.X.sample(n=PILOT_N, random_state=seed).index
-    pilot = sample_rows(data_full, n=PILOT_N, seed=seed)
-    holdout_df = data_full.X.drop(index=pilot_idx).sample(n=HOLDOUT_N, random_state=seed + 10_000)
+    pilot_idx = data_full.X.sample(n=config.n, random_state=seed).index
+    pilot = sample_rows(data_full, n=config.n, seed=seed)
+    holdout_df = data_full.X.drop(index=pilot_idx).sample(
+        n=HOLDOUT_N, random_state=seed + 10_000
+    )
 
     t0 = time.time()
-    model = build_rashomon_set(pilot.X, pilot.y, regularization=REGULARIZATION,
-                                rashomon_bound_multiplier=RASHOMON_BOUND_MULTIPLIER)
+    model = build_rashomon_set(
+        pilot.X,
+        pilot.y,
+        regularization=REGULARIZATION,
+        rashomon_bound_multiplier=RASHOMON_BOUND_MULTIPLIER,
+    )
     n_available = model.get_tree_count()
     build_time = time.time() - t0
 
     target_idx = [pilot.X.columns.get_loc(c) for c in known_columns_for(pilot, TARGET)]
-    a_idx = {pilot.X.columns.get_loc(c) for c in known_columns_for(pilot, ATTR_A)}
-    b_idx = {pilot.X.columns.get_loc(c) for c in known_columns_for(pilot, ATTR_B)}
+    a_idx = {
+        pilot.X.columns.get_loc(c) for c in known_columns_for(pilot, config.attr_a)
+    }
+    b_idx = {
+        pilot.X.columns.get_loc(c) for c in known_columns_for(pilot, config.attr_b)
+    }
     X = pilot.X.to_numpy()
-    uniform = uniform_random_guess(PILOT_N, target_idx, pilot.X.shape[1], seed=seed)
-    marginal = marginal_baseline(pilot, TARGET, PILOT_N, holdout_df, seed=seed)
-    uniform_error = float((uniform[:, target_idx] != X[:, target_idx]).any(axis=1).mean())
-    marginal_error = float((marginal[:, target_idx] != X[:, target_idx]).any(axis=1).mean())
+    uniform = uniform_random_guess(config.n, target_idx, pilot.X.shape[1], seed=seed)
+    marginal = marginal_baseline(pilot, TARGET, config.n, holdout_df, seed=seed)
+    uniform_error = float(
+        (uniform[:, target_idx] != X[:, target_idx]).any(axis=1).mean()
+    )
+    marginal_error = float(
+        (marginal[:, target_idx] != X[:, target_idx]).any(axis=1).mean()
+    )
 
     rows = []
-    for m in M_VALUES:
+    m_values = sorted(
+        set(config.m_values)
+        | ({n_available} if config.include_all_trees and n_available else set())
+    )
+    selection_pool = (
+        max(config.tree_pool, n_available)
+        if config.include_all_trees
+        else config.tree_pool
+    )
+    for m in m_values:
         if m > n_available:
             continue
 
-        trees = (select_trees(model, m) if selection == "first"
-                 else select_random_trees(model, m, seed=seed + TREE_SELECTION_SEED_OFFSET))
+        trees = select_random_trees(
+            model, m, seed=seed + TREE_SELECTION_SEED_OFFSET, pool=selection_pool
+        )
         y = pilot.y.to_numpy()
         classes = sorted(pilot.y.unique().tolist())
         trees_branches = [extract_branches(t, X, y, classes) for t in trees]
@@ -126,41 +182,92 @@ def run_seed(seed: int, selection: str = "random") -> list[dict]:
 
         for condition in CONDITIONS:
             t0 = time.time()
-            result = run_condition(condition, trees_branches, pilot, ATTR_A, ATTR_B, TARGET,
-                                    timeout=SOLVE_TIMEOUT, seed=seed, n_threads=1)
+            result = run_condition(
+                condition,
+                trees_branches,
+                pilot,
+                config.attr_a,
+                config.attr_b,
+                TARGET,
+                timeout=timeout,
+                seed=seed,
+                n_threads=1,
+            )
             duration = time.time() - t0
-            rows.append({
-                "seed": seed, "m": m, "n_trees_available": n_available,
-                "condition": condition, "status": result.status,
-                "duration_s": round(duration, 3),
-                "reconstruction_error": result.reconstruction_error,
-                "uniform_baseline_error": uniform_error,
-                "marginal_baseline_error": marginal_error,
-                "joint_split_frac_A": round(joint_a_frac, 4),
-                "joint_split_frac_B": round(joint_b_frac, 4),
-            })
+            rows.append(
+                {
+                    "seed": seed,
+                    "m": m,
+                    "m_is_all_trees": m == n_available,
+                    "n_trees_available": n_available,
+                    "condition": condition,
+                    "status": result.status,
+                    "duration_s": round(duration, 3),
+                    "reconstruction_error": result.reconstruction_error,
+                    "uniform_baseline_error": uniform_error,
+                    "marginal_baseline_error": marginal_error,
+                    "joint_split_frac_A": round(joint_a_frac, 4),
+                    "joint_split_frac_B": round(joint_b_frac, 4),
+                }
+            )
 
-    print(f"[seed {seed}] done: {n_available} trees (build {build_time:.1f}s), {len(rows)} rows", flush=True)
+    print(
+        f"[seed {seed}] done: {n_available} trees (build {build_time:.1f}s), {len(rows)} rows",
+        flush=True,
+    )
     return rows
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("--selection", choices=["random", "first"], default="random",
-                        help="which m trees of the Rashomon set are released")
-    parser.add_argument("--seed-start", type=int, default=0)
-    parser.add_argument("--seed-end", type=int, default=350, help="exclusive")
-    parser.add_argument("--workers", type=int, default=len(os.sched_getaffinity(0)),
-                        help="seeds solved in parallel (each solve uses one thread)")
-    parser.add_argument("--out-dir", type=Path, default=None,
-                        help=f"defaults to results/{EXPERIMENT}/<selection>")
+    parser.add_argument("--seed-start", type=int, default=0, help="first seed index")
+    parser.add_argument("--n-seeds", type=int, default=350, help="number of seeds")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=available_cpu_count(),
+        help="seeds solved in parallel (each solve uses one thread)",
+    )
+    parser.add_argument(
+        "--timeout", type=float, default=SOLVE_TIMEOUT, help="seconds per solve"
+    )
+    add_configuration_arguments(parser, default_n=PILOT_N, default_k=K)
     args = parser.parse_args(argv)
+    try:
+        config = configuration_from_args(args)
+    except ValueError as exc:
+        parser.error(str(exc))
 
-    result_dir = args.out_dir or ROOT / "results" / EXPERIMENT / args.selection
-    stamp(result_dir, EXPERIMENT, protocol(args.selection), data="seed*.csv", argv=argv)
+    if args.timeout <= 0:
+        parser.error("--timeout must be positive")
+    if args.workers < 1:
+        parser.error("--workers must be positive")
+    try:
+        seeds = seed_indices(args.seed_start, args.n_seeds)
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    result_dir = experiment_result_dir(EXPERIMENT)
+    stamp(
+        result_dir,
+        EXPERIMENT,
+        protocol(config, args.timeout, args.workers),
+        data="seed*.csv",
+        argv=argv,
+        invocation={
+            "seed_start": args.seed_start,
+            "n_seeds": args.n_seeds,
+            "seed_end_exclusive": seeds.stop,
+            "workers": args.workers,
+        },
+    )
     t_start = time.time()
-    run_seeds(result_dir, range(args.seed_start, args.seed_end), partial(run_seed, selection=args.selection),
-              workers=args.workers)
+    run_seeds(
+        result_dir,
+        seeds,
+        partial(run_seed, config=config, timeout=args.timeout),
+        workers=args.workers,
+    )
     print(f"\nFinished in {time.time() - t_start:.0f}s -> {result_dir}")
 
 
