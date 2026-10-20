@@ -1,4 +1,0 @@
-A: Pearson r=0.058 (p=0.0186), Spearman r=0.069 (p=0.00499), n=1668
-B: Pearson r=0.042 (p=0.0832), Spearman r=0.064 (p=0.00856), n=1668
-
-Wrote /Users/francescomariafuligni/DEV/rtds-project/results/mechanism_joint_split_correlation.pdf

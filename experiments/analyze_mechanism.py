@@ -80,5 +80,5 @@ if __name__ == "__main__":
     args = analysis_arguments()
     run_analysis(
         lambda: main(args.input, args.output_dir),
-        args.output_dir / "analyze_mechanism_summary.txt",
+        args.output_dir / "summaries" / "analyze_mechanism_summary.txt",
     )
