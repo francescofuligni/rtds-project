@@ -1,0 +1,183 @@
+Result set: final_experiment
+  attr_a = marital-status
+  attr_b = education
+  conditions = ['none', 'A', 'B', 'A+B']
+  dataset = adult_curated_13col
+  holdout_n = 2000
+  include_all_trees = False
+  k = 15
+  k_effective = 14
+  k_steps = None
+  labels = given_per_row
+  m_max = 200
+  m_min = 1
+  m_rounding = nearest_ties_to_even_unique
+  m_schedule = geometric
+  m_values = [1, 2, 3, 5, 7, 10, 14, 21, 30, 44, 64, 94, 137, 200]
+  pilot_n = 100
+  rashomon_bound_multiplier = 0.1
+  regularization = 0.01
+  seed_workers = 1
+  solve_timeout = 180.0
+  solver_threads = 4
+  target = sex
+  tree_selection = random
+  tree_selection_order = uniform_without_replacement_nested_prefix
+  tree_selection_pool = 1000
+  tree_selection_seed_offset = 20000
+  produced by 2 run(s) at commit(s) 3ea503a1, a5a4ffef
+  directory: results/20261020_195325/final_experiment
+
+Result set: final_experiment
+  attr_a = marital-status
+  attr_b = age
+  conditions = ['none', 'A', 'B', 'A+B']
+  dataset = adult_curated_13col
+  holdout_n = 2000
+  include_all_trees = False
+  k = 15
+  k_effective = 14
+  k_steps = None
+  labels = given_per_row
+  m_max = 200
+  m_min = 1
+  m_rounding = nearest_ties_to_even_unique
+  m_schedule = geometric
+  m_values = [1, 2, 3, 5, 7, 10, 14, 21, 30, 44, 64, 94, 137, 200]
+  pilot_n = 100
+  rashomon_bound_multiplier = 0.1
+  regularization = 0.01
+  seed_workers = 1
+  solve_timeout = 180.0
+  solver_threads = 4
+  target = sex
+  tree_selection = random
+  tree_selection_order = uniform_without_replacement_nested_prefix
+  tree_selection_pool = 1000
+  tree_selection_seed_offset = 20000
+  produced by 4 run(s) at commit(s) 3ea503a1, a5a4ffef, f0c1ba3d
+  directory: results/20261020_195325_01/final_experiment
+
+
+=== marital-status / education ===
+Share of solves that found a table (per m and condition):
+condition  No background  A: marital  B: education  A+B: marital + education
+m                                                                           
+1                   1.00         1.0           1.0                       1.0
+2                   1.00         1.0           1.0                       1.0
+3                   1.00         1.0           1.0                       1.0
+5                   1.00         1.0           1.0                       1.0
+7                   1.00         1.0           1.0                       1.0
+10                  1.00         1.0           1.0                       1.0
+14                  1.00         1.0           1.0                       1.0
+21                  1.00         1.0           1.0                       1.0
+30                  1.00         1.0           1.0                       1.0
+44                  1.00         1.0           1.0                       1.0
+64                  0.99         1.0           1.0                       1.0
+94                  0.99         1.0           1.0                       1.0
+137                 1.00         1.0           1.0                       1.0
+200                 1.00         1.0           1.0                       1.0
+
+Mean error over (seed, m) cells where all four conditions solved; gain = None error - condition error, Wilcoxon paired by seed:
+  m  cells  No background  A: marital  B: education  A+B: marital + education  gain A    p A  gain B    p B  gain A+B  p A+B
+  1    100         0.3463      0.3420        0.3391                    0.3334  0.0043 0.6993  0.0072 0.1133    0.0129 0.0023
+  2    100         0.3478      0.3396        0.3356                    0.3361  0.0082 0.1508  0.0122 0.0093    0.0117 0.0241
+  3    100         0.3452      0.3358        0.3484                    0.3336  0.0094 0.2101 -0.0032 0.6706    0.0116 0.1229
+  5    100         0.3513      0.3388        0.3369                    0.3328  0.0125 0.1192  0.0144 0.0177    0.0185 0.0304
+  7    100         0.3378      0.3297        0.3223                    0.3158  0.0081 0.3381  0.0155 0.0026    0.0220 0.0017
+ 10    100         0.3214      0.3131        0.3128                    0.3077  0.0083 0.4261  0.0086 0.1304    0.0137 0.0370
+ 14    100         0.3101      0.3068        0.3109                    0.2978  0.0033 0.4950 -0.0008 0.8621    0.0123 0.0402
+ 21    100         0.3000      0.2964        0.2991                    0.2874  0.0036 0.6193  0.0009 0.6614    0.0126 0.0166
+ 30     99         0.2804      0.2828        0.2808                    0.2703 -0.0024 0.4834 -0.0004 0.8507    0.0101 0.1490
+ 44     98         0.2734      0.2736        0.2727                    0.2657 -0.0002 0.8988  0.0007 0.9438    0.0077 0.2433
+ 64     96         0.2689      0.2591        0.2673                    0.2558  0.0098 0.1174  0.0016 0.8459    0.0130 0.0323
+ 94     95         0.2587      0.2613        0.2585                    0.2485 -0.0025 0.4786  0.0002 0.9392    0.0102 0.2204
+137     95         0.2616      0.2561        0.2458                    0.2479  0.0055 0.5510  0.0158 0.0079    0.0137 0.0419
+200     94         0.2531      0.2438        0.2495                    0.2426  0.0093 0.4638  0.0036 0.4190    0.0105 0.1098
+
+Benefit of more trees: error at m=1 minus error at m (paired by seed, cells solved in both):
+  m=2    n=100  none -0.001 (p=0.84)  A +0.002 (p=0.58)  B +0.004 (p=0.41)  A+B -0.003 (p=0.69)
+  m=3    n=100  none +0.001 (p=0.62)  A +0.006 (p=0.21)  B -0.009 (p=0.18)  A+B -0.000 (p=0.68)
+  m=5    n=100  none -0.005 (p=0.74)  A +0.003 (p=0.39)  B +0.002 (p=0.35)  A+B +0.001 (p=0.55)
+  m=7    n=100  none +0.008 (p=0.11)  A +0.012 (p=0.054)  B +0.017 (p=0.0035)  A+B +0.018 (p=0.00092)
+  m=10   n=100  none +0.025 (p=0.0022)  A +0.029 (p=0.00057)  B +0.026 (p=0.0024)  A+B +0.026 (p=6.3e-05)
+  m=14   n=100  none +0.036 (p=0.00012)  A +0.035 (p=5.8e-05)  B +0.028 (p=0.0025)  A+B +0.036 (p=2.8e-07)
+  m=21   n=100  none +0.046 (p=8.3e-06)  A +0.046 (p=5.2e-07)  B +0.040 (p=2.4e-05)  A+B +0.046 (p=4.1e-09)
+  m=30   n=99   none +0.066 (p=2.8e-08)  A +0.059 (p=7.3e-09)  B +0.058 (p=1.3e-09)  A+B +0.063 (p=7.2e-13)
+  m=44   n=98   none +0.073 (p=2.8e-09)  A +0.068 (p=7.5e-10)  B +0.066 (p=3.9e-10)  A+B +0.067 (p=4.7e-13)
+  m=64   n=96   none +0.077 (p=2.3e-09)  A +0.082 (p=4e-11)  B +0.071 (p=1.8e-10)  A+B +0.077 (p=4.8e-14)
+  m=94   n=95   none +0.089 (p=1e-10)  A +0.082 (p=3.3e-11)  B +0.082 (p=4.6e-11)  A+B +0.086 (p=1e-14)
+  m=137  n=95   none +0.085 (p=8.5e-11)  A +0.086 (p=6.1e-12)  B +0.093 (p=3.1e-13)  A+B +0.086 (p=3.6e-14)
+  m=200  n=94   none +0.094 (p=1.8e-11)  A +0.099 (p=8.8e-14)  B +0.089 (p=1.1e-12)  A+B +0.091 (p=1.1e-13)
+
+=== marital-status / age ===
+Share of solves that found a table (per m and condition):
+condition  No background  A: marital  B: age  A+B: marital + age
+m                                                               
+1                   1.00         1.0     1.0                 1.0
+2                   1.00         1.0     1.0                 1.0
+3                   1.00         1.0     1.0                 1.0
+5                   1.00         1.0     1.0                 1.0
+7                   1.00         1.0     1.0                 1.0
+10                  1.00         1.0     1.0                 1.0
+14                  1.00         1.0     1.0                 1.0
+21                  1.00         1.0     1.0                 1.0
+30                  1.00         1.0     1.0                 1.0
+44                  1.00         1.0     1.0                 1.0
+64                  1.00         1.0     1.0                 1.0
+94                  0.99         1.0     1.0                 1.0
+137                 0.99         1.0     1.0                 1.0
+200                 0.99         1.0     1.0                 1.0
+
+Mean error over (seed, m) cells where all four conditions solved; gain = None error - condition error, Wilcoxon paired by seed:
+  m  cells  No background  A: marital  B: age  A+B: marital + age  gain A    p A  gain B    p B  gain A+B  p A+B
+  1    100         0.3463      0.3420  0.3453              0.3426  0.0043 0.6993  0.0010 0.9572    0.0037 0.6442
+  2    100         0.3478      0.3396  0.3474              0.3378  0.0082 0.1508  0.0004 0.9294    0.0100 0.0995
+  3    100         0.3458      0.3358  0.3552              0.3393  0.0100 0.1614 -0.0094 0.0606    0.0065 0.3898
+  5    100         0.3501      0.3388  0.3499              0.3376  0.0113 0.1623  0.0002 0.4673    0.0125 0.2105
+  7    100         0.3375      0.3313  0.3370              0.3293  0.0062 0.5057  0.0005 0.6397    0.0082 0.2163
+ 10    100         0.3231      0.3136  0.3185              0.3144  0.0095 0.3161  0.0046 0.2766    0.0087 0.4733
+ 14    100         0.3116      0.3064  0.3127              0.3059  0.0052 0.2353 -0.0011 0.8180    0.0057 0.2658
+ 21    100         0.2992      0.2950  0.2944              0.2885  0.0042 0.5694  0.0048 0.3781    0.0107 0.1167
+ 30     99         0.2800      0.2829  0.2832              0.2802 -0.0029 0.3747 -0.0032 0.3733   -0.0002 0.8279
+ 44     98         0.2731      0.2736  0.2729              0.2664 -0.0005 0.8422  0.0002 0.9661    0.0066 0.1630
+ 64     97         0.2676      0.2578  0.2670              0.2563  0.0098 0.1153  0.0006 0.7193    0.0113 0.0667
+ 94     95         0.2621      0.2621  0.2552              0.2545  0.0000 0.9511  0.0069 0.2004    0.0076 0.3053
+137     94         0.2550      0.2573  0.2555              0.2435 -0.0023 0.6304 -0.0005 0.8438    0.0115 0.0788
+200     93         0.2573      0.2417  0.2503              0.2352  0.0156 0.0244  0.0070 0.2565    0.0222 0.0020
+
+Benefit of more trees: error at m=1 minus error at m (paired by seed, cells solved in both):
+  m=2    n=100  none -0.001 (p=0.84)  A +0.002 (p=0.58)  B -0.002 (p=0.52)  A+B +0.005 (p=0.2)
+  m=3    n=100  none +0.000 (p=0.65)  A +0.006 (p=0.21)  B -0.010 (p=0.093)  A+B +0.003 (p=0.31)
+  m=5    n=100  none -0.004 (p=0.87)  A +0.003 (p=0.39)  B -0.005 (p=1)  A+B +0.005 (p=0.4)
+  m=7    n=100  none +0.009 (p=0.098)  A +0.011 (p=0.079)  B +0.008 (p=0.11)  A+B +0.013 (p=0.028)
+  m=10   n=100  none +0.023 (p=0.0019)  A +0.028 (p=0.00085)  B +0.027 (p=0.0049)  A+B +0.028 (p=0.0011)
+  m=14   n=100  none +0.035 (p=0.00018)  A +0.036 (p=6.2e-05)  B +0.033 (p=0.00088)  A+B +0.037 (p=4.5e-05)
+  m=21   n=100  none +0.047 (p=8.2e-06)  A +0.047 (p=4.4e-07)  B +0.051 (p=8.4e-08)  A+B +0.054 (p=5.1e-08)
+  m=30   n=99   none +0.066 (p=2.3e-08)  A +0.059 (p=6.9e-09)  B +0.062 (p=2.8e-08)  A+B +0.062 (p=1.3e-09)
+  m=44   n=98   none +0.073 (p=3.5e-09)  A +0.068 (p=6e-10)  B +0.071 (p=4.1e-09)  A+B +0.075 (p=2.4e-11)
+  m=64   n=97   none +0.078 (p=9.4e-10)  A +0.084 (p=2.5e-11)  B +0.076 (p=9.6e-11)  A+B +0.085 (p=5e-12)
+  m=94   n=95   none +0.086 (p=1e-10)  A +0.081 (p=3.5e-11)  B +0.090 (p=2.5e-12)  A+B +0.088 (p=1.9e-12)
+  m=137  n=94   none +0.092 (p=1.7e-11)  A +0.085 (p=1.3e-11)  B +0.089 (p=1.1e-11)  A+B +0.098 (p=2.1e-14)
+  m=200  n=93   none +0.090 (p=5.2e-11)  A +0.101 (p=1.5e-13)  B +0.094 (p=6.4e-12)  A+B +0.106 (p=6.6e-14)
+
+=== marital-status / age minus marital-status / education (paired by seed and m) ===
+  identical knowledge, condition none: 85% of 1375 cells reproduce the same error (max |diff| 0.160)
+  identical knowledge, condition A: 95% of 1375 cells reproduce the same error (max |diff| 0.140)
+  Difference in gain over None (other - reference), per m:
+    m=1    n=100  A +0.0000 (p=nan)  B -0.0062 (p=0.36)  A+B -0.0092 (p=0.028)
+    m=2    n=100  A +0.0000 (p=nan)  B -0.0118 (p=0.018)  A+B -0.0017 (p=0.77)
+    m=3    n=100  A +0.0006 (p=0.18)  B -0.0062 (p=0.17)  A+B -0.0051 (p=0.2)
+    m=5    n=100  A -0.0012 (p=0.59)  B -0.0142 (p=0.07)  A+B -0.0060 (p=0.3)
+    m=7    n=100  A -0.0019 (p=0.35)  B -0.0150 (p=0.0023)  A+B -0.0138 (p=0.014)
+    m=10   n=100  A +0.0012 (p=0.91)  B -0.0040 (p=0.29)  A+B -0.0050 (p=0.51)
+    m=14   n=100  A +0.0019 (p=0.042)  B -0.0003 (p=0.8)  A+B -0.0066 (p=0.65)
+    m=21   n=100  A +0.0006 (p=0.24)  B +0.0039 (p=0.51)  A+B -0.0019 (p=0.79)
+    m=30   n=99   A -0.0005 (p=0.5)  B -0.0028 (p=0.55)  A+B -0.0103 (p=0.088)
+    m=44   n=98   A -0.0003 (p=0.73)  B -0.0005 (p=0.5)  A+B -0.0010 (p=0.84)
+    m=64   n=96   A -0.0003 (p=0.95)  B -0.0005 (p=0.96)  A+B -0.0020 (p=0.68)
+    m=94   n=95   A +0.0025 (p=0.28)  B +0.0067 (p=0.32)  A+B -0.0026 (p=0.59)
+    m=137  n=94   A -0.0089 (p=0.078)  B -0.0173 (p=0.025)  A+B -0.0032 (p=0.32)
+    m=200  n=93   A +0.0065 (p=0.12)  B +0.0035 (p=0.49)  A+B +0.0119 (p=0.063)
+
+Wrote results/comparisons/background_pairs_education_vs_age/background_pairs_error_vs_m.pdf

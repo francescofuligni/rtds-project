@@ -16,8 +16,8 @@ box (no fitting) -- among rows stated at 80%, about 80% should be right.
   the income label), a Rashomon set (TreeFARMS, regularisation 0.01, bound
   0.1) built on them, and `m` released trees.
 - The attacker also has a public sample of 2,000 *other* people from the same
-  population (the strong version of the public-data assumption; a weaker
-  version, published per-attribute percentages only, is untested).
+  population (the strong version of the public-data assumption; weaker
+  versions are in results 6 and 7).
 - Each attacker outputs a 100-row table (per income label, as many rows as the
   release says carry it) with a confidence per row. A row "record r, copy k"
   is correct if the private table really contains at least k copies of r
@@ -69,15 +69,23 @@ statistics.** Official run, random trees, 20 seeds:
 | 10 | 69.2% | +2.3 | 0.029 | 0.80 | 58.5% (AUROC 0.73) |
 | 25 | 73.9% | +1.6 | 0.028 | 0.82 | 58.5% |
 | 50 | 77.8% | +0.7 | 0.025 | 0.83 | 58.5% |
+| 100 | 78.9% (18 seeds) | +1.1 | 0.023 | 0.83 | 58.5% |
 
 Against public statistics: +10.7 points at m=10 (19/20 seeds better,
 p=0.0001), +15.4 at m=25 (20/20, p=0.00009), +19.3 at m=50 (20/20,
-p=0.00009); better ranking and Brier score at every m (p<0.001). Its
-overconfidence shrinks as more trees are released (+2.3, +1.6, +0.7
-points). Its per-seed calibration error (|mean confidence - accuracy|) is
-indistinguishable from the public-statistics baseline at m=10 and 25
-(p>=0.3) and smaller at m=50 (15/20 seeds, p=0.02); the baseline is itself
-near-perfectly calibrated.
+p=0.00009), +20.4 at m=100 (18/18, p=0.0002); better ranking and Brier
+score at every m (p<0.001). Its overconfidence shrinks from m=10 to m=50
+(+2.3, +1.6, +0.7 points) and stays small at m=100 (+1.1). Its per-seed
+calibration error (|mean confidence - accuracy|) is indistinguishable from
+the public-statistics baseline at m=10, 25 and 100 (p>=0.17) and smaller at
+m=50 (15/20 seeds, p=0.02); the baseline is itself near-perfectly
+calibrated. Accuracy flattens beyond m=50: on the 18 seeds solved at both,
+76.6% -> 78.9% from m=50 to m=100 (p=0.013).
+
+At m=100 prior-guided sampling produced no table for 2 of the 20 seeds
+(seeds 0 and 16: all 20 samples hit the 30 s solve timeout), so its m=100
+row covers 18 seeds. Those two were the easiest seeds at m=50 (83% and 94%
+correct), so dropping them lowers the m=100 mean rather than flattering it.
 
 **4. The leak is concentrated in records the attacker can vouch for.** Share of
 its table an attacker can keep at >= 0.9 confidence (and how many of those
@@ -88,12 +96,14 @@ rows are right):
 | 10 | 31% (95% correct) | 10% (92%) |
 | 25 | 39% (95% correct) | 10% (92%) |
 | 50 | 45% (98% correct) | 10% (92%) |
+| 100 | 47% (97% correct) | 10% (92%) |
 
 The released trees triple to quadruple the number of records an attacker
-can name with ~95% reliability (all differences p<0.0001); the table as a
+can name with ~95% reliability (all differences p<=0.0002); the table as a
 whole gains less. Rows stated at confidence 1.0 (every sample agrees)
-are 98.1% correct at m=10 (19 such rows per seed), 99.6% at m=25 (27) and
-99.7% at m=50 (34; 2 wrong out of 673).
+are 98.1% correct at m=10 (19 such rows per seed), 99.6% at m=25 (27),
+99.7% at m=50 (34; 2 wrong out of 673) and 97.5% at m=100 (38; 17 wrong
+out of 686).
 This is what a per-record confidence shows and a global error hides.
 
 **5. Attempted fixes for the small remaining overconfidence did not help**
@@ -163,7 +173,7 @@ honest when they are scarce.
 
 | directory | contents |
 |---|---|
-| `results/record_confidence/random/` | official run: random trees, all standard attackers, m = 10, 25, 50 (100 to follow) |
+| `results/record_confidence/random/` | official run: random trees, all standard attackers, m = 10, 25, 50, 100 |
 | `results/record_confidence/first/` | official run: first m trees (TreeFARMS order), m = 10, 25; compared with the random set in `results/record_confidence/summary_analyze_record_confidence.txt` |
 | `results/record_confidence_variants/random/` | ablation of prior-guided variants, m=10 |
 | `results/20261020_202208/record_confidence/` | public data: 2,000 records (reference rerun), m=10, prior-guided + public statistics, 6 solver threads |

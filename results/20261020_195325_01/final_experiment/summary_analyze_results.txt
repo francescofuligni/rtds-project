@@ -1,0 +1,112 @@
+Result set: final_experiment
+  attr_a = marital-status
+  attr_b = age
+  conditions = ['none', 'A', 'B', 'A+B']
+  dataset = adult_curated_13col
+  holdout_n = 2000
+  include_all_trees = False
+  k = 15
+  k_effective = 14
+  k_steps = None
+  labels = given_per_row
+  m_max = 200
+  m_min = 1
+  m_rounding = nearest_ties_to_even_unique
+  m_schedule = geometric
+  m_values = [1, 2, 3, 5, 7, 10, 14, 21, 30, 44, 64, 94, 137, 200]
+  pilot_n = 100
+  rashomon_bound_multiplier = 0.1
+  regularization = 0.01
+  seed_workers = 1
+  solve_timeout = 180.0
+  solver_threads = 4
+  target = sex
+  tree_selection = random
+  tree_selection_order = uniform_without_replacement_nested_prefix
+  tree_selection_pool = 1000
+  tree_selection_seed_offset = 20000
+  produced by 4 run(s) at commit(s) 3ea503a1, a5a4ffef, f0c1ba3d
+
+Wrote results/20261020_195325_01/final_experiment/reconstruction_error_vs_m.pdf
+
+Aggregate table (mean error by m, condition):
+condition  A: marital  A+B: marital + age  B: age  No background
+m                                                               
+1               0.342               0.343   0.345          0.346
+2               0.340               0.338   0.347          0.348
+3               0.336               0.339   0.355          0.346
+5               0.339               0.338   0.350          0.350
+7               0.331               0.329   0.337          0.338
+10              0.314               0.314   0.318          0.323
+14              0.306               0.306   0.313          0.312
+21              0.295               0.289   0.294          0.299
+30              0.283               0.280   0.283          0.280
+44              0.274               0.266   0.273          0.273
+64              0.258               0.256   0.267          0.268
+94              0.262               0.254   0.255          0.262
+137             0.257               0.243   0.255          0.255
+200             0.242               0.236   0.251          0.257
+
+Aggregate table (mean +/- SEM, for Table 1 in the report):
+  No background                            ['0.346+/-0.006', '0.348+/-0.005', '0.346+/-0.006', '0.350+/-0.007', '0.338+/-0.007', '0.323+/-0.008', '0.312+/-0.007', '0.299+/-0.009', '0.280+/-0.009', '0.273+/-0.009', '0.268+/-0.009', '0.262+/-0.009', '0.255+/-0.009', '0.257+/-0.010']
+  A: marital                               ['0.342+/-0.006', '0.340+/-0.006', '0.336+/-0.006', '0.339+/-0.007', '0.331+/-0.007', '0.314+/-0.007', '0.306+/-0.007', '0.295+/-0.007', '0.283+/-0.007', '0.274+/-0.008', '0.258+/-0.009', '0.262+/-0.008', '0.257+/-0.008', '0.242+/-0.008']
+  B: age                                   ['0.345+/-0.006', '0.347+/-0.006', '0.355+/-0.006', '0.350+/-0.008', '0.337+/-0.007', '0.319+/-0.007', '0.313+/-0.007', '0.294+/-0.007', '0.283+/-0.008', '0.273+/-0.008', '0.267+/-0.009', '0.255+/-0.008', '0.255+/-0.009', '0.251+/-0.009']
+  A+B: marital + age                       ['0.343+/-0.006', '0.338+/-0.005', '0.339+/-0.006', '0.338+/-0.007', '0.329+/-0.007', '0.314+/-0.006', '0.306+/-0.007', '0.289+/-0.007', '0.280+/-0.007', '0.266+/-0.008', '0.256+/-0.008', '0.254+/-0.008', '0.243+/-0.008', '0.236+/-0.008']
+
+Uniform baseline mean: 0.503
+Marginal baseline mean: 0.445
+
+Fraction of seeds where condition beats 'none' (paired, per m):
+  A: marital: {1: np.float64(0.16), 2: np.float64(0.29), 3: np.float64(0.34), 5: np.float64(0.41), 7: np.float64(0.37), 10: np.float64(0.41), 14: np.float64(0.41), 21: np.float64(0.42), 30: np.float64(0.38), 44: np.float64(0.47), 64: np.float64(0.49), 94: np.float64(0.41), 137: np.float64(0.38), 200: np.float64(0.55)}
+  B: age: {1: np.float64(0.16), 2: np.float64(0.27), 3: np.float64(0.23), 5: np.float64(0.38), 7: np.float64(0.36), 10: np.float64(0.4), 14: np.float64(0.35), 21: np.float64(0.41), 30: np.float64(0.39), 44: np.float64(0.39), 64: np.float64(0.45), 94: np.float64(0.48), 137: np.float64(0.38), 200: np.float64(0.48)}
+  A+B: marital + age: {1: np.float64(0.2), 2: np.float64(0.32), 3: np.float64(0.32), 5: np.float64(0.38), 7: np.float64(0.41), 10: np.float64(0.36), 14: np.float64(0.44), 21: np.float64(0.5), 30: np.float64(0.41), 44: np.float64(0.49), 64: np.float64(0.47), 94: np.float64(0.45), 137: np.float64(0.51), 200: np.float64(0.57)}
+
+Wilcoxon signed-rank test (condition vs. None), pooled across all m:
+  A: marital: n=1376, mean_diff=-0.0056, p=0.006266
+  B: age: n=1376, mean_diff=-0.0008, p=0.4183
+  A+B: marital + age: n=1376, mean_diff=-0.0089, p=2.156e-06
+
+Wilcoxon signed-rank test (condition vs. None), per m, with Holm-Bonferroni correction:
+  m=1    A: marital                               n=100 mean_diff=-0.0043 p=0.6993  
+  m=1    B: age                                   n=100 mean_diff=-0.0010 p=0.9572  
+  m=1    A+B: marital + age                       n=100 mean_diff=-0.0037 p=0.6442  
+  m=2    A: marital                               n=100 mean_diff=-0.0082 p=0.1508  
+  m=2    B: age                                   n=100 mean_diff=-0.0004 p=0.9294  
+  m=2    A+B: marital + age                       n=100 mean_diff=-0.0100 p=0.09946  
+  m=3    A: marital                               n=100 mean_diff=-0.0100 p=0.1614  
+  m=3    B: age                                   n=100 mean_diff=+0.0094 p=0.06061  
+  m=3    A+B: marital + age                       n=100 mean_diff=-0.0065 p=0.3898  
+  m=5    A: marital                               n=100 mean_diff=-0.0113 p=0.1623  
+  m=5    B: age                                   n=100 mean_diff=-0.0002 p=0.4673  
+  m=5    A+B: marital + age                       n=100 mean_diff=-0.0125 p=0.2105  
+  m=7    A: marital                               n=100 mean_diff=-0.0062 p=0.5057  
+  m=7    B: age                                   n=100 mean_diff=-0.0005 p=0.6397  
+  m=7    A+B: marital + age                       n=100 mean_diff=-0.0082 p=0.2163  
+  m=10   A: marital                               n=100 mean_diff=-0.0095 p=0.3161  
+  m=10   B: age                                   n=100 mean_diff=-0.0046 p=0.2766  
+  m=10   A+B: marital + age                       n=100 mean_diff=-0.0087 p=0.4733  
+  m=14   A: marital                               n=100 mean_diff=-0.0052 p=0.2353  
+  m=14   B: age                                   n=100 mean_diff=+0.0011 p=0.818  
+  m=14   A+B: marital + age                       n=100 mean_diff=-0.0057 p=0.2658  
+  m=21   A: marital                               n=100 mean_diff=-0.0042 p=0.5694  
+  m=21   B: age                                   n=100 mean_diff=-0.0048 p=0.3781  
+  m=21   A+B: marital + age                       n=100 mean_diff=-0.0107 p=0.1167  
+  m=30   A: marital                               n=99  mean_diff=+0.0029 p=0.3747  
+  m=30   B: age                                   n=99  mean_diff=+0.0032 p=0.3733  
+  m=30   A+B: marital + age                       n=99  mean_diff=+0.0002 p=0.8279  
+  m=44   A: marital                               n=98  mean_diff=+0.0005 p=0.8422  
+  m=44   B: age                                   n=98  mean_diff=-0.0002 p=0.9661  
+  m=44   A+B: marital + age                       n=98  mean_diff=-0.0066 p=0.163  
+  m=64   A: marital                               n=97  mean_diff=-0.0098 p=0.1153  
+  m=64   B: age                                   n=97  mean_diff=-0.0006 p=0.7193  
+  m=64   A+B: marital + age                       n=97  mean_diff=-0.0113 p=0.06668  
+  m=94   A: marital                               n=95  mean_diff=+0.0000 p=0.9511  
+  m=94   B: age                                   n=95  mean_diff=-0.0069 p=0.2004  
+  m=94   A+B: marital + age                       n=95  mean_diff=-0.0076 p=0.3053  
+  m=137  A: marital                               n=94  mean_diff=+0.0023 p=0.6304  
+  m=137  B: age                                   n=94  mean_diff=+0.0005 p=0.8438  
+  m=137  A+B: marital + age                       n=94  mean_diff=-0.0115 p=0.07882  
+  m=200  A: marital                               n=93  mean_diff=-0.0156 p=0.02436  
+  m=200  B: age                                   n=93  mean_diff=-0.0070 p=0.2565  
+  m=200  A+B: marital + age                       n=93  mean_diff=-0.0222 p=0.002034  
+  (0/42 tests survive Holm-Bonferroni correction at alpha=0.05)

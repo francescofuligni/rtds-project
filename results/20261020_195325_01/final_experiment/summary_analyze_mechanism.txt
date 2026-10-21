@@ -1,0 +1,33 @@
+Result set: final_experiment
+  attr_a = marital-status
+  attr_b = age
+  conditions = ['none', 'A', 'B', 'A+B']
+  dataset = adult_curated_13col
+  holdout_n = 2000
+  include_all_trees = False
+  k = 15
+  k_effective = 14
+  k_steps = None
+  labels = given_per_row
+  m_max = 200
+  m_min = 1
+  m_rounding = nearest_ties_to_even_unique
+  m_schedule = geometric
+  m_values = [1, 2, 3, 5, 7, 10, 14, 21, 30, 44, 64, 94, 137, 200]
+  pilot_n = 100
+  rashomon_bound_multiplier = 0.1
+  regularization = 0.01
+  seed_workers = 1
+  solve_timeout = 180.0
+  solver_threads = 4
+  target = sex
+  tree_selection = random
+  tree_selection_order = uniform_without_replacement_nested_prefix
+  tree_selection_pool = 1000
+  tree_selection_seed_offset = 20000
+  produced by 4 run(s) at commit(s) 3ea503a1, a5a4ffef, f0c1ba3d
+
+A: marital: Pearson r=-0.026 (p=0.331), Spearman r=-0.002 (p=0.94), n=1376
+B: age: Pearson r=-0.014 (p=0.593), Spearman r=0.010 (p=0.704), n=1376
+
+Wrote results/20261020_195325_01/final_experiment/mechanism_joint_split_correlation.pdf

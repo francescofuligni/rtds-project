@@ -1,0 +1,52 @@
+{
+  "data": "seed*.csv",
+  "experiment": "final_experiment",
+  "protocol": {
+    "attr_a": "marital-status",
+    "attr_b": "age",
+    "conditions": [
+      "none",
+      "A",
+      "B",
+      "A+B"
+    ],
+    "dataset": "adult_curated_13col",
+    "holdout_n": 2000,
+    "include_all_trees": false,
+    "k": 15,
+    "k_effective": 14,
+    "k_steps": null,
+    "labels": "given_per_row",
+    "m_max": 200,
+    "m_min": 1,
+    "m_rounding": "nearest_ties_to_even_unique",
+    "m_schedule": "geometric",
+    "m_values": [
+      1,
+      2,
+      3,
+      5,
+      7,
+      10,
+      14,
+      21,
+      30,
+      44,
+      64,
+      94,
+      137,
+      200
+    ],
+    "pilot_n": 100,
+    "rashomon_bound_multiplier": 0.1,
+    "regularization": 0.01,
+    "seed_workers": 1,
+    "solve_timeout": 180.0,
+    "solver_threads": 4,
+    "target": "sex",
+    "tree_selection": "random",
+    "tree_selection_order": "uniform_without_replacement_nested_prefix",
+    "tree_selection_pool": 1000,
+    "tree_selection_seed_offset": 20000
+  }
+}

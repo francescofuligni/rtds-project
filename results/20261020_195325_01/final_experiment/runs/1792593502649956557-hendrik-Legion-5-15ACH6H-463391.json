@@ -1,0 +1,44 @@
+{
+  "command": [
+    "run_final_experiment.py",
+    "--n",
+    "100",
+    "--k",
+    "15",
+    "--m-max",
+    "200",
+    "--attr-a",
+    "marital-status",
+    "--workers",
+    "1",
+    "--threads",
+    "4",
+    "--timeout",
+    "180",
+    "--attr-b",
+    "age",
+    "--seed-start",
+    "90",
+    "--n-seeds",
+    "10"
+  ],
+  "git_commit": "f0c1ba3dd4304e45cc63fb95b045601d1c13917a",
+  "host": "hendrik-Legion-5-15ACH6H",
+  "invocation": {
+    "n_seeds": 10,
+    "seed_end_exclusive": 100,
+    "seed_start": 90,
+    "workers": 1
+  },
+  "packages": {
+    "numpy": "2.5.4",
+    "ortools": "9.15.6755",
+    "pandas": "2.3.3",
+    "scikit-learn": "1.8.0",
+    "scipy": "1.18.1",
+    "treefarms": "0.2.4"
+  },
+  "python": "3.12.11",
+  "started": "2026-10-21T14:38:22+00:00",
+  "uncommitted_code_changes": false
+}
