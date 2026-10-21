@@ -135,8 +135,10 @@ With 200 public records (m=10, same 20 seeds):
 
 Accuracy and ranking are unchanged (p>=0.8); only the confidences become
 honest again (per-seed calibration error 8.6 -> 3.0 points, p=0.00003).
-Whether the Dirichlet prior costs anything with 2,000 records is still
-running (13 of 20 seeds done).
+With 2,000 public records the Dirichlet prior costs nothing: accuracy
+69.4% -> 68.6%, calibration error and AUROC unchanged (all p>=0.3). It is
+therefore a safe default: identical when public data are plentiful,
+honest when they are scarce.
 
 ## Caveats
 
@@ -170,5 +172,7 @@ running (13 of 20 seeds done).
 | `results/20261020_224806/record_confidence/` | public data: 200 records, Dirichlet record prior |
 | `results/comparisons/record_confidence_public_data_m10/` | paired comparison of the first three (result 6) |
 | `results/comparisons/record_confidence_dirichlet_200_m10/` | paired comparison, 200 records plain vs. Dirichlet (result 7) |
+| `results/20261020_234026/record_confidence/` | public data: 2,000 records, Dirichlet record prior |
+| `results/comparisons/record_confidence_dirichlet_2000_m10/` | paired comparison, 2,000 records plain vs. Dirichlet (result 7) |
 | `results/20261020_141927/` | pre-stamping results (first-m trees, archived); superseded |
 | `results/dev/` (not committed) | development runs, incl. the first-m vs random comparison |

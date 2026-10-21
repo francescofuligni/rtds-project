@@ -1,0 +1,30 @@
+{
+  "data": "m*/seed*.csv",
+  "experiment": "record_confidence",
+  "protocol": {
+    "background_knowledge": "none",
+    "dataset": "adult_curated_13col",
+    "labels": "given_per_row",
+    "m_values": [
+      10
+    ],
+    "methods": [
+      "prior_guided",
+      "prior_only"
+    ],
+    "pilot_n": 100,
+    "prior_alpha": 0.1,
+    "public_n": 2000,
+    "public_prior": "records_dirichlet",
+    "rashomon_bound_multiplier": 0.1,
+    "regularization": 0.01,
+    "samples": 20,
+    "seed_workers": 1,
+    "solve_timeout": 30.0,
+    "solver_threads": 6,
+    "tree_selection": "random",
+    "tree_selection_order": "uniform_without_replacement_nested_prefix",
+    "tree_selection_pool": 1000,
+    "tree_selection_seed_offset": 20000
+  }
+}
