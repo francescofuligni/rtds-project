@@ -181,8 +181,10 @@ attacker vouches for fewer rows but is right on more of them.
   m=25/50 runs with 200 public records (6 solver threads, 30 s per solve),
   41-60% of samples were proven optimal, and at m=50 half the seeds had
   none (every sample timed out and returned the best table found). Older
-  runs did not record this. A rerun at m=25 with 12 threads and 60 s tests
-  whether it changes the results.
+  runs did not record this. A rerun of seeds 0-9 at m=25 with 12 threads
+  and 60 s (`results/20261022_160000/`) proved 71% instead of 62% of samples
+  optimal and changed nothing measurable: accuracy 68.4% -> 68.5%,
+  stated - accuracy +2.3 -> +2.6, vouched rows 32% -> 33% (paired p>=0.5).
 - Multi-threaded CP-SAT is not bit-for-bit reproducible; seeds fix the private
   sample, the trees and the public draws, not the solver's search order.
 
@@ -204,4 +206,5 @@ attacker vouches for fewer rows but is right on more of them.
 | `results/20261022_080000/record_confidence/` | public data: 200 records, plain, m=25 and 50 |
 | `results/20261022_080000_01/record_confidence/` | public data: 200 records, Dirichlet, m=25 and 50 |
 | `results/comparisons/record_confidence_dirichlet_200_m25_m50/` | paired comparison of those two (result 7) |
+| `results/20261022_160000/record_confidence/` | timeout check: Dirichlet, 200 records, m=25, seeds 0-9, 12 threads, 60 s per solve |
 | `results/dev/` (not committed) | development runs, incl. the first-m vs random comparison |
