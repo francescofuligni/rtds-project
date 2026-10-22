@@ -150,6 +150,17 @@ With 2,000 public records the Dirichlet prior costs nothing: accuracy
 therefore a safe default: identical when public data are plentiful,
 honest when they are scarce.
 
+The fix holds with more trees (200 public records, same 20 seeds, plain
+vs. Dirichlet, paired):
+
+| m | prior-guided accuracy (plain / Dirichlet) | stated - accuracy (plain / Dirichlet) | per-seed calibration error | vouched at >= 0.9, correct (plain / Dirichlet) |
+|---|---|---|---|---|
+| 25 | 70.2% / 70.0% | +7.1 / +2.0 | 7.3 -> 2.7 points, p=4e-6 | 43% (93%) / 34% (96%) |
+| 50 | 74.2% / 74.2% | +5.9 / +1.7 | 5.9 -> 2.3 points, p=6e-6 | 46% (94%) / 40% (97%) |
+
+Accuracy and AUROC are unchanged (p>=0.19). As at m=10, the Dirichlet
+attacker vouches for fewer rows but is right on more of them.
+
 ## Caveats
 
 - The strong public-data assumption drives the calibration: free cells follow
@@ -166,6 +177,12 @@ honest when they are scarce.
 - With 13 binary columns there are only 640 possible records, so a sizeable
   share of rows can be named correctly from population statistics alone
   (~58%). The leak is the difference to that baseline.
+- Many prior-guided samples are not the proven closest table: in the
+  m=25/50 runs with 200 public records (6 solver threads, 30 s per solve),
+  41-60% of samples were proven optimal, and at m=50 half the seeds had
+  none (every sample timed out and returned the best table found). Older
+  runs did not record this. A rerun at m=25 with 12 threads and 60 s tests
+  whether it changes the results.
 - Multi-threaded CP-SAT is not bit-for-bit reproducible; seeds fix the private
   sample, the trees and the public draws, not the solver's search order.
 
@@ -184,5 +201,8 @@ honest when they are scarce.
 | `results/comparisons/record_confidence_dirichlet_200_m10/` | paired comparison, 200 records plain vs. Dirichlet (result 7) |
 | `results/20261020_234026/record_confidence/` | public data: 2,000 records, Dirichlet record prior |
 | `results/comparisons/record_confidence_dirichlet_2000_m10/` | paired comparison, 2,000 records plain vs. Dirichlet (result 7) |
+| `results/20261022_080000/record_confidence/` | public data: 200 records, plain, m=25 and 50 |
+| `results/20261022_080000_01/record_confidence/` | public data: 200 records, Dirichlet, m=25 and 50 |
+| `results/comparisons/record_confidence_dirichlet_200_m25_m50/` | paired comparison of those two (result 7) |
 | `results/20261020_141927/` | pre-stamping results (first-m trees, archived); superseded |
 | `results/dev/` (not committed) | development runs, incl. the first-m vs random comparison |
