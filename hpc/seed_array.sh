@@ -7,15 +7,16 @@
 # Usage (from the repository root):
 #   export RTDS_RUN_TIMESTAMP=$(python3 experiments/output_paths.py)
 #   sbatch --array=0-349 hpc/seed_array.sh run_final_experiment
-#   sbatch --array=0-34  hpc/seed_array.sh run_calibration_experiment
-#   sbatch --array=0-19  hpc/seed_array.sh run_record_confidence --m 10 25 50 100
+#   sbatch --array=0-19 --cpus-per-task=8 hpc/seed_array.sh run_record_confidence --m 10 25 50 100
 #
-# Every task passes --workers 1, so all tasks stamp the same protocol.
+# Every task passes --workers 1 and --threads = its CPUs, so all tasks stamp the
+# same protocol. The main experiment needs 4 CP-SAT workers per solve, record
+# confidence 8 (see experiments/configuration.py).
 # Adapt the resource lines and the module setup to the cluster (check the site
 # documentation, e.g. how to select a cluster and which Python module exists).
 #SBATCH --job-name=rtds-seed
-#SBATCH --cpus-per-task=1
-#SBATCH --mem-per-cpu=4G
+#SBATCH --cpus-per-task=4
+#SBATCH --mem-per-cpu=2G
 #SBATCH --time=04:00:00
 #SBATCH --output=hpc/logs/%x_%A_%a.out
 set -euo pipefail
@@ -27,4 +28,5 @@ source .venv/bin/activate
 
 RUNNER=$1; shift
 SEED=${SLURM_ARRAY_TASK_ID}
-python -u "experiments/${RUNNER}.py" --seed-start "${SEED}" --n-seeds 1 --workers 1 "$@"
+python -u "experiments/${RUNNER}.py" --seed-start "${SEED}" --n-seeds 1 --workers 1 \
+  --threads "${SLURM_CPUS_PER_TASK}" "$@"

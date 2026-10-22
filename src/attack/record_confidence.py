@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import itertools
 from collections import Counter
-from dataclasses import dataclass
 
 import numpy as np
 from scipy.stats import betabinom, binom
@@ -170,30 +169,6 @@ def support_matrix(candidates: list[Counter | None]) -> dict[RecordKey, np.ndarr
     solved = [c for c in candidates if c is not None]
     records = sorted(set().union(*solved)) if solved else []
     return {r: np.array([c[r] for c in solved], dtype=int) for r in records}
-
-
-@dataclass
-class RecordClaim:
-    """'The training data contains at least k copies of record.'"""
-
-    record: RecordKey
-    k: int
-    presence: float
-    absolute: int
-    occurrence: float
-
-
-def record_claims(support: dict[RecordKey, np.ndarray]) -> list[RecordClaim]:
-    """One claim per (record, k) for k up to the record's largest multiplicity."""
-    claims = []
-    for record, mult in support.items():
-        presence = float(np.mean(mult >= 1))
-        absolute = int(mult.sum())
-        for k in range(1, int(mult.max()) + 1):
-            claims.append(
-                RecordClaim(record, k, presence, absolute, float(np.mean(mult >= k)))
-            )
-    return claims
 
 
 def enumerate_feature_vectors(

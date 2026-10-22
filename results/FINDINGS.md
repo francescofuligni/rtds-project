@@ -204,5 +204,4 @@ attacker vouches for fewer rows but is right on more of them.
 | `results/20261022_080000/record_confidence/` | public data: 200 records, plain, m=25 and 50 |
 | `results/20261022_080000_01/record_confidence/` | public data: 200 records, Dirichlet, m=25 and 50 |
 | `results/comparisons/record_confidence_dirichlet_200_m25_m50/` | paired comparison of those two (result 7) |
-| `results/20261020_141927/` | pre-stamping results (first-m trees, archived); superseded |
 | `results/dev/` (not committed) | development runs, incl. the first-m vs random comparison |

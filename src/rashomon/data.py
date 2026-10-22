@@ -99,57 +99,6 @@ def load_adult_raw(cache_dir: str | Path = "data") -> pd.DataFrame:
     return df
 
 
-# The "positive" (==1) category used for each two-valued attribute's
-# single indicator column.
-_BINARY_POSITIVE_CATEGORY = {
-    "sex": "Female",
-    "native-country": None,  # handled specially: "not United-States" -> 1
-}
-
-
-def binarize_adult(df: pd.DataFrame, n_quantile_bins: int = 3) -> BinarizedDataset:
-    """Binarize every feature column; continuous columns become
-    `col >= q_k` threshold indicators at quantile cut points, categorical
-    columns become one-hot indicators, and each two-valued attribute
-    (sex, native-country) becomes a single indicator column.
-    """
-    columns = []
-    one_hot_groups: dict[str, list[str]] = {}
-    binary_columns: dict[str, str] = {}
-
-    for col in CONTINUOUS_COLUMNS:
-        quantiles = np.unique(
-            df[col].quantile(np.linspace(0, 1, n_quantile_bins + 1)[1:-1])
-        )
-        for q in quantiles:
-            name = f"{col}>={q:g}"
-            columns.append(pd.Series((df[col] >= q).astype(int), name=name))
-
-    for col in CATEGORICAL_COLUMNS:
-        dummies = pd.get_dummies(df[col], prefix=col).astype(int)
-        one_hot_groups[col] = list(dummies.columns)
-        columns.append(dummies)
-
-    for col in BINARY_COLUMNS:
-        if col == "native-country":
-            name = "native-country=Other"
-            indicator = (df[col] != "United-States").astype(int)
-        else:
-            positive = _BINARY_POSITIVE_CATEGORY[col]
-            name = f"{col}={positive}"
-            indicator = (df[col] == positive).astype(int)
-        columns.append(pd.Series(indicator, name=name))
-        binary_columns[col] = name
-
-    X = pd.concat(columns, axis=1)
-    y = (df[LABEL_COLUMN] == ">50K").astype(int)
-    y.name = LABEL_COLUMN
-
-    return BinarizedDataset(
-        X=X, y=y, one_hot_groups=one_hot_groups, binary_columns=binary_columns
-    )
-
-
 # Collapse categories to keep the curated feature set tractable while retaining
 # T, A, B, and selected predictive features for the experiment.
 _MARITAL_STATUS_GROUPS = {

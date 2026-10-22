@@ -9,7 +9,6 @@ from configuration import (
     add_configuration_arguments,
     configuration_from_args,
 )
-from run_calibration_experiment import main as calibration_main
 from run_final_experiment import main as final_main
 
 from attack.conditions import run_condition, validate_knowledge_roles
@@ -24,8 +23,7 @@ def parse(*argv):
 
 def test_release_grids():
     grid = parse().m_values
-    assert len(grid) == 34
-    assert grid[0] == 1 and grid[-1] == 500
+    assert grid == (1, 2, 3, 5, 7, 10, 14, 21, 30, 44, 64, 94, 137, 200)
     assert grid == tuple(sorted(set(grid)))
     assert parse("--k", "4", "--m-max", "1000").m_values == (1, 10, 100, 1000)
     assert parse("--k", "40", "--m-max", "1").m_values == (1,)
@@ -80,13 +78,7 @@ def test_geometric_and_linear_grid_options_are_mutually_exclusive():
         parse("--k", "10", "--k-steps", "5")
 
 
-@pytest.mark.parametrize(
-    "module,entry",
-    [
-        ("run_final_experiment", final_main),
-        ("run_calibration_experiment", calibration_main),
-    ],
-)
+@pytest.mark.parametrize("module,entry", [("run_final_experiment", final_main)])
 def test_cli_protocol_and_worker_share_configuration(
     monkeypatch, tmp_path, module, entry
 ):
@@ -155,7 +147,7 @@ def test_cli_protocol_and_worker_share_configuration(
 
 @pytest.mark.parametrize(
     "module",
-    ["run_final_experiment", "run_calibration_experiment", "run_record_confidence"],
+    ["run_final_experiment", "run_record_confidence"],
 )
 def test_output_directory_override_is_rejected(module):
     import importlib
@@ -185,15 +177,12 @@ def test_numeric_knowledge_and_role_boundary():
     assert np.array_equal(data.X.iloc[:, mask_cols].to_numpy().ravel(), [1, 0])
 
 
-@pytest.mark.parametrize(
-    "module_name", ["run_final_experiment", "run_calibration_experiment"]
-)
 @pytest.mark.parametrize("all_trees", [False, True])
-def test_configured_seed_with_real_solver(monkeypatch, module_name, all_trees):
-    import importlib
+def test_configured_seed_with_real_solver(monkeypatch, all_trees):
     from types import SimpleNamespace
 
-    module = importlib.import_module(module_name)
+    import run_final_experiment as module
+
     data = BinarizedDataset(
         pd.DataFrame(
             {
@@ -221,10 +210,7 @@ def test_configured_seed_with_real_solver(monkeypatch, module_name, all_trees):
     monkeypatch.setattr(module, "binarize_adult_curated", lambda raw: data)
     monkeypatch.setattr(module, "build_rashomon_set", build)
     monkeypatch.setattr(module, "select_random_trees", select)
-    if module_name == "run_final_experiment":
-        monkeypatch.setattr(module, "HOLDOUT_N", 3)
-    else:
-        monkeypatch.setattr(module, "N_REPEATS", 2)
+    monkeypatch.setattr(module, "HOLDOUT_N", 3)
     config = ExperimentConfig(
         4,
         k=2,
@@ -239,11 +225,9 @@ def test_configured_seed_with_real_solver(monkeypatch, module_name, all_trees):
     assert all(s[1:] == (20_000, 1000) for s in selected)
     assert {r["m"] for r in rows} == set(expected)
     assert {r["condition"] for r in rows} == {"none", "A", "B", "A+B"}
-    multiplier = 4 if module_name == "run_final_experiment" else 16
-    assert len(rows) == multiplier * len(expected)
-    if module_name == "run_final_experiment":
-        assert all(r["n_trees_available"] == 3 for r in rows)
-        assert all(r["m_is_all_trees"] == (r["m"] == 3) for r in rows)
+    assert len(rows) == 4 * len(expected)
+    assert all(r["n_trees_available"] == 3 for r in rows)
+    assert all(r["m_is_all_trees"] == (r["m"] == 3) for r in rows)
     if all_trees:
         protocol = module.protocol(config)
         assert protocol["include_all_trees"] is True
@@ -258,25 +242,19 @@ def test_large_release_expands_declared_pool():
 
 
 def test_runner_default_protocols():
-    import run_calibration_experiment as calibration
     import run_final_experiment as main
     import run_record_confidence as record
 
     protocol = main.protocol()
-    assert protocol["pilot_n"] == 1000
+    assert protocol["pilot_n"] == 100
     assert protocol["m_values"] == list(ExperimentConfig().m_values)
     assert protocol["m_schedule"] == "geometric"
-    assert protocol["k"] == 40
-    assert protocol["m_max"] == 500
-    assert protocol["k_effective"] == 34
+    assert protocol["k"] == 15
+    assert protocol["m_max"] == 200
+    assert protocol["k_effective"] == 14
     assert protocol["solve_timeout"] == 180
     assert protocol["attr_a"] == "marital-status"
     assert protocol["attr_b"] == "education"
-    assert protocol["include_all_trees"] is False
-    protocol = calibration.protocol()
-    assert protocol["pilot_n"] == 100
-    assert protocol["m_values"] == [1, 500]
-    assert protocol["k"] == 2
     assert protocol["include_all_trees"] is False
     record_protocol = record.protocol(20, 30, ["prior_only"], [10], 2)
     assert record_protocol["solver_threads"] == 8
@@ -286,12 +264,10 @@ def test_runner_default_protocols():
 
 
 def test_solver_threads_are_part_of_every_protocol():
-    import run_calibration_experiment as calibration
     import run_final_experiment as main
     import run_record_confidence as record
 
     assert main.protocol(threads=2)["solver_threads"] == 2
-    assert calibration.protocol(threads=2)["solver_threads"] == 2
     assert record.protocol(20, 30, threads=2)["solver_threads"] == 2
     with pytest.raises(SystemExit) as exc:
         record.main(["--threads", "0"])

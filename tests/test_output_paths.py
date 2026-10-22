@@ -64,7 +64,7 @@ def test_internal_timestamp_keeps_families_in_one_fixed_root(tmp_path, monkeypat
 
     monkeypatch.setattr(output_paths, "RESULTS_ROOT", tmp_path)
     monkeypatch.setenv("RTDS_RUN_TIMESTAMP", "20261020_141641")
-    for family in ("final_experiment", "calibration_experiment", "record_confidence"):
+    for family in ("final_experiment", "record_confidence"):
         assert experiment_result_dir(family) == tmp_path / "20261020_141641" / family
     monkeypatch.setenv("RTDS_RUN_TIMESTAMP", "../../outside")
     with pytest.raises(ValueError, match="Invalid RTDS run timestamp"):
@@ -88,13 +88,12 @@ def test_make_pipeline_keeps_timestamp_and_rejects_removed_overrides():
         check=True,
     )
     timestamps = re.findall(r"results/(\d{8}_\d{6}(?:_\d+)?)/", dry_run.stdout)
-    assert len(timestamps) == 5
+    assert len(timestamps) == 3
     assert len(set(timestamps)) == 1
     assert "--out-dir" not in dry_run.stdout
-    assert "--k 40 --m-max 500" in dry_run.stdout
+    assert "--k 15 --m-max 200" in dry_run.stdout
     assert "--seed-start 0 --n-seeds 350" in dry_run.stdout
     assert "--seed-start 0 --n-seeds 20" in dry_run.stdout
-    assert "--seed-start 0 --n-seeds 35" in dry_run.stdout
     linear_run = subprocess.run(
         ["make", "-n", "run-final", "K_STEPS=10", "M_MAX=25"],
         cwd=root,
@@ -118,7 +117,6 @@ def test_make_pipeline_keeps_timestamp_and_rejects_removed_overrides():
         "M_STEP=5",
         "M_VALUES=1 10",
         "M_PICKS=40",
-        "CALIBRATION_M_PICKS=2",
         "SEED_END=20",
         "RECORD_THREADS=2",
     ):
@@ -131,10 +129,7 @@ def test_make_pipeline_keeps_timestamp_and_rejects_removed_overrides():
             text=True,
         )
         assert result.returncode != 0
-    for overrides in (
-        ("K=10", "K_STEPS=5"),
-        ("CALIBRATION_K=2", "CALIBRATION_K_STEPS=10"),
-    ):
+    for overrides in (("K=10", "K_STEPS=5"),):
         result = subprocess.run(
             ["make", "-n", "run-final", *overrides],
             check=False,

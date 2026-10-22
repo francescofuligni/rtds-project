@@ -32,12 +32,14 @@ def add_threads_argument(
     )
 
 
+# Defaults are what the laptop can solve: at n=1000 no table was found within
+# 180 s even at m=10, and m>=200 at n=1000 needs more than 5 GB per solve.
 @dataclass(frozen=True)
 class ExperimentConfig:
-    n: int = 1000
-    k: int = 40
+    n: int = 100
+    k: int = 15
     k_steps: int | None = None
-    m_max: int = 500
+    m_max: int = 200
     attr_a: str = "marital-status"
     attr_b: str = "education"
     include_all_trees: bool = False
@@ -102,8 +104,8 @@ class ExperimentConfig:
 def add_configuration_arguments(
     parser: argparse.ArgumentParser,
     *,
-    default_n: int = 1000,
-    default_k: int = 40,
+    default_n: int = ExperimentConfig.n,
+    default_k: int = ExperimentConfig.k,
 ) -> None:
     parser.add_argument(
         "--n", type=int, default=default_n, help="private training rows"
@@ -133,8 +135,8 @@ def add_configuration_arguments(
     parser.add_argument(
         "--m-max",
         type=int,
-        default=500,
-        help="maximum release size (default: 500)",
+        default=ExperimentConfig.m_max,
+        help=f"maximum release size (default: {ExperimentConfig.m_max})",
     )
     parser.set_defaults(default_k=default_k)
 

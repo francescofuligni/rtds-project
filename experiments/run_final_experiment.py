@@ -55,8 +55,6 @@ from rashomon.data import (
 )
 
 TARGET = "sex"
-PILOT_N = 1000
-K = 40
 HOLDOUT_N = 2000
 REGULARIZATION = 0.01
 RASHOMON_BOUND_MULTIPLIER = 0.1
@@ -74,7 +72,7 @@ def protocol(
     threads: int = DEFAULT_SOLVER_THREADS,
 ) -> dict:
     """Every setting that changes what this experiment's numbers mean."""
-    config = config or ExperimentConfig(n=PILOT_N, k=K)
+    config = config or ExperimentConfig()
     return {
         "dataset": "adult_curated_13col",
         "target": TARGET,
@@ -125,7 +123,7 @@ def run_seed(
     timeout: float = SOLVE_TIMEOUT,
     threads: int = DEFAULT_SOLVER_THREADS,
 ) -> list[dict]:
-    config = config or ExperimentConfig(n=PILOT_N, k=K)
+    config = config or ExperimentConfig()
     df = load_adult_raw(ROOT / "data")
     data_full = binarize_adult_curated(df)
 
@@ -237,7 +235,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--timeout", type=float, default=SOLVE_TIMEOUT, help="seconds per solve"
     )
-    add_configuration_arguments(parser, default_n=PILOT_N, default_k=K)
+    add_configuration_arguments(parser)
     args = parser.parse_args(argv)
     try:
         config = configuration_from_args(args)
