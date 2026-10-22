@@ -57,15 +57,17 @@
 
 % ------------------------------------------------------------------ header
 \begin{tcolorbox}[enhanced,colback=accent,colframe=accent,arc=0mm,boxrule=0pt,
-  left=10mm,right=10mm,top=6mm,bottom=5mm,width=\textwidth,before skip=0mm,after skip=0mm]
+  left=10mm,right=10mm,top=5mm,bottom=4mm,width=\textwidth,before skip=0mm,after skip=0mm]
 \color{white}
-{\fontsize{48}{56}\selectfont\bfseries Released trees leak training records,\\
+{\fontsize{48}{54}\selectfont\bfseries Released trees leak training records,\\
 and the attacker knows which ones\par}
 \vspace{2mm}
 {\fontsize{22}{28}\selectfont Reconstructing training data from a published Rashomon set of decision trees\par}
-\vspace{4mm}
-{\fontsize{21}{26}\selectfont\bfseries Hendrik De Coster \quad Francesco Fuligni \quad Aurélien Craplet\hfill
-\mdseries Stockholm University \,·\, RTDS 2026\par}
+\vspace{3mm}
+{\fontsize{21}{26}\selectfont\bfseries Hendrik De Coster \quad Francesco Fuligni \quad Aurélien Craplet\par}
+\vspace{1mm}
+{\fontsize{18}{23}\selectfont Department of Computer and Systems Sciences (DSV), Stockholm University
+\,·\, Research Topics in Data Science 2026\par}
 \end{tcolorbox}
 \rowgap
 
@@ -134,7 +136,7 @@ columns A, B; $m$ = 1--200, 100 seeds. \textbf{RQ2:} $m$ = 10--100, 20 seeds.\pa
 \finding{With 50 trees the attacker vouches for 45\% of the rows, and 98\% of
 those are right.}
 \includegraphics[width=\linewidth]{figures/leak_vs_m.pdf}
-\note{20 seeds (18 at $m$ = 100), 95\% intervals. Correct = all 13 columns and the label match.}
+\note{20 seeds (18 at $m$ = 100), 95\% intervals; correct = every column matches.}
 \end{pbox}
 \end{minipage}\hfill
 \begin{minipage}[t]{\colw}\vspace{0pt}
