@@ -38,6 +38,7 @@ data/
 *.run.xml
 *.synctex.gz
 *.toc
+*.xdv
 
 # Local documentation and working notes
 /report/
