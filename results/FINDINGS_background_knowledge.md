@@ -22,7 +22,7 @@ falls from 0.346 at m=1 to 0.253 at m=200. Paired by seed against m=1, the
 drop is significant from m=10 (-2.3 points, p=0.002) and reaches -9 points
 at m=137-200 (p<1e-10), in every condition and both pairs.
 
-**2. Background knowledge helps little.** Mean gain over None, pooled over
+**2. Background knowledge helps a little.** Mean gain over None, pooled over
 all m (Wilcoxon paired by seed and m, about 1,377 cells):
 
 | knowledge | marital + education set | marital + age set |
@@ -31,7 +31,9 @@ all m (Wilcoxon paired by seed and m, about 1,377 cells):
 | B | education: 0.6 points, p=0.0002 | age: 0.1 points, p=0.42 |
 | A+B | 1.3 points, p=1.5e-13 | 0.9 points, p=2e-6 |
 
-Per m, A+B with education beats None by 0.8-2.2 points (p<0.05 at 9 of 14
+This confirms the earlier first-m run (A+B: 2.0 points pooled, p=1e-34), at a
+smaller size: random trees carry more information themselves, so less is left
+for background knowledge to add. Per m, A+B with education beats None by 0.8-2.2 points (p<0.05 at 9 of 14
 m); with age only at m=200 (2.2 points, p=0.002). No single per-m test
 survives Holm-Bonferroni correction (0 of 42 in each set). Education is
 the more useful B: the difference in gain is significant at a few m only

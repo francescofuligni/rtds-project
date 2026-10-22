@@ -225,8 +225,6 @@ def background_knowledge():
     """Error on sex against m, with and without background knowledge."""
     edu, age = final_cells("20261020_195325"), final_cells("20261020_195325_01")
     fig, ax = plt.subplots(figsize=(WIDTH, 2.4))
-    ax.axhline(0.445, color=MUTED, lw=1.5, ls=(0, (4, 3)))
-    ax.text(1, 0.452, "guess from population shares", fontsize=12, color=INK_2)
     lines = [
         (edu, "none", BLUE, "no background knowledge", 0),
         (edu, "A+B", ORANGE, "knows marital status + education", -14),
@@ -274,8 +272,8 @@ def background_knowledge():
     ticks = [1, 3, 10, 30, 100, 200]
     ax.set_xticks(ticks, [str(t) for t in ticks])
     ax.minorticks_off()
-    ax.set_ylim(0.1, 0.47)
-    ax.set_yticks([0.1, 0.2, 0.3, 0.4])
+    ax.set_ylim(0.11, 0.37)
+    ax.set_yticks([0.15, 0.2, 0.25, 0.3, 0.35])
     ax.set_xlim(0.85, 260)
     ax.set_xlabel("released trees m (log scale)")
     ax.set_ylabel("wrong sex cells")
