@@ -62,8 +62,13 @@ RECORD_WORKERS ?= $(if $(strip $(WORKERS)),$(WORKERS),2)
 RECORD_TIMEOUT ?= 30
 RECORD_ONLY ?=
 
+# Read-only attack-figure rendering from existing saved experiment outputs.
+EDUCATION_DIR ?=
+AGE_DIR ?=
+SEQUENTIAL_DIR ?=
+
 .DEFAULT_GOAL := help
-.PHONY: help setup pilot run run-final run-record-confidence analyze test report
+.PHONY: help setup pilot run run-final run-record-confidence plot-attack-figures analyze test report
 
 help:
 	@printf '%s\n' \
@@ -73,6 +78,7 @@ help:
 	  '  make run                    Run every experiment family and analysis' \
 	  '  make run-final              Run only the main experiment family' \
 	  '  make run-record-confidence  Run only the record-confidence family' \
+	  '  make plot-attack-figures   Plot saved attack results without rerunning experiments' \
 	  '  make analyze                Re-run all analyses on the latest results' \
 	  '  make test                   Run pytest' \
 	  '  make report                 Build the local report PDF' \
@@ -95,6 +101,10 @@ run-final:
 run-record-confidence:
 	$(PYTHON) experiments/run_record_confidence.py $(THREAD_ARGS) --m $(RECORD_M) --tree-selection $(RECORD_TREE_SELECTION) --seed-start $(RECORD_SEED_START) --n-seeds $(RECORD_N_SEEDS) --samples $(RECORD_SAMPLES) --workers $(RECORD_WORKERS) --timeout $(RECORD_TIMEOUT) $(if $(strip $(RECORD_ONLY)),--only $(RECORD_ONLY),)
 	$(PYTHON) experiments/analyze_record_confidence.py --results-dirs $(RESULT_DIR)/record_confidence
+
+plot-attack-figures:
+	@test -n "$(EDUCATION_DIR)" -a -n "$(AGE_DIR)" || { echo "Set EDUCATION_DIR and AGE_DIR to saved final_experiment directories"; exit 2; }
+	MPLBACKEND=Agg $(PYTHON) experiments/plot_attack_figures.py --education-dir "$(EDUCATION_DIR)" --age-dir "$(AGE_DIR)" $(if $(strip $(SEQUENTIAL_DIR)),--sequential-dir "$(SEQUENTIAL_DIR)",)
 
 # Keep the families sequential because each can be compute- and memory-intensive.
 run:

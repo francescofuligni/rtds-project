@@ -75,12 +75,13 @@ def test_main_analysis_outputs_use_manifest_feature_names(tmp_path, monkeypatch)
     monkeypatch.setattr(Axes, "errorbar", capture_errorbar)
     monkeypatch.setattr(Figure, "legend", capture_legend)
     summary_path = tmp_path / "summary.txt"
-    run_analysis(lambda: analyze_results(result_dir), summary_path)
+    figure_dir = tmp_path / "figures" / "20261023_120000" / "final_experiment"
+    run_analysis(lambda: analyze_results(result_dir, figure_dir), summary_path)
     assert "A: marital" in labels_seen
     assert "B: age" in labels_seen
     assert "A+B: marital + age" in labels_seen
     assert legend_layouts == [("lower center", 3)]
-    assert (result_dir / "reconstruction_error_vs_m.pdf").exists()
+    assert (figure_dir / "reconstruction_error_vs_m.png").exists()
     assert "attr_a = marital-status" in summary_path.read_text()
     assert "attr_b = age" in summary_path.read_text()
 
@@ -92,7 +93,7 @@ def test_main_analysis_outputs_use_manifest_feature_names(tmp_path, monkeypatch)
         return original_set_title(self, label, *args, **kwargs)
 
     monkeypatch.setattr(Axes, "set_title", capture_title)
-    analyze_mechanism(result_dir)
+    analyze_mechanism(result_dir, figure_dir)
     assert "A: marital" in titles_seen
     assert "B: age" in titles_seen
-    assert (result_dir / "mechanism_joint_split_correlation.pdf").exists()
+    assert (figure_dir / "mechanism_joint_split_correlation.png").exists()

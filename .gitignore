@@ -24,7 +24,7 @@ dist/
 .ruff_cache/
 
 # Downloaded datasets
-data/
+/data/
 
 # LaTeX temporary files
 *.aux

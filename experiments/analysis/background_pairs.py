@@ -19,6 +19,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 from analysis_output import condition_labels, run_analysis
+from output_paths import figure_output_dir
 from provenance import describe, load_results, require_comparable
 from scipy.stats import wilcoxon
 
@@ -154,8 +155,9 @@ def figure(names, wides, all_labels, out_dir: Path) -> Path:
     handles, legend = axes[0].get_legend_handles_labels()
     fig.legend(handles, legend, loc="lower center", ncol=len(names), frameon=False)
     fig.tight_layout(rect=(0, 0.08, 1, 1))
-    out = out_dir / "background_pairs_error_vs_m.pdf"
-    fig.savefig(out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / "background_pairs_error_vs_m.png"
+    fig.savefig(out, dpi=300)
     plt.close(fig)
     return out
 
@@ -188,16 +190,13 @@ def cli() -> None:
         required=True,
         help="final_experiment result sets differing only in attr_a/attr_b",
     )
-    parser.add_argument(
-        "--out-dir",
-        type=Path,
-        default=None,
-        help="where the summary and figure go (default: the last result set)",
-    )
     args = parser.parse_args()
     dirs = args.results_dirs
-    out = args.out_dir or dirs[-1]
-    run_analysis(lambda: main(dirs, out), out / "summary_compare_background_pairs.txt")
+    out = figure_output_dir()
+    run_analysis(
+        lambda: main(dirs, out),
+        dirs[-1] / "summary_compare_background_pairs.txt",
+    )
 
 
 if __name__ == "__main__":

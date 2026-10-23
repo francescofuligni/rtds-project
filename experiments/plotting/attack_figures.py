@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from analysis.attack_figures import aggregate, load_accuracy, paired_selection
+from output_paths import FIGURE_DATA_ROOT, FIGURES_ROOT, require_saved_result_dir
 from provenance import load_results, require_comparable
 from scipy.interpolate import PchipInterpolator
 
@@ -26,7 +27,7 @@ def draw(
     accuracy_label: str = "Accuracy",
 ) -> None:
     fig, ax = plt.subplots(figsize=(8, 4.9))
-    for condition, (color, marker, _) in (styles or STYLES).items():
+    for condition, (color, _, _) in (styles or STYLES).items():
         sub = (
             stats[stats.condition == condition].dropna(subset=["mean"]).sort_values("m")
         )
@@ -38,8 +39,6 @@ def draw(
             mean,
             color=color,
             linewidth=1.8,
-            marker=marker,
-            markersize=3,
             label=labels[condition],
         )
     grid = sorted(stats.m.unique())
@@ -50,6 +49,7 @@ def draw(
     ax.set_xscale("log")
     ax.set_xticks([grid[i] for i in ticks], [str(grid[i]) for i in ticks])
     ax.minorticks_off()
+    ax.tick_params(axis="x", which="major", length=3, direction="out")
     ax.set_xlabel("Released trees (m)", fontsize=12)
     ax.set_ylabel("Sex reconstruction error ↓", fontsize=12)
     ax.tick_params(labelsize=11)
@@ -101,21 +101,47 @@ def cli() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--education-dir", type=Path, required=True)
     parser.add_argument("--age-dir", type=Path, required=True)
-    parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--sequential-dir", type=Path)
     parser.add_argument("--education-accuracy-dir", type=Path)
     parser.add_argument("--age-accuracy-dir", type=Path)
     args = parser.parse_args()
+    input_dirs = [args.education_dir, args.age_dir]
+    if args.sequential_dir:
+        input_dirs.append(args.sequential_dir)
+    input_dirs.extend(
+        path
+        for path in (args.education_accuracy_dir, args.age_accuracy_dir)
+        if path is not None
+    )
+    for path in input_dirs:
+        require_saved_result_dir(path)
     loaded = [
         load_results(path, "final_experiment")
         for path in (args.education_dir, args.age_dir)
     ]
     require_comparable([manifest for _, manifest in loaded], may_differ=["attr_b"])
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir = FIGURES_ROOT
+    output_dir.mkdir(parents=True, exist_ok=True)
+    data_dir = FIGURE_DATA_ROOT
+    data_dir.mkdir(parents=True, exist_ok=True)
     provenance = {
         "bands": "none; SEM retained in aggregate CSVs",
         "curves": "reconstruction: straight segments; accuracy: PCHIP in log(m); no extrapolation",
         "metric": "categorical target error after evaluator row matching",
+        "implementation_sha256": {
+            str(path.relative_to(Path(__file__).resolve().parents[2])): hashlib.sha256(
+                path.read_bytes()
+            ).hexdigest()
+            for path in (
+                Path(__file__).resolve(),
+                Path(__file__).resolve().parents[1] / "analysis" / "attack_figures.py",
+                Path(__file__).resolve().parents[1] / "output_paths.py",
+                Path(__file__).resolve().parents[1] / "provenance.py",
+                Path(__file__).resolve().parent / "style.py",
+                Path(__file__).resolve().parents[2] / "pyproject.toml",
+                Path(__file__).resolve().parents[2] / "uv.lock",
+            )
+        },
         "sources": [],
     }
     for name, path, (df, manifest) in zip(
@@ -127,7 +153,7 @@ def cli() -> None:
         if protocol["tree_selection"] != "random":
             raise ValueError("These background figures expect random releases")
         stats = aggregate(df)
-        stem = args.output_dir / f"attack_marital_{name}"
+        stem = output_dir / f"attack_marital_{name}"
         labels = {key: style[2] for key, style in STYLES.items()}
         labels.update(
             {
@@ -144,14 +170,24 @@ def cli() -> None:
             else (None, "Predictive accuracy on Y")
         )
         draw(stats, labels, stem, accuracy=accuracy, accuracy_label=accuracy_label)
-        stats.to_csv(stem.with_suffix(".csv"), index=False)
+        data_path = data_dir / f"{stem.name}.csv"
+        stats.to_csv(data_path, index=False)
         files = sorted(path.glob(manifest["data"])) + [path / "manifest.json"]
+        accuracy_files = (
+            [accuracy_path / "accuracy.csv", accuracy_path / "manifest.json"]
+            if accuracy_path
+            else []
+        )
         provenance["sources"].append(
             {
                 "directory": str(path.resolve()),
                 "accuracy_directory": str(accuracy_path.resolve())
                 if accuracy_path
                 else None,
+                "accuracy_sha256": {
+                    str(p.resolve()): hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in accuracy_files
+                },
                 "protocol": protocol,
                 "seed_count": int(df.seed.nunique()),
                 "missing_errors": df.loc[
@@ -163,7 +199,7 @@ def cli() -> None:
                 },
             }
         )
-        print(f"Wrote {stem}.png/.csv")
+        print(f"Wrote {stem}.png and {data_path}")
     if args.sequential_dir:
         sequential, seq_manifest = load_results(args.sequential_dir, "final_experiment")
         random, random_manifest = loaded[0]
@@ -189,9 +225,10 @@ def cli() -> None:
         comparison = aggregate(paired)
         styles = SELECTION_STYLES
         labels = {k: v[2] for k, v in styles.items()}
-        stem = args.output_dir / "attack_selection_comparison"
+        stem = output_dir / "attack_selection_comparison"
         draw(comparison, labels, stem, styles)
-        comparison.to_csv(stem.with_suffix(".csv"), index=False)
+        data_path = data_dir / f"{stem.name}.csv"
+        comparison.to_csv(data_path, index=False)
         provenance["selection_comparison"] = {
             "sequential_directory": str(args.sequential_dir.resolve()),
             "sequential_protocol": seq_manifest["protocol"],
@@ -204,10 +241,8 @@ def cli() -> None:
                 + [args.sequential_dir / "manifest.json"]
             },
         }
-        print(f"Wrote {stem}.png/.csv")
-    (args.output_dir / "sources.json").write_text(
-        json.dumps(provenance, indent=2) + "\n"
-    )
+        print(f"Wrote {stem}.png and {data_path}")
+    (data_dir / "sources.json").write_text(json.dumps(provenance, indent=2) + "\n")
 
 
 if __name__ == "__main__":

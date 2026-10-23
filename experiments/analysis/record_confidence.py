@@ -19,14 +19,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from analysis_output import run_analysis
-from output_paths import latest_result_dir
+from output_paths import figure_output_dir, latest_result_dir
 from provenance import describe, load_results, require_comparable
 from scipy.stats import wilcoxon
 from sklearn.metrics import roc_auc_score
@@ -318,8 +317,9 @@ def selective_accuracy_figure(df: pd.DataFrame, out_dir: Path) -> Path:
         labelcolor=INK,
     )
     fig.tight_layout(rect=(0, 0.1 / len(settings), 1, 1))
-    out = out_dir / "record_confidence_selective_accuracy.pdf"
-    fig.savefig(out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / "record_confidence_selective_accuracy.png"
+    fig.savefig(out, dpi=300)
     return out
 
 
@@ -437,8 +437,9 @@ def reliability_figure(df: pd.DataFrame, out_dir: Path) -> Path:
         labelcolor=INK,
     )
     fig.tight_layout(rect=(0, 0.1 / len(settings), 1, 1))
-    out = out_dir / "record_confidence_reliability.pdf"
-    fig.savefig(out)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / "record_confidence_reliability.png"
+    fig.savefig(out, dpi=300)
     return out
 
 
@@ -495,23 +496,14 @@ def cli() -> None:
         default=None,
         help="stamped result sets to compare (default: latest record_confidence run)",
     )
-    parser.add_argument(
-        "--out-dir",
-        type=Path,
-        default=None,
-        help="where the summary and figures go (default: next to a single result "
-        "set, or the common parent of several)",
-    )
     args = parser.parse_args()
     dirs = args.results_dirs or [latest_result_dir(EXPERIMENT)]
-    # One result set: outputs go next to it. Several: into their common parent.
-    out = args.out_dir or (
-        dirs[0]
-        if len(dirs) == 1
-        else Path(os.path.commonpath([d.resolve() for d in dirs]))
-    )
+    out = figure_output_dir()
     out.mkdir(parents=True, exist_ok=True)
-    run_analysis(lambda: main(dirs, out), out / "summary_analyze_record_confidence.txt")
+    run_analysis(
+        lambda: main(dirs, out),
+        dirs[-1] / "summary_analyze_record_confidence.txt",
+    )
 
 
 if __name__ == "__main__":

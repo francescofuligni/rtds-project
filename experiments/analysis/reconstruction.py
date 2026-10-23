@@ -10,7 +10,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 from analysis_output import condition_labels, run_analysis
-from output_paths import latest_result_dir
+from output_paths import figure_output_dir, latest_result_dir
 from provenance import describe, load_results
 from scipy.stats import wilcoxon
 
@@ -40,7 +40,7 @@ CONDITION_STYLE = {
 }
 
 
-def main(result_dir: Path):
+def main(result_dir: Path, figure_dir: Path):
     df, manifest = load_results(result_dir, EXPERIMENT)
     print(describe(manifest) + "\n")
     labels = condition_labels(manifest["protocol"])
@@ -107,8 +107,9 @@ def main(result_dir: Path):
     )
     fig.tight_layout(rect=(0, 0.17, 1, 1))
 
-    out_path = result_dir / "reconstruction_error_vs_m.pdf"
-    fig.savefig(out_path)
+    figure_dir.mkdir(parents=True, exist_ok=True)
+    out_path = figure_dir / "reconstruction_error_vs_m.png"
+    fig.savefig(out_path, dpi=300)
     plt.close(fig)
     print(f"Wrote {out_path}")
 
@@ -179,7 +180,10 @@ def cli() -> None:
     )
     args = parser.parse_args()
     result_dir = args.results_dir or latest_result_dir(EXPERIMENT)
-    run_analysis(lambda: main(result_dir), result_dir / "summary_analyze_results.txt")
+    run_analysis(
+        lambda: main(result_dir, figure_output_dir()),
+        result_dir / "summary_analyze_results.txt",
+    )
 
 
 if __name__ == "__main__":

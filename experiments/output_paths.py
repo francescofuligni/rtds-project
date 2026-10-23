@@ -12,6 +12,8 @@ from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS_ROOT = ROOT / "results"
+FIGURES_ROOT = ROOT / "figures"
+FIGURE_DATA_ROOT = FIGURES_ROOT / "data"
 TIMESTAMP_PATTERN = re.compile(r"\d{8}_\d{6}(?:_\d+)?\Z")
 
 
@@ -58,6 +60,23 @@ def latest_result_dir(experiment: str, results_root: Path = RESULTS_ROOT) -> Pat
             f"No timestamped {experiment!r} results found in {results_root}"
         )
     return candidates[-1]
+
+
+def figure_output_dir() -> Path:
+    """Return the shared repository-level folder for generated figures."""
+    return FIGURES_ROOT
+
+
+def require_saved_result_dir(path: Path) -> Path:
+    """Require a figure input to remain within the repository's results tree."""
+    resolved = path.resolve()
+    try:
+        resolved.relative_to(RESULTS_ROOT.resolve())
+    except ValueError as exc:
+        raise ValueError(
+            f"Figure inputs must be stored under {RESULTS_ROOT}: {path}"
+        ) from exc
+    return resolved
 
 
 if __name__ == "__main__":
