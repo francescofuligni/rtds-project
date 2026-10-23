@@ -278,13 +278,15 @@ def main(argv: list[str] | None = None) -> None:
         },
     )
     t_start = time.time()
-    run_seeds(
+    summary = run_seeds(
         result_dir,
         seeds,
         partial(run_seed, config=config, timeout=args.timeout, threads=args.threads),
         workers=args.workers,
     )
     print(f"\nFinished in {time.time() - t_start:.0f}s -> {result_dir}")
+    if summary["incomplete"]:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

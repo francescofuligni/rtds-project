@@ -26,7 +26,12 @@ import numpy as np
 import pandas as pd
 from analysis_output import run_analysis
 from output_paths import figure_output_dir, latest_result_dir
-from provenance import describe, load_results, require_comparable
+from provenance import (
+    describe,
+    load_results,
+    print_outcome_coverage,
+    require_comparable,
+)
 from scipy.stats import wilcoxon
 from sklearn.metrics import roc_auc_score
 
@@ -162,6 +167,9 @@ def paired_tests(
         f"\nPaired per-seed comparison, {a} minus {b} (Wilcoxon signed-rank; abs_gap = calibration error):"
     )
     for (setting, m), g in seeds.groupby(["setting", "m"]):
+        if not {a, b} <= set(g["method"]):
+            print(f"  {setting} m={m}: comparison unavailable (missing method)")
+            continue
         wide = g.pivot(index="seed", columns="method")
         for metric in ["accuracy", "auroc", "brier", "abs_gap"]:
             diff = (wide[(metric, a)] - wide[(metric, b)]).dropna()
@@ -443,10 +451,18 @@ def reliability_figure(df: pd.DataFrame, out_dir: Path) -> Path:
     return out
 
 
-def main(result_dirs: list[Path], out_dir: Path) -> None:
+def main(result_dirs: list[Path], out_dir: Path, *, plots: bool = True) -> None:
     frames, manifests = [], []
     for result_dir in result_dirs:
-        data, manifest = load_results(result_dir, EXPERIMENT)
+        print_outcome_coverage(result_dir)
+        try:
+            data, manifest = load_results(result_dir, EXPERIMENT)
+        except FileNotFoundError as exc:
+            print(f"No claim data available: {exc}")
+            continue
+        if data.empty:
+            print(f"No valid claim data in {result_dir}")
+            continue
         frames.append(data)
         manifests.append(manifest)
         skipped = sorted(
@@ -456,6 +472,10 @@ def main(result_dirs: list[Path], out_dir: Path) -> None:
             f"{describe(manifest)}\n  directory: {result_dir}\n  {len(data)} output rows; "
             f"skipped (Rashomon set < m): {skipped or 'none'}\n"
         )
+    if not frames:
+        print("No valid claim outcomes; statistics and plots unavailable.")
+        return
+    print("Candidate support is conditional on successful solves.")
     # Result sets may differ in these settings (that is what is compared), in nothing else.
     require_comparable(manifests, may_differ=COMPARED_SETTINGS)
     labels = setting_labels([m["protocol"] for m in manifests])
@@ -483,8 +503,9 @@ def main(result_dirs: list[Path], out_dir: Path) -> None:
         paired_tests(seeds, variant, "prior_guided")
     selective_accuracy(df, seeds)
     setting_effect(seeds, reference=labels[0])
-    print(f"\nWrote {reliability_figure(df, out_dir)}")
-    print(f"Wrote {selective_accuracy_figure(df, out_dir)}")
+    if plots:
+        print(f"\nWrote {reliability_figure(df, out_dir)}")
+        print(f"Wrote {selective_accuracy_figure(df, out_dir)}")
 
 
 def cli() -> None:
@@ -496,12 +517,14 @@ def cli() -> None:
         default=None,
         help="stamped result sets to compare (default: latest record_confidence run)",
     )
+    parser.add_argument("--no-plots", action="store_true")
     args = parser.parse_args()
     dirs = args.results_dirs or [latest_result_dir(EXPERIMENT)]
     out = figure_output_dir()
-    out.mkdir(parents=True, exist_ok=True)
+    if not args.no_plots:
+        out.mkdir(parents=True, exist_ok=True)
     run_analysis(
-        lambda: main(dirs, out),
+        lambda: main(dirs, out, plots=not args.no_plots),
         dirs[-1] / "summary_analyze_record_confidence.txt",
     )
 

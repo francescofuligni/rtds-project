@@ -95,6 +95,7 @@ def test_cli_protocol_and_worker_share_configuration(
         captured["timeout"] = worker.keywords["timeout"]
         captured["workers"] = kwargs["workers"]
         captured["seeds"] = list(seeds)
+        return {"incomplete": False}
 
     monkeypatch.setattr(f"{module}.stamp", stamp)
     monkeypatch.setattr(f"{module}.run_seeds", run_seeds)

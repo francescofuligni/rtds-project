@@ -96,7 +96,7 @@ def _raising_rows(seed):
 
 def test_run_seeds_writes_one_file_per_seed_and_resumes(tmp_path, capsys):
     run_seeds(tmp_path, range(3), _rows_for, workers=1)
-    assert sorted(p.name for p in tmp_path.iterdir()) == [
+    assert sorted(p.name for p in tmp_path.iterdir() if p.name != "runs") == [
         "seed000.csv",
         "seed001.csv",
         "seed002.skip",
@@ -107,9 +107,11 @@ def test_run_seeds_writes_one_file_per_seed_and_resumes(tmp_path, capsys):
     assert not list(tmp_path.glob("*.tmp"))
 
 
-def test_run_seeds_propagates_worker_errors(tmp_path):
-    with pytest.raises(ValueError, match="seed 0 failed"):
-        run_seeds(tmp_path, [0], _raising_rows, workers=1)
+def test_run_seeds_records_worker_errors(tmp_path):
+    summary = run_seeds(tmp_path, [0], _raising_rows, workers=1)
+    assert summary["failed"] == 1 and summary["incomplete"]
+    assert summary["units"][0]["error"] == "seed 0 failed"
+    assert not list(tmp_path.glob("seed*.csv"))
 
 
 def test_seed_indices_are_contiguous_and_validated():

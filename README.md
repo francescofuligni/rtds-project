@@ -67,7 +67,9 @@ results. Analyses validate protocol compatibility before comparing datasets.
 
 ## Analyze saved results and regenerate figures
 
-`make analyze` reruns the analyses on the latest saved results. To select a
+`make analyze` writes numerical summaries of the latest saved results without
+rendering historical plots. Direct analysis CLIs retain plotting by default;
+pass `--no-plots` for numerical output only. To select a
 specific result folder, use the corresponding analysis script with
 `--results-dir` or `--results-dirs`; for example:
 
@@ -80,7 +82,7 @@ Regenerate the attack feature figures without rerunning any experiment by
 pointing the plotting target at saved education and age results:
 
 ```sh
-make plot-attack-figures \
+make figures \
   EDUCATION_DIR=results/<education-run>/final_experiment \
   AGE_DIR=results/<age-run>/final_experiment
 ```
@@ -103,3 +105,22 @@ under timestamped folders in `results/`.
 - `figures/` stores generated PNGs and reproducibility data for attack plots.
 - `tests/` contains the pytest suite.
 - `docs/` contains project background material.
+
+### Incomplete experiments
+
+Runners finish independent work after individual failures. Main work units are
+seeds; confidence work units are (seed, m) pairs. Solver outcomes without a
+candidate retain their status and missing metric; unexpected exceptions discard
+only the affected unit. No automatic retries are performed.
+
+Each invocation records outcomes under `runs/outcomes/`, separately from protocol
+manifests and scientific CSVs. Confidence coverage includes selection/scoring
+attempts and successful solves for every method, including methods with no claims.
+Candidate support is conditional on successful solves, not a calibrated posterior.
+Historical archives without this coverage are reported as unavailable.
+
+Runners and Make return a nonzero status for failures or missing candidates after
+finishing independent jobs, analyses and experiment families. Insufficient tree
+counts remain explicit skips. Analyses report incomplete coverage; no data means
+no inferred statistics or figures. `make figures` validates all selected inputs
+and completes temporary rendering before replacing existing output files.

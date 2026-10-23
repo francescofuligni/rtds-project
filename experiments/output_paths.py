@@ -53,7 +53,9 @@ def latest_result_dir(experiment: str, results_root: Path = RESULTS_ROOT) -> Pat
             manifest = json.loads(manifest_path.read_text())
             if manifest.get("experiment") != experiment:
                 continue
-            if any(result_dir.glob(manifest["data"])):
+            if any(result_dir.glob(manifest["data"])) or any(
+                (result_dir / "runs" / "outcomes").glob("*.json")
+            ):
                 candidates.append(result_dir)
     if not candidates:
         raise FileNotFoundError(

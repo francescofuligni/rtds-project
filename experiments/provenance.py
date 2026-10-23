@@ -266,27 +266,78 @@ def seed_path(result_dir: Path, seed: int) -> Path:
     return Path(result_dir) / f"seed{seed:03d}.csv"
 
 
+def write_outcome_summary(result_dir: Path, units: list[dict]) -> dict:
+    """Keep invocation outcomes separate from immutable protocol/run provenance."""
+    summary = {
+        "requested": len(units),
+        "completed": sum(u["outcome"] == "completed" for u in units),
+        "skipped": sum(u["outcome"] == "skipped" for u in units),
+        "failed": sum(u["outcome"] == "failed" for u in units),
+        "no_candidate": sum(u.get("no_candidate", 0) for u in units),
+        "units": units,
+    }
+    summary["incomplete"] = bool(summary["failed"] or summary["no_candidate"])
+    directory = Path(result_dir) / RUNS_DIR / "outcomes"
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{time.time_ns()}-{os.getpid()}.json"
+    _create_exclusively(path, json.dumps(summary, indent=2, sort_keys=True) + "\n")
+    print(f"Outcome summary: {path}; incomplete={summary['incomplete']}", flush=True)
+    return summary
+
+
+def print_outcome_coverage(result_dir: Path) -> None:
+    """Report missing units and method coverage, including methods with no claims."""
+    files = sorted((Path(result_dir) / RUNS_DIR / "outcomes").glob("*.json"))
+    if not files:
+        print("Outcome/method coverage: not available (historical archive)")
+    for path in files:
+        summary = json.loads(path.read_text())
+        print(
+            f"Coverage invocation {path.name}: requested={summary['requested']}, "
+            f"completed={summary['completed']}, skipped={summary['skipped']}, "
+            f"failed={summary['failed']}, no_candidate={summary['no_candidate']}"
+        )
+        for unit in summary["units"]:
+            if unit["outcome"] == "failed":
+                print(f"  Failed unit: {unit}")
+            if unit.get("coverage") == "not available":
+                print(
+                    f"  seed={unit['seed']} m={unit.get('m')}: method coverage not available"
+                )
+            for method in unit.get("methods", []):
+                print(f"  seed={unit['seed']} m={unit.get('m')} {method}")
+
+
 def run_seeds(
     result_dir: Path,
     seeds: Iterable[int],
     run_seed: Callable[[int], list[dict]],
     *,
     workers: int,
-) -> None:
-    """Run `run_seed` for every seed without a result file yet, in parallel,
-    writing one CSV per seed (a seed with no rows gets a .skip marker).
-    Rerunning the same command resumes where an interrupted run stopped.
-    Worker exceptions propagate and abort the runner.
-    """
+) -> dict:
+    """Finish independent seeds, recording failures without publishing partial CSVs."""
     seeds = list(seeds)
-    todo = [
-        s
-        for s in seeds
-        if not (
-            seed_path(result_dir, s).exists()
-            or seed_path(result_dir, s).with_suffix(".skip").exists()
-        )
-    ]
+    todo, units = [], []
+    for seed in seeds:
+        path = seed_path(result_dir, seed)
+        if path.exists():
+            with path.open(newline="") as source:
+                rows = list(csv.DictReader(source))
+            units.append(
+                {
+                    "seed": seed,
+                    "outcome": "completed",
+                    "existing": True,
+                    "no_candidate": sum(
+                        "status" in r and not r.get("reconstruction_error")
+                        for r in rows
+                    ),
+                }
+            )
+        elif path.with_suffix(".skip").exists():
+            units.append({"seed": seed, "outcome": "skipped", "existing": True})
+        else:
+            todo.append(seed)
     print(
         f"{len(seeds) - len(todo)} of {len(seeds)} seeds already done in {result_dir}",
         flush=True,
@@ -295,12 +346,43 @@ def run_seeds(
         futures = {pool.submit(run_seed, seed): seed for seed in todo}
         for future in as_completed(futures):
             seed = futures[future]
-            rows = future.result()
-            if rows:
-                write_rows(seed_path(result_dir, seed), rows)
-                print(f"[seed {seed}] done: {len(rows)} rows", flush=True)
-            else:
-                seed_path(result_dir, seed).with_suffix(".skip").write_text(
-                    "no rows (Rashomon set too small)\n"
+            try:
+                rows = future.result()
+                if rows:
+                    write_rows(seed_path(result_dir, seed), rows)
+                    units.append(
+                        {
+                            "seed": seed,
+                            "outcome": "completed",
+                            "no_candidate": sum(
+                                "status" in r and r.get("reconstruction_error") is None
+                                for r in rows
+                            ),
+                            "missing": [
+                                {
+                                    "m": r.get("m"),
+                                    "condition": r.get("condition"),
+                                    "status": r["status"],
+                                }
+                                for r in rows
+                                if "status" in r
+                                and r.get("reconstruction_error") is None
+                            ],
+                        }
+                    )
+                else:
+                    seed_path(result_dir, seed).with_suffix(".skip").write_text(
+                        "no rows (Rashomon set too small)\n"
+                    )
+                    units.append({"seed": seed, "outcome": "skipped"})
+            except Exception as exc:  # noqa: BLE001 -- isolate failed work units, report below
+                units.append(
+                    {
+                        "seed": seed,
+                        "outcome": "failed",
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    }
                 )
-                print(f"[seed {seed}] skipped: no rows", flush=True)
+            print(f"[seed {seed}] {units[-1]['outcome']}", flush=True)
+    return write_outcome_summary(result_dir, units)

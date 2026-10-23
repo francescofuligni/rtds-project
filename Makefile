@@ -68,7 +68,7 @@ AGE_DIR ?=
 SEQUENTIAL_DIR ?=
 
 .DEFAULT_GOAL := help
-.PHONY: help setup pilot run run-final run-record-confidence plot-attack-figures analyze test report
+.PHONY: help setup pilot run run-final run-record-confidence figures analyze test report
 
 help:
 	@printf '%s\n' \
@@ -78,8 +78,8 @@ help:
 	  '  make run                    Run every experiment family and analysis' \
 	  '  make run-final              Run only the main experiment family' \
 	  '  make run-record-confidence  Run only the record-confidence family' \
-	  '  make plot-attack-figures   Plot saved attack results without rerunning experiments' \
-	  '  make analyze                Re-run all analyses on the latest results' \
+	  '  make figures                Plot saved attack results without rerunning experiments' \
+	  '  make analyze                Write numerical summaries of the latest results' \
 	  '  make test                   Run pytest' \
 	  '  make report                 Build the local report PDF' \
 	  'Run overrides: N, K or K_STEPS, M_MAX, ATTR_A, ATTR_B, ALL_TREES, TREE_SELECTION,' \
@@ -94,27 +94,35 @@ pilot:
 	$(PYTHON) experiments/run_final_experiment.py $(THREAD_ARGS) --seed-start $(PILOT_SEED) --n-seeds 1 --workers $(PILOT_WORKERS) --n $(N) $(FINAL_M_ARGS) --attr-a $(ATTR_A) --attr-b $(ATTR_B) $(FINAL_TREE_ARGS) --tree-selection $(TREE_SELECTION) --timeout $(TIMEOUT)
 
 run-final:
-	$(PYTHON) experiments/run_final_experiment.py $(THREAD_ARGS) --seed-start $(FINAL_SEED_START) --n-seeds $(FINAL_N_SEEDS) $(if $(strip $(FINAL_WORKER_ARGS)),--workers $(FINAL_WORKER_ARGS),) --n $(N) $(FINAL_M_ARGS) --attr-a $(ATTR_A) --attr-b $(ATTR_B) $(FINAL_TREE_ARGS) --tree-selection $(TREE_SELECTION) --timeout $(TIMEOUT)
-	$(PYTHON) experiments/analyze_results.py --results-dir $(RESULT_DIR)/final_experiment
-	$(PYTHON) experiments/analyze_mechanism.py --results-dir $(RESULT_DIR)/final_experiment
+	@status=0; \
+	$(PYTHON) experiments/run_final_experiment.py $(THREAD_ARGS) --seed-start $(FINAL_SEED_START) --n-seeds $(FINAL_N_SEEDS) $(if $(strip $(FINAL_WORKER_ARGS)),--workers $(FINAL_WORKER_ARGS),) --n $(N) $(FINAL_M_ARGS) --attr-a $(ATTR_A) --attr-b $(ATTR_B) $(FINAL_TREE_ARGS) --tree-selection $(TREE_SELECTION) --timeout $(TIMEOUT) || status=1; \
+	$(PYTHON) experiments/analyze_results.py --no-plots --results-dir $(RESULT_DIR)/final_experiment || status=1; \
+	$(PYTHON) experiments/analyze_mechanism.py --no-plots --results-dir $(RESULT_DIR)/final_experiment || status=1; \
+	exit $$status
 
 run-record-confidence:
-	$(PYTHON) experiments/run_record_confidence.py $(THREAD_ARGS) --m $(RECORD_M) --tree-selection $(RECORD_TREE_SELECTION) --seed-start $(RECORD_SEED_START) --n-seeds $(RECORD_N_SEEDS) --samples $(RECORD_SAMPLES) --workers $(RECORD_WORKERS) --timeout $(RECORD_TIMEOUT) $(if $(strip $(RECORD_ONLY)),--only $(RECORD_ONLY),)
-	$(PYTHON) experiments/analyze_record_confidence.py --results-dirs $(RESULT_DIR)/record_confidence
+	@status=0; \
+	$(PYTHON) experiments/run_record_confidence.py $(THREAD_ARGS) --m $(RECORD_M) --tree-selection $(RECORD_TREE_SELECTION) --seed-start $(RECORD_SEED_START) --n-seeds $(RECORD_N_SEEDS) --samples $(RECORD_SAMPLES) --workers $(RECORD_WORKERS) --timeout $(RECORD_TIMEOUT) $(if $(strip $(RECORD_ONLY)),--only $(RECORD_ONLY),) || status=1; \
+	$(PYTHON) experiments/analyze_record_confidence.py --no-plots --results-dirs $(RESULT_DIR)/record_confidence || status=1; \
+	exit $$status
 
-plot-attack-figures:
+figures:
 	@test -n "$(EDUCATION_DIR)" -a -n "$(AGE_DIR)" || { echo "Set EDUCATION_DIR and AGE_DIR to saved final_experiment directories"; exit 2; }
 	MPLBACKEND=Agg $(PYTHON) experiments/plot_attack_figures.py --education-dir "$(EDUCATION_DIR)" --age-dir "$(AGE_DIR)" $(if $(strip $(SEQUENTIAL_DIR)),--sequential-dir "$(SEQUENTIAL_DIR)",)
 
 # Keep the families sequential because each can be compute- and memory-intensive.
 run:
-	$(MAKE) --no-print-directory run-final
-	$(MAKE) --no-print-directory run-record-confidence
+	@status=0; \
+	$(MAKE) --no-print-directory run-final || status=1; \
+	$(MAKE) --no-print-directory run-record-confidence || status=1; \
+	exit $$status
 
 analyze:
-	$(PYTHON) experiments/analyze_results.py
-	$(PYTHON) experiments/analyze_mechanism.py
-	$(PYTHON) experiments/analyze_record_confidence.py
+	@status=0; \
+	$(PYTHON) experiments/analyze_results.py --no-plots || status=1; \
+	$(PYTHON) experiments/analyze_mechanism.py --no-plots || status=1; \
+	$(PYTHON) experiments/analyze_record_confidence.py --no-plots || status=1; \
+	exit $$status
 
 test:
 	$(PYTHON) -m pytest -q

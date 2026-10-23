@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -105,6 +106,23 @@ def cli() -> None:
     parser.add_argument("--education-accuracy-dir", type=Path)
     parser.add_argument("--age-accuracy-dir", type=Path)
     args = parser.parse_args()
+    FIGURES_ROOT.mkdir(parents=True, exist_ok=True)
+    with TemporaryDirectory(prefix=".render-", dir=FIGURES_ROOT) as temporary:
+        output_dir = Path(temporary)
+        data_dir = output_dir / "data"
+        render(args, output_dir, data_dir)
+        FIGURE_DATA_ROOT.mkdir(parents=True, exist_ok=True)
+        for path in sorted(output_dir.glob("*.png")):
+            path.replace(FIGURES_ROOT / path.name)
+        for path in sorted(data_dir.iterdir()):
+            path.replace(FIGURE_DATA_ROOT / path.name)
+    print(f"Published figures to {FIGURES_ROOT}; aggregates to {FIGURE_DATA_ROOT}")
+
+
+def render(args, output_dir: Path, data_dir: Path) -> None:
+    """Validate every archive before rendering into a temporary publication folder."""
+    renders = []
+    tables = []
     input_dirs = [args.education_dir, args.age_dir]
     if args.sequential_dir:
         input_dirs.append(args.sequential_dir)
@@ -120,9 +138,6 @@ def cli() -> None:
         for path in (args.education_dir, args.age_dir)
     ]
     require_comparable([manifest for _, manifest in loaded], may_differ=["attr_b"])
-    output_dir = FIGURES_ROOT
-    output_dir.mkdir(parents=True, exist_ok=True)
-    data_dir = FIGURE_DATA_ROOT
     data_dir.mkdir(parents=True, exist_ok=True)
     provenance = {
         "bands": "none; SEM retained in aggregate CSVs",
@@ -169,9 +184,9 @@ def cli() -> None:
             if accuracy_path
             else (None, "Predictive accuracy on Y")
         )
-        draw(stats, labels, stem, accuracy=accuracy, accuracy_label=accuracy_label)
+        renders.append((stats, labels, stem, None, accuracy, accuracy_label))
         data_path = data_dir / f"{stem.name}.csv"
-        stats.to_csv(data_path, index=False)
+        tables.append((stats, data_path))
         files = sorted(path.glob(manifest["data"])) + [path / "manifest.json"]
         accuracy_files = (
             [accuracy_path / "accuracy.csv", accuracy_path / "manifest.json"]
@@ -199,7 +214,6 @@ def cli() -> None:
                 },
             }
         )
-        print(f"Wrote {stem}.png and {data_path}")
     if args.sequential_dir:
         sequential, seq_manifest = load_results(args.sequential_dir, "final_experiment")
         random, random_manifest = loaded[0]
@@ -226,9 +240,11 @@ def cli() -> None:
         styles = SELECTION_STYLES
         labels = {k: v[2] for k, v in styles.items()}
         stem = output_dir / "attack_selection_comparison"
-        draw(comparison, labels, stem, styles)
+        renders.append(
+            (comparison, labels, stem, styles, None, "Predictive accuracy on Y")
+        )
         data_path = data_dir / f"{stem.name}.csv"
-        comparison.to_csv(data_path, index=False)
+        tables.append((comparison, data_path))
         provenance["selection_comparison"] = {
             "sequential_directory": str(args.sequential_dir.resolve()),
             "sequential_protocol": seq_manifest["protocol"],
@@ -241,7 +257,20 @@ def cli() -> None:
                 + [args.sequential_dir / "manifest.json"]
             },
         }
-        print(f"Wrote {stem}.png and {data_path}")
+    for stats, labels, stem, styles, accuracy, accuracy_label in renders:
+        if stats["mean"].notna().sum() == 0:
+            raise ValueError("No valid reconstruction outcomes to plot")
+    for stats, labels, stem, styles, accuracy, accuracy_label in renders:
+        draw(
+            stats,
+            labels,
+            stem,
+            styles=styles or STYLES,
+            accuracy=accuracy,
+            accuracy_label=accuracy_label,
+        )
+    for table, path in tables:
+        table.to_csv(path, index=False)
     (data_dir / "sources.json").write_text(json.dumps(provenance, indent=2) + "\n")
 
 

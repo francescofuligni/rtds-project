@@ -36,6 +36,7 @@ import argparse
 import csv
 import sys
 import time
+from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
@@ -48,7 +49,7 @@ from configuration import (
     add_tree_selection_argument,
 )
 from output_paths import experiment_result_dir
-from provenance import seed_indices, stamp, write_rows
+from provenance import seed_indices, stamp, write_outcome_summary, write_rows
 
 from attack.reconstruct import extract_branches
 from attack.record_confidence import (
@@ -176,7 +177,27 @@ def run_seed(
     public_n: int = PUBLIC_N,
     public_prior: str = "records",
     tree_selection: str = "random",
+    coverage: dict | None = None,
 ) -> list[dict] | None:
+    if coverage is None:
+        coverage = {"methods": [], "solver_statuses": []}
+
+    def record_coverage(name, pick_statuses, score_statuses):
+        def counts(statuses):
+            return {
+                "requested": len(statuses),
+                "successful": sum(s in ("FEASIBLE", "OPTIMAL") for s in statuses),
+                "statuses": dict(Counter(statuses)),
+            }
+
+        coverage["methods"].append(
+            {
+                "method": name,
+                "selection": counts(pick_statuses),
+                "scoring": counts(score_statuses),
+            }
+        )
+
     data_full = binarize_adult_curated(load_adult_raw(ROOT / "data"))
     cols = list(data_full.X.columns)
     groups = [[cols.index(c) for c in g] for g in data_full.one_hot_groups.values()]
@@ -225,6 +246,7 @@ def run_seed(
                         break
                     prior_scores[(v + (c,), k)] = p
         scored["prior_only"] = (prior_scores, 0, prior_scores)
+        record_coverage("prior_only", [], [])
 
     if methods - {"prior_only"}:
         model = build_rashomon_set(
@@ -251,21 +273,25 @@ def run_seed(
             per_tree, statuses = per_tree_candidates(
                 branches, y, classes, len(cols), groups, **solve
             )
+            coverage["solver_statuses"].extend(statuses)
             support = support_matrix(per_tree)
             for name in methods & PER_TREE_SCORES.keys():
                 scores = _scores_from_support(support, PER_TREE_SCORES[name])
                 scored[name] = (scores, _n_solved(support), scores)
                 optimal[name] = statuses.count("OPTIMAL")
+                record_coverage(name, statuses, statuses)
 
         occurrence = lambda c, k: float(np.mean(c >= k))
         if "seed_only" in methods:
             candidates, statuses = sampled_candidates(
                 branches, y, classes, len(cols), groups, n_samples=n_samples, **solve
             )
+            coverage["solver_statuses"].extend(statuses)
             support = support_matrix(candidates)
             scores = _scores_from_support(support, occurrence)
             scored["seed_only"] = (scores, _n_solved(support), scores)
             optimal["seed_only"] = statuses.count("OPTIMAL")
+            record_coverage("seed_only", statuses, statuses)
 
         variants = [name for name in methods if name in PRIOR_GUIDED_VARIANTS]
         for tie_break in (False, True):
@@ -290,8 +316,14 @@ def run_seed(
                 draw_table=draw_table,
                 **solve,
             )
+            coverage["solver_statuses"].extend(statuses)
             for name in names:
                 _, (p0, p1), (s0, s1) = PRIOR_GUIDED_VARIANTS[name]
+                record_coverage(
+                    name,
+                    statuses[p0 * n_samples : p1 * n_samples],
+                    statuses[s0 * n_samples : s1 * n_samples],
+                )
                 pick = support_matrix(candidates[p0 * n_samples : p1 * n_samples])
                 score = support_matrix(candidates[s0 * n_samples : s1 * n_samples])
                 scored[name] = (
@@ -307,6 +339,8 @@ def run_seed(
     truth = record_counts(X, y)
     rows = []
     for name, (scores, n_candidates, reported) in scored.items():
+        if name != "prior_only" and (not scores or n_candidates == 0):
+            continue  # No selection/scoring candidate means no supported claim.
         tiebreak = {key: prior.probability(*key) for key in scores}
         for record, k, _ in best_table_claims(scores, class_totals, tiebreak):
             # a split scores claims its half never saw as 0
@@ -328,14 +362,21 @@ def run_seed(
     return rows
 
 
-def _run_and_write(seed: int, m: int, args) -> str:
+def _run_and_write(seed: int, m: int, args) -> dict:
     out = args.out_dir / f"m{m:03d}" / f"seed{seed:03d}.csv"
     if out.with_suffix(".skip").exists():
-        return f"[m={m} seed {seed}] skipped earlier: Rashomon set smaller than m"
+        return {"seed": seed, "m": m, "outcome": "skipped", "existing": True}
     only = set(args.only or [])
     if out.exists() and not only:
-        return f"[m={m} seed {seed}] already done"
+        return {
+            "seed": seed,
+            "m": m,
+            "outcome": "completed",
+            "existing": True,
+            "coverage": "not available",
+        }
     t0 = time.time()
+    coverage = {"methods": [], "solver_statuses": []}
     rows = run_seed(
         seed,
         m,
@@ -346,16 +387,28 @@ def _run_and_write(seed: int, m: int, args) -> str:
         public_n=args.public_n,
         public_prior=args.public_prior,
         tree_selection=args.tree_selection,
+        coverage=coverage,
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     if rows is None:
         out.with_suffix(".skip").write_text("Rashomon set smaller than m\n")
-        return f"[m={m} seed {seed}] skipped: Rashomon set smaller than m"
+        return {"seed": seed, "m": m, "outcome": "skipped"}
     if only and out.exists():  # preserve methods already present in this run
         with out.open(newline="") as f:
             rows = [r for r in csv.DictReader(f) if r["method"] not in only] + rows
-    write_rows(out, rows)
-    return f"[m={m} seed {seed}] done in {time.time() - t0:.0f}s"
+    if rows:
+        write_rows(out, rows)
+    return {
+        "seed": seed,
+        "m": m,
+        "outcome": "completed",
+        "methods": coverage["methods"],
+        "solver_statuses": dict(Counter(coverage["solver_statuses"])),
+        "duration_s": time.time() - t0,
+        "no_candidate": sum(
+            s not in ("FEASIBLE", "OPTIMAL") for s in coverage["solver_statuses"]
+        ),
+    }
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -447,14 +500,34 @@ def main(argv: list[str] | None = None) -> None:
     )
     jobs = [(seed, m) for m in args.m for seed in seeds]
     t_start = time.time()
+    units = []
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
-        futures = [pool.submit(_run_and_write, seed, m, args) for seed, m in jobs]
+        futures = {
+            pool.submit(_run_and_write, seed, m, args): (seed, m) for seed, m in jobs
+        }
         for future in as_completed(futures):
-            print(future.result(), flush=True)
+            seed, m = futures[future]
+            try:
+                units.append(future.result())
+            except Exception as exc:  # noqa: BLE001 -- isolate failed work units, report below
+                units.append(
+                    {
+                        "seed": seed,
+                        "m": m,
+                        "outcome": "failed",
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    }
+                )
+            print(units[-1], flush=True)
+    summary = write_outcome_summary(args.out_dir, units)
     print(
         f"\nFinished {len(jobs)} jobs in {time.time() - t_start:.0f}s -> {args.out_dir}",
         flush=True,
     )
+
+    if summary["incomplete"]:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
