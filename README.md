@@ -87,14 +87,12 @@ make plot-attack-figures \
 
 Add `SEQUENTIAL_DIR=results/<sequential-run>/final_experiment` to include the
 random/sequential comparison. Paired comparisons require compatible protocols
-and shared seed/release-size observations; the preserved first experiment is
-historical and incompatible with the current comparison.
+and shared seed/release-size observations.
 
 Generated figures are PNGs in `figures/`; rerendering replaces files with the
 same names. Derived plotting tables and `sources.json` are kept in
 `figures/data/`. Raw seed data and manifests remain in their source folders
-under `results/`. `results/first_experiment/` preserves the earlier sequential
-run for historical reference only.
+under timestamped folders in `results/`.
 
 ## Repository map
 
