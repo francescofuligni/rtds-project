@@ -178,7 +178,8 @@ def test_numeric_knowledge_and_role_boundary():
 
 
 @pytest.mark.parametrize("all_trees", [False, True])
-def test_configured_seed_with_real_solver(monkeypatch, all_trees):
+@pytest.mark.parametrize("tree_selection", ["random", "sequential"])
+def test_configured_seed_with_real_solver(monkeypatch, all_trees, tree_selection):
     from types import SimpleNamespace
 
     import run_final_experiment as module
@@ -210,6 +211,9 @@ def test_configured_seed_with_real_solver(monkeypatch, all_trees):
     monkeypatch.setattr(module, "binarize_adult_curated", lambda raw: data)
     monkeypatch.setattr(module, "build_rashomon_set", build)
     monkeypatch.setattr(module, "select_random_trees", select)
+    monkeypatch.setattr(
+        module, "select_trees", lambda model, m: select(model, m, None, None)
+    )
     monkeypatch.setattr(module, "HOLDOUT_N", 3)
     config = ExperimentConfig(
         4,
@@ -218,11 +222,15 @@ def test_configured_seed_with_real_solver(monkeypatch, all_trees):
         attr_a="education",
         attr_b="age",
         include_all_trees=all_trees,
+        tree_selection=tree_selection,
     )
     rows = module.run_seed(0, config=config)
     expected = [1, 2, 3] if all_trees else [1, 2]
     assert [s[0] for s in selected] == expected
-    assert all(s[1:] == (20_000, 1000) for s in selected)
+    assert all(
+        s[1:] == ((20_000, 1000) if tree_selection == "random" else (None, None))
+        for s in selected
+    )
     assert {r["m"] for r in rows} == set(expected)
     assert {r["condition"] for r in rows} == {"none", "A", "B", "A+B"}
     assert len(rows) == 4 * len(expected)
@@ -231,7 +239,9 @@ def test_configured_seed_with_real_solver(monkeypatch, all_trees):
     if all_trees:
         protocol = module.protocol(config)
         assert protocol["include_all_trees"] is True
-        assert protocol["tree_selection_pool"] == "all_available_per_seed"
+        assert protocol["tree_selection_pool"] == (
+            "all_available_per_seed" if tree_selection == "random" else None
+        )
 
 
 def test_large_release_expands_declared_pool():
@@ -275,7 +285,7 @@ def test_solver_threads_are_part_of_every_protocol():
 
 
 def test_record_confidence_result_sets_are_named_by_their_differences():
-    from analyze_record_confidence import setting_labels
+    from analysis.record_confidence import setting_labels
 
     old = {"tree_selection": "random"}  # stamped before the public-data keys
     small = {"tree_selection": "random", "public_n": 200, "public_prior": "records"}
@@ -291,3 +301,24 @@ def test_record_confidence_public_options_are_part_of_the_protocol():
     assert protocol["public_n"] == 200 and protocol["public_prior"] == "marginals"
     with pytest.raises(SystemExit):
         record.main(["--public-prior", "census"])
+
+
+def test_tree_selection_cli_and_protocols():
+    import run_final_experiment as main
+    import run_record_confidence as record
+
+    assert parse().tree_selection == "random"
+    config = parse("--tree-selection", "sequential")
+    selected = main.protocol(config)
+    assert selected["tree_selection"] == "sequential"
+    assert selected["tree_selection_pool"] is None
+    assert selected["tree_selection_seed_offset"] is None
+    assert selected["tree_selection_order"] == "treefarms_enumeration_nested_prefix"
+    assert main.protocol()["tree_selection"] == "random"
+    assert record.protocol(20, 30)["tree_selection"] == "random"
+    assert (
+        record.protocol(20, 30, tree_selection="sequential")["tree_selection_pool"]
+        is None
+    )
+    with pytest.raises(SystemExit):
+        parse("--tree-selection", "boosted")

@@ -1,9 +1,9 @@
 import json
 
 import pandas as pd
+from analysis.mechanism import main as analyze_mechanism
+from analysis.reconstruction import main as analyze_results
 from analysis_output import condition_labels, run_analysis
-from analyze_mechanism import main as analyze_mechanism
-from analyze_results import main as analyze_results
 
 
 def test_condition_labels_include_configured_features():

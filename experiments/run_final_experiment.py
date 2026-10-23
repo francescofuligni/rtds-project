@@ -6,9 +6,9 @@ release size, use
 the same sample and selected trees in all four knowledge conditions. This
 pairing makes condition differences comparable within each seed and release.
 
-Tree selection uses one random ordering without replacement. Releasing its
-first m trees creates nested prefixes; sequential TreeFARMS enumeration is not
-used.
+Tree selection defaults to one random ordering without replacement. Releasing its
+first m trees creates nested prefixes. Sequential TreeFARMS enumeration is
+available with --tree-selection sequential.
 
 Seeds run independently in a process pool. Each worker builds one Rashomon set
 and processes all release sizes and conditions. Each CP-SAT solve uses
@@ -31,9 +31,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from configuration import (
+    DEFAULT_SOLVER_THREADS,
     ExperimentConfig,
     add_configuration_arguments,
-    DEFAULT_SOLVER_THREADS,
     add_threads_argument,
     configuration_from_args,
 )
@@ -43,15 +43,18 @@ from provenance import available_cpu_count, run_seeds, seed_indices, stamp
 from attack.baselines import marginal_baseline, uniform_random_guess
 from attack.conditions import CONDITIONS, run_condition
 from attack.reconstruct import _walk_leaves, extract_branches
-from rashomon.build import (
-    build_rashomon_set,
-    select_random_trees,
-)
+from rashomon.build import build_rashomon_set
 from rashomon.data import (
     binarize_adult_curated,
     known_columns_for,
     load_adult_raw,
     sample_rows,
+)
+from rashomon.publisher import sample_private_public_indices
+from rashomon.selection import (
+    select_random_trees,
+    select_trees,
+    selection_protocol,
 )
 
 TARGET = "sex"
@@ -83,15 +86,16 @@ def protocol(
         **config.release_protocol(),
         "regularization": REGULARIZATION,
         "rashomon_bound_multiplier": RASHOMON_BOUND_MULTIPLIER,
-        "tree_selection": "random",
+        **selection_protocol(
+            config.tree_selection,
+            seed_offset=TREE_SELECTION_SEED_OFFSET,
+            pool="all_available_per_seed"
+            if config.include_all_trees
+            else config.tree_pool,
+        ),
         "solve_timeout": timeout,
         "solver_threads": threads,
         "seed_workers": workers,
-        "tree_selection_seed_offset": TREE_SELECTION_SEED_OFFSET,
-        "tree_selection_pool": (
-            "all_available_per_seed" if config.include_all_trees else config.tree_pool
-        ),
-        "tree_selection_order": "uniform_without_replacement_nested_prefix",
         "conditions": CONDITIONS,
         "labels": "given_per_row",
     }
@@ -127,11 +131,11 @@ def run_seed(
     df = load_adult_raw(ROOT / "data")
     data_full = binarize_adult_curated(df)
 
-    pilot_idx = data_full.X.sample(n=config.n, random_state=seed).index
-    pilot = sample_rows(data_full, n=config.n, seed=seed)
-    holdout_df = data_full.X.drop(index=pilot_idx).sample(
-        n=HOLDOUT_N, random_state=seed + 10_000
+    _, holdout_idx = sample_private_public_indices(
+        data_full, n=config.n, public_n=HOLDOUT_N, seed=seed
     )
+    pilot = sample_rows(data_full, n=config.n, seed=seed)
+    holdout_df = data_full.X.loc[holdout_idx]
 
     t0 = time.time()
     model = build_rashomon_set(
@@ -174,8 +178,12 @@ def run_seed(
         if m > n_available:
             continue
 
-        trees = select_random_trees(
-            model, m, seed=seed + TREE_SELECTION_SEED_OFFSET, pool=selection_pool
+        trees = (
+            select_trees(model, m)
+            if config.tree_selection == "sequential"
+            else select_random_trees(
+                model, m, seed=seed + TREE_SELECTION_SEED_OFFSET, pool=selection_pool
+            )
         )
         y = pilot.y.to_numpy()
         classes = sorted(pilot.y.unique().tolist())

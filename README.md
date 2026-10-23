@@ -226,3 +226,64 @@ occupation or another absent attribute requires an explicit feature-schema chang
 The current reconstruction protocol supplies true per-row Y; this setting remains
 recorded as `labels=given_per_row`. The Swedish-inspired public-information scenario
 and exact auxiliary knowledge are modeling assumptions, not population validation.
+
+### Tree selection
+
+Both experiment runners accept `--tree-selection random|sequential`.
+Omitting the option keeps random selection as the default. Sequential selection
+releases trees at indices 0 through m-1 in TreeFARMS enumeration order; it is
+not boosting. Both modes retain nested releases as m increases and record the
+selection policy in the protocol manifest.
+
+```sh
+make run-final TREE_SELECTION=sequential
+make pilot TREE_SELECTION=sequential
+make run-record-confidence RECORD_TREE_SELECTION=sequential
+```
+
+`TREE_SELECTION` defaults to `random` and also supplies the record-confidence
+default unless `RECORD_TREE_SELECTION` is set explicitly.
+
+### Attack figures and future utility overlay
+
+`experiments/plot_attack_figures.py` reads saved main results without solving:
+
+```sh
+MPLBACKEND=Agg .venv/bin/python experiments/plot_attack_figures.py \
+  --education-dir results/20261020_195325/final_experiment \
+  --age-dir results/20261020_195325_01/final_experiment \
+  --output-dir results/figures/office_meeting_3
+```
+
+Optional `--sequential-dir` adds the A+B selection comparison over the measured release sizes shared by the selected runs.
+Use a new sequential run with the same sample settings, solver budgets and
+seed indices as the random run. Only shared valid seed/m observations enter
+this figure. Historical runs with different budgets are rejected.
+Both geometric and uniform release grids are read from actual measurements;
+markers show measured reconstruction means joined by straight segments;
+accuracy uses a thinner solid smooth curve without markers. Uncertainty bands are hidden; SEM remains in the aggregate CSVs.
+
+Optional `--education-accuracy-dir` and `--age-accuracy-dir` overlay utility on
+the respective feature figure. Each directory must contain `accuracy.csv`
+(columns `seed,m,accuracy`, exactly covering the attack seed/m keys) and a
+`manifest.json` with `experiment: predictive_accuracy`, `attack_protocol` equal
+to the source attack protocol, `utility_metric: majority_vote`, and
+`tie_policy: smallest_class`. For income classes 0/1, tied votes predict 0.
+The future utility producer will evaluate majority voting on held-out Y;
+no utility-computation module or new experiment is included yet.
+
+### Code organisation
+
+- `src/rashomon/build.py`: TreeFARMS construction.
+- `src/rashomon/selection.py`: nested random/sequential selection and protocol metadata.
+- `src/rashomon/publisher.py`: reproducible private/public sample indices.
+- `src/attack/`: reconstruction constraints, knowledge, scoring and record confidence.
+- `experiments/run_*.py`: experiment configuration, execution and output orchestration.
+- `experiments/analysis/`: analysis implementations, validated poster inputs and aggregation.
+- `experiments/plotting/`: poster rendering and shared styles.
+- `experiments/analyze_*.py`, `compare_background_pairs.py` and `plot_attack_figures.py`:
+  thin CLI entry points; existing commands remain available.
+
+The utility-only accuracy producer remains future work. This regrouping preserves
+sampling, preprocessing, solver budgets and scientific metrics. Legacy analysis
+modules still contain their original rendering; separation is incremental.

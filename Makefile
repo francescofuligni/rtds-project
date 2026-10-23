@@ -40,6 +40,8 @@ K_STEPS ?=
 M_MAX ?= 200
 ATTR_A ?= marital-status
 ATTR_B ?= education
+TREE_SELECTION ?= random
+RECORD_TREE_SELECTION ?= $(TREE_SELECTION)
 ALL_TREES ?= 0
 TIMEOUT ?= 180
 PILOT_SEED ?= 0
@@ -74,7 +76,7 @@ help:
 	  '  make analyze                Re-run all analyses on the latest results' \
 	  '  make test                   Run pytest' \
 	  '  make report                 Build the local report PDF' \
-	  'Run overrides: N, K or K_STEPS, M_MAX, ATTR_A, ATTR_B, ALL_TREES,' \
+	  'Run overrides: N, K or K_STEPS, M_MAX, ATTR_A, ATTR_B, ALL_TREES, TREE_SELECTION,' \
 	  '  N_SEEDS, SEED_START, WORKERS and TIMEOUT. Outputs are always results/{timestamp}/{experiment}.' \
 	  'Supplementary overrides: RECORD_* (see README).'
 
@@ -83,15 +85,15 @@ setup:
 
 # The pilot is one seed, but otherwise uses the same main protocol overrides.
 pilot:
-	$(PYTHON) experiments/run_final_experiment.py $(THREAD_ARGS) --seed-start $(PILOT_SEED) --n-seeds 1 --workers $(PILOT_WORKERS) --n $(N) $(FINAL_M_ARGS) --attr-a $(ATTR_A) --attr-b $(ATTR_B) $(FINAL_TREE_ARGS) --timeout $(TIMEOUT)
+	$(PYTHON) experiments/run_final_experiment.py $(THREAD_ARGS) --seed-start $(PILOT_SEED) --n-seeds 1 --workers $(PILOT_WORKERS) --n $(N) $(FINAL_M_ARGS) --attr-a $(ATTR_A) --attr-b $(ATTR_B) $(FINAL_TREE_ARGS) --tree-selection $(TREE_SELECTION) --timeout $(TIMEOUT)
 
 run-final:
-	$(PYTHON) experiments/run_final_experiment.py $(THREAD_ARGS) --seed-start $(FINAL_SEED_START) --n-seeds $(FINAL_N_SEEDS) $(if $(strip $(FINAL_WORKER_ARGS)),--workers $(FINAL_WORKER_ARGS),) --n $(N) $(FINAL_M_ARGS) --attr-a $(ATTR_A) --attr-b $(ATTR_B) $(FINAL_TREE_ARGS) --timeout $(TIMEOUT)
+	$(PYTHON) experiments/run_final_experiment.py $(THREAD_ARGS) --seed-start $(FINAL_SEED_START) --n-seeds $(FINAL_N_SEEDS) $(if $(strip $(FINAL_WORKER_ARGS)),--workers $(FINAL_WORKER_ARGS),) --n $(N) $(FINAL_M_ARGS) --attr-a $(ATTR_A) --attr-b $(ATTR_B) $(FINAL_TREE_ARGS) --tree-selection $(TREE_SELECTION) --timeout $(TIMEOUT)
 	$(PYTHON) experiments/analyze_results.py --results-dir $(RESULT_DIR)/final_experiment
 	$(PYTHON) experiments/analyze_mechanism.py --results-dir $(RESULT_DIR)/final_experiment
 
 run-record-confidence:
-	$(PYTHON) experiments/run_record_confidence.py $(THREAD_ARGS) --m $(RECORD_M) --seed-start $(RECORD_SEED_START) --n-seeds $(RECORD_N_SEEDS) --samples $(RECORD_SAMPLES) --workers $(RECORD_WORKERS) --timeout $(RECORD_TIMEOUT) $(if $(strip $(RECORD_ONLY)),--only $(RECORD_ONLY),)
+	$(PYTHON) experiments/run_record_confidence.py $(THREAD_ARGS) --m $(RECORD_M) --tree-selection $(RECORD_TREE_SELECTION) --seed-start $(RECORD_SEED_START) --n-seeds $(RECORD_N_SEEDS) --samples $(RECORD_SAMPLES) --workers $(RECORD_WORKERS) --timeout $(RECORD_TIMEOUT) $(if $(strip $(RECORD_ONLY)),--only $(RECORD_ONLY),)
 	$(PYTHON) experiments/analyze_record_confidence.py --results-dirs $(RESULT_DIR)/record_confidence
 
 # Keep the families sequential because each can be compute- and memory-intensive.

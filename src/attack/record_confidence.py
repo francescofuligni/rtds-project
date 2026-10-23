@@ -136,11 +136,10 @@ def sampled_candidates(
             target = draw_table(y, rng)
         elif public_X is not None:
             target = draw_prior_table(public_X, public_y, y, rng)
-        if target is not None:
-            if random_tie_break:
-                # total jitter < one unit of distance
-                base = (TIE_BREAK_JITTER - 1) * n_cells + 1
-                weights = base + rng.integers(0, TIE_BREAK_JITTER, size=target.shape)
+        if target is not None and random_tie_break:
+            # total jitter < one unit of distance
+            base = (TIE_BREAK_JITTER - 1) * n_cells + 1
+            weights = base + rng.integers(0, TIE_BREAK_JITTER, size=target.shape)
         result = reconstruct(
             trees_branches,
             y,

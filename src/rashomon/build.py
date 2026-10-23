@@ -1,16 +1,12 @@
-"""Rashomon set construction via TreeFARMS, and tree-selection strategies
-for growing a released ensemble of size m from it."""
+"""Rashomon set construction via TreeFARMS."""
 
 from __future__ import annotations
 
 import contextlib
 import os
 
-import numpy as np
 import pandas as pd
 from treefarms import TREEFARMS
-
-DEFAULT_RANDOM_TREE_POOL = 1000
 
 
 @contextlib.contextmanager
@@ -52,24 +48,3 @@ def build_rashomon_set(
         with _suppress_native_stdout():
             model.fit(X, y)
     return model
-
-
-def select_random_trees(
-    model, m: int, seed: int, pool: int = DEFAULT_RANDOM_TREE_POOL
-) -> list[dict]:
-    """Select m trees uniformly at random (without replacement) from the
-    Rashomon set.
-
-    A random ordering of up to `pool` indices is drawn uniformly from the
-    full Rashomon set and its first m are returned, so for one seed the
-    selections are nested:
-    the m=10 trees are among the m=50 trees, which are among the m=100
-    trees. Increasing m therefore adds trees instead of swapping them.
-    """
-    n = model.get_tree_count()
-    if m > n:
-        raise ValueError(f"Requested {m} trees but the Rashomon set only has {n}")
-    if m > pool:
-        raise ValueError(f"Requested {m} trees but the nested pool only has {pool}")
-    order = np.random.default_rng(seed).choice(n, size=min(pool, n), replace=False)
-    return [model[int(i)].source for i in order[:m]]

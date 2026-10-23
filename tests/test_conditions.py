@@ -5,8 +5,9 @@ import pytest
 from attack.baselines import marginal_baseline, uniform_random_guess
 from attack.conditions import CONDITIONS, known_mask_for_condition, run_condition
 from attack.reconstruct import extract_branches
-from rashomon.build import build_rashomon_set, select_random_trees
+from rashomon.build import build_rashomon_set
 from rashomon.data import BinarizedDataset
+from rashomon.selection import select_random_trees
 
 
 @pytest.fixture(scope="module")

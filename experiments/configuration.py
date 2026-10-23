@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from rashomon.build import DEFAULT_RANDOM_TREE_POOL
+from rashomon.selection import DEFAULT_RANDOM_TREE_POOL
 
 # CP-SAT search workers per solve. Several workers run different strategies in
 # parallel (a portfolio), which is what finds a table on larger releases: at
@@ -19,6 +19,15 @@ DEFAULT_SOLVER_THREADS = 4
 # 4 workers hit the 30 s timeout on every sample (feasible, never optimal),
 # 6 and 8 workers proved the optimum in 8-16 s on the same, loaded machine.
 RECORD_CONFIDENCE_SOLVER_THREADS = 8
+
+
+def add_tree_selection_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--tree-selection",
+        choices=("random", "sequential"),
+        default="random",
+        help="release random nested prefixes (default) or TreeFARMS enumeration prefixes",
+    )
 
 
 def add_threads_argument(
@@ -43,8 +52,11 @@ class ExperimentConfig:
     attr_a: str = "marital-status"
     attr_b: str = "education"
     include_all_trees: bool = False
+    tree_selection: str = "random"
 
     def __post_init__(self):
+        if self.tree_selection not in ("random", "sequential"):
+            raise ValueError("tree-selection must be random or sequential")
         if self.n < 1:
             raise ValueError("n must be positive")
         if self.m_max < 1:
@@ -107,6 +119,7 @@ def add_configuration_arguments(
     default_n: int = ExperimentConfig.n,
     default_k: int = ExperimentConfig.k,
 ) -> None:
+    add_tree_selection_argument(parser)
     parser.add_argument(
         "--n", type=int, default=default_n, help="private training rows"
     )
@@ -151,4 +164,5 @@ def configuration_from_args(args) -> ExperimentConfig:
         attr_a=args.attr_a,
         attr_b=args.attr_b,
         include_all_trees=args.all_trees,
+        tree_selection=args.tree_selection,
     )

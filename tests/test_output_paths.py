@@ -163,6 +163,7 @@ def test_record_method_subset_writes_a_fresh_run(tmp_path, monkeypatch):
 
     def run_seed(seed, m, samples, timeout, methods, **settings):
         captured["methods"] = methods
+        captured["tree_selection"] = settings["tree_selection"]
         return [{"seed": seed, "m": m, "method": "prior_only"}]
 
     monkeypatch.setattr(runner, "run_seed", run_seed)
@@ -174,7 +175,9 @@ def test_record_method_subset_writes_a_fresh_run(tmp_path, monkeypatch):
         threads=1,
         public_n=2000,
         public_prior="records",
+        tree_selection="sequential",
     )
     runner._run_and_write(0, 10, args)
+    assert captured["tree_selection"] == "sequential"
     assert captured["methods"] == {"prior_only"}
     assert (tmp_path / "m010" / "seed000.csv").is_file()

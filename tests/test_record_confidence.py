@@ -16,7 +16,8 @@ from attack.record_confidence import (
     sampled_candidates,
     support_matrix,
 )
-from rashomon.build import build_rashomon_set, select_random_trees
+from rashomon.build import build_rashomon_set
+from rashomon.selection import select_random_trees
 
 
 @pytest.fixture(scope="module")
@@ -243,3 +244,23 @@ def test_dirichlet_prior_is_a_distribution_and_less_sure_than_counts():
     assert many.probability(common, 5) > plain5.probability(common, 5)
     table = many.draw_table(np.zeros(50, dtype=int), np.random.default_rng(0))
     assert {tuple(r) for r in table} <= set(vectors)
+
+
+def test_sequential_tree_selection_preserves_enumeration_prefix():
+    from types import SimpleNamespace
+
+    from rashomon.selection import select_trees
+
+    class Model:
+        def get_tree_count(self):
+            return 5
+
+        def __getitem__(self, index):
+            return SimpleNamespace(source={"index": index})
+
+    model = Model()
+    assert select_trees(model, 3) == [{"index": i} for i in range(3)]
+    assert select_trees(model, 5)[:3] == select_trees(model, 3)
+    for m in (0, -1, 6):
+        with pytest.raises(ValueError):
+            select_trees(model, m)

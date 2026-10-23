@@ -3,7 +3,8 @@ import pandas as pd
 import pytest
 
 from attack.reconstruct import extract_branches, reconstruct
-from rashomon.build import build_rashomon_set, select_random_trees
+from rashomon.build import build_rashomon_set
+from rashomon.selection import select_random_trees
 
 
 @pytest.fixture(scope="module")

@@ -42,7 +42,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 import numpy as np
-from configuration import RECORD_CONFIDENCE_SOLVER_THREADS, add_threads_argument
+from configuration import (
+    RECORD_CONFIDENCE_SOLVER_THREADS,
+    add_threads_argument,
+    add_tree_selection_argument,
+)
 from output_paths import experiment_result_dir
 from provenance import seed_indices, stamp, write_rows
 
@@ -58,12 +62,15 @@ from attack.record_confidence import (
     sampled_candidates,
     support_matrix,
 )
-from rashomon.build import (
-    DEFAULT_RANDOM_TREE_POOL,
-    build_rashomon_set,
-    select_random_trees,
-)
+from rashomon.build import build_rashomon_set
 from rashomon.data import binarize_adult_curated, load_adult_raw
+from rashomon.publisher import sample_private_public_indices
+from rashomon.selection import (
+    DEFAULT_RANDOM_TREE_POOL,
+    select_random_trees,
+    select_trees,
+    selection_protocol,
+)
 
 PILOT_N = 100
 PUBLIC_N = 2000
@@ -94,6 +101,7 @@ def protocol(
     threads: int = RECORD_CONFIDENCE_SOLVER_THREADS,
     public_n: int = PUBLIC_N,
     public_prior: str = "records",
+    tree_selection: str = "random",
 ) -> dict:
     """Every setting that changes what this experiment's numbers mean."""
     return {
@@ -103,7 +111,11 @@ def protocol(
         "public_prior": public_prior,
         "regularization": REGULARIZATION,
         "rashomon_bound_multiplier": RASHOMON_BOUND_MULTIPLIER,
-        "tree_selection": "random",
+        **selection_protocol(
+            tree_selection,
+            seed_offset=TREE_SELECTION_SEED_OFFSET,
+            pool=DEFAULT_RANDOM_TREE_POOL,
+        ),
         "samples": samples,
         "m_values": sorted(m_values or [10]),
         "solve_timeout": timeout,
@@ -111,9 +123,6 @@ def protocol(
         # closest one, within the timeout; see configuration.py.
         "solver_threads": threads,
         "seed_workers": workers,
-        "tree_selection_seed_offset": TREE_SELECTION_SEED_OFFSET,
-        "tree_selection_pool": DEFAULT_RANDOM_TREE_POOL,
-        "tree_selection_order": "uniform_without_replacement_nested_prefix",
         "prior_alpha": PRIOR_ALPHA,
         "methods": [m for m in METHOD_CHOICES if m in (methods or METHODS)],
         "background_knowledge": "none",
@@ -166,16 +175,16 @@ def run_seed(
     threads: int = RECORD_CONFIDENCE_SOLVER_THREADS,
     public_n: int = PUBLIC_N,
     public_prior: str = "records",
+    tree_selection: str = "random",
 ) -> list[dict] | None:
     data_full = binarize_adult_curated(load_adult_raw(ROOT / "data"))
     cols = list(data_full.X.columns)
     groups = [[cols.index(c) for c in g] for g in data_full.one_hot_groups.values()]
 
-    idx = data_full.X.sample(n=PILOT_N, random_state=seed).index
-    X, y = data_full.X.loc[idx].to_numpy(), data_full.y.loc[idx].to_numpy()
-    public = (
-        data_full.X.drop(index=idx).sample(n=public_n, random_state=seed + 10_000).index
+    idx, public = sample_private_public_indices(
+        data_full, n=PILOT_N, public_n=public_n, seed=seed
     )
+    X, y = data_full.X.loc[idx].to_numpy(), data_full.y.loc[idx].to_numpy()
     public_X, public_y = (
         data_full.X.loc[public].to_numpy(),
         data_full.y.loc[public].to_numpy(),
@@ -226,7 +235,11 @@ def run_seed(
         )
         if model.get_tree_count() < m:
             return None
-        trees = select_random_trees(model, m, seed=seed + TREE_SELECTION_SEED_OFFSET)
+        trees = (
+            select_trees(model, m)
+            if tree_selection == "sequential"
+            else select_random_trees(model, m, seed=seed + TREE_SELECTION_SEED_OFFSET)
+        )
         branches = [extract_branches(t, X, y, classes) for t in trees]
         solve = {
             "timeout": timeout,
@@ -244,7 +257,7 @@ def run_seed(
                 scored[name] = (scores, _n_solved(support), scores)
                 optimal[name] = statuses.count("OPTIMAL")
 
-        occurrence = lambda c, k: float(np.mean(c >= k))  # noqa: E731
+        occurrence = lambda c, k: float(np.mean(c >= k))
         if "seed_only" in methods:
             candidates, statuses = sampled_candidates(
                 branches, y, classes, len(cols), groups, n_samples=n_samples, **solve
@@ -332,6 +345,7 @@ def _run_and_write(seed: int, m: int, args) -> str:
         threads=args.threads,
         public_n=args.public_n,
         public_prior=args.public_prior,
+        tree_selection=args.tree_selection,
     )
     out.parent.mkdir(parents=True, exist_ok=True)
     if rows is None:
@@ -346,6 +360,7 @@ def _run_and_write(seed: int, m: int, args) -> str:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    add_tree_selection_argument(parser)
     parser.add_argument(
         "--m", type=int, nargs="+", default=[10], help="numbers of released trees"
     )
@@ -418,6 +433,7 @@ def main(argv: list[str] | None = None) -> None:
             args.threads,
             args.public_n,
             args.public_prior,
+            args.tree_selection,
         ),
         data="m*/seed*.csv",
         argv=argv,
