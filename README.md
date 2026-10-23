@@ -4,6 +4,10 @@ RTDS project for the Research Topics in Data Science course: reconstructing
 training data from a released Rashomon set of decision trees (TreeFARMS), and
 giving the attacker a per-record confidence it can compute without ground truth.
 
+For a from-scratch explanation of what we did and why, with diagrams and all
+results, open `docs/released_trees_explained.html` in a browser (one
+self-contained file; works offline).
+
 ## Experiments
 
 | Runner (`experiments/`) | Question | Analysis |
