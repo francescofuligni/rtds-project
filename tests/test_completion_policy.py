@@ -344,7 +344,7 @@ def test_figure_cli_stages_all_outputs_before_publication(
             assert not renders
     else:
         plotter.cli()
-        assert len(renders) == 3
+        assert len(renders) == 5
         provenance = json.loads((data / "sources.json").read_text())
         assert provenance["selection_comparison"]["paired_keys"] == [
             {"seed": 0, "m": 1}

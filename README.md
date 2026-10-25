@@ -89,7 +89,8 @@ make figures \
 
 Add `SEQUENTIAL_DIR=results/<sequential-run>/final_experiment` to include the
 random/sequential comparison. Paired comparisons require compatible protocols
-and shared seed/release-size observations.
+and shared seed/release-size observations. Each feature figure also gets a
+`_gap` variant that shades the gap between no background knowledge and A+B.
 
 Generated figures are PNGs in `figures/`; rerendering replaces files with the
 same names. Derived plotting tables and `sources.json` are kept in
