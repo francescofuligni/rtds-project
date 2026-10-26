@@ -4,11 +4,11 @@
   "curves": "reconstruction: straight segments; accuracy: PCHIP in log(m); no extrapolation",
   "metric": "categorical target error after evaluator row matching",
   "implementation_sha256": {
-    "experiments/plotting/attack_figures.py": "39571fc91d26434b8c48ce004889726cc97d0f37ab1ed280252606ca0d0cb06b",
-    "experiments/analysis/attack_figures.py": "3dda93dd0550a8548259250fe3ac920ada09d3483d6c1ce1343ea4d87e2ad44c",
+    "experiments/plotting/attack_figures.py": "ecf50ef08210613bad6e6b9df0fa601c056c1474fb2b22bd33f5e935b8d0e601",
+    "experiments/analysis/attack_figures.py": "8caa1ad22536092bb9e5367447ea69d17e759b878ec1892800d129d8bf17cc13",
     "experiments/output_paths.py": "0f40e2f6badf82a6adf614fe0e5d1001e6bd10c2135d1c5f07e87c34a1bf95e1",
     "experiments/provenance.py": "4cf77043979898e88be121d31de8f8d8078e58eea32d8f2d3cc3d9b323d7ef4e",
-    "experiments/plotting/style.py": "1f4aae77311ca637ce89cfe28c23dfc402b2baa77929bb51cb47d8f9175e208d",
+    "experiments/plotting/style.py": "d790ed5ca762617f63f12ae0a9c6a74a95f4804aac3eb3fe4919d8153208b26e",
     "pyproject.toml": "df6159e0df330d5a56f02fea62cd9f24d7270657310d098855b40b292604411c",
     "uv.lock": "5059522c661c17eddd7f030e1acb0d5a464f654f4eed9907d3bebc51065568a9"
   },
@@ -364,6 +364,11 @@
       }
     }
   ],
+  "background_knowledge": {
+    "none_reference": "education run; not pooled with age run",
+    "baselines": "measured unconditional uniform/marginal controls from education run; shared seed/m controls checked against age run",
+    "aggregation": "one observation per seed/m/curve; available measurements per m"
+  },
   "selection_comparison": {
     "sequential_directory": "/Users/francescomariafuligni/DEV/rtds-project/results/20261025_190500/final_experiment",
     "sequential_protocol": {

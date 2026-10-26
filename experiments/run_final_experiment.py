@@ -1,7 +1,8 @@
 """Run the paired None/A/B/A+B background-knowledge experiment on Adult.
 
 For each seed, sample a private pilot and a disjoint holdout used by the
-baselines and predictive accuracy, then build one Rashomon set. For every configured geometric or linear
+baselines and optional predictive accuracy, then build one Rashomon set.
+For every configured geometric or linear
 release size, use
 the same sample and selected trees in all four knowledge conditions. This
 pairing makes condition differences comparable within each seed and release.
@@ -74,6 +75,7 @@ def protocol(
     timeout: float = SOLVE_TIMEOUT,
     workers: int | None = None,
     threads: int = DEFAULT_SOLVER_THREADS,
+    accuracy: bool = False,
 ) -> dict:
     """Every setting that changes what this experiment's numbers mean."""
     config = config or ExperimentConfig()
@@ -99,7 +101,7 @@ def protocol(
         "seed_workers": workers,
         "conditions": CONDITIONS,
         "labels": "given_per_row",
-        "predictive_utility": UTILITY_PROTOCOL,
+        **({"predictive_utility": UTILITY_PROTOCOL} if accuracy else {}),
     }
 
 
@@ -128,6 +130,7 @@ def run_seed(
     config: ExperimentConfig | None = None,
     timeout: float = SOLVE_TIMEOUT,
     threads: int = DEFAULT_SOLVER_THREADS,
+    accuracy: bool = False,
 ) -> list[dict]:
     config = config or ExperimentConfig()
     df = load_adult_raw(ROOT / "data")
@@ -193,9 +196,11 @@ def run_seed(
         joint_a_frac = joint_split_fraction(trees, set(target_idx), a_idx)
         joint_b_frac = joint_split_fraction(trees, set(target_idx), b_idx)
         # Evaluate the exact release already in memory; A/B cannot change its votes.
-        accuracy = prefix_accuracy(
-            trees, holdout_df, data_full.y.loc[holdout_idx], [m]
-        )[m]
+        predictive_accuracy = (
+            prefix_accuracy(trees, holdout_df, data_full.y.loc[holdout_idx], [m])[m]
+            if accuracy
+            else None
+        )
 
         for condition in CONDITIONS:
             t0 = time.time()
@@ -225,7 +230,9 @@ def run_seed(
                     "marginal_baseline_error": marginal_error,
                     "joint_split_frac_A": round(joint_a_frac, 4),
                     "joint_split_frac_B": round(joint_b_frac, 4),
-                    "predictive_accuracy": accuracy,
+                    **(
+                        {"predictive_accuracy": predictive_accuracy} if accuracy else {}
+                    ),
                 }
             )
 
@@ -251,6 +258,11 @@ def main(argv: list[str] | None = None) -> None:
         "--timeout", type=float, default=SOLVE_TIMEOUT, help="seconds per solve"
     )
     add_configuration_arguments(parser)
+    parser.add_argument(
+        "--accuracy",
+        action="store_true",
+        help="opt in to held-out income accuracy (default disabled)",
+    )
     args = parser.parse_args(argv)
     try:
         config = configuration_from_args(args)
@@ -274,7 +286,9 @@ def main(argv: list[str] | None = None) -> None:
     stamp(
         result_dir,
         EXPERIMENT,
-        protocol(config, args.timeout, args.workers, args.threads),
+        protocol(
+            config, args.timeout, args.workers, args.threads, accuracy=args.accuracy
+        ),
         data="seed*.csv",
         argv=argv,
         invocation={
@@ -288,7 +302,13 @@ def main(argv: list[str] | None = None) -> None:
     summary = run_seeds(
         result_dir,
         seeds,
-        partial(run_seed, config=config, timeout=args.timeout, threads=args.threads),
+        partial(
+            run_seed,
+            config=config,
+            timeout=args.timeout,
+            threads=args.threads,
+            accuracy=args.accuracy,
+        ),
         workers=args.workers,
     )
     print(f"\nFinished in {time.time() - t_start:.0f}s -> {result_dir}")

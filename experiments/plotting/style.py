@@ -12,3 +12,11 @@ SELECTION_STYLES = {
     "random": ("#0072B2", "o", "Random"),
     "sequential": ("#D55E00", "s", "Sequential"),
 }
+
+BACKGROUND_STYLES = {
+    "none": ("#555555", "o", "None (education run)"),
+    "education": ("#0072B2", "D", "Marital + education"),
+    "age": ("#009E73", "s", "Marital + age"),
+    "uniform": ("#888888", "o", "Uniform baseline"),
+    "marginal": ("#7B5AA6", "o", "Marginal baseline"),
+}

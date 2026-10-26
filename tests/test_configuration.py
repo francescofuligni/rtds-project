@@ -178,9 +178,12 @@ def test_numeric_knowledge_and_role_boundary():
     assert np.array_equal(data.X.iloc[:, mask_cols].to_numpy().ravel(), [1, 0])
 
 
+@pytest.mark.parametrize("with_accuracy", [False, True])
 @pytest.mark.parametrize("all_trees", [False, True])
 @pytest.mark.parametrize("tree_selection", ["random", "sequential"])
-def test_configured_seed_with_real_solver(monkeypatch, all_trees, tree_selection):
+def test_configured_seed_with_real_solver(
+    monkeypatch, all_trees, tree_selection, with_accuracy
+):
     from types import SimpleNamespace
 
     import run_final_experiment as module
@@ -225,13 +228,26 @@ def test_configured_seed_with_real_solver(monkeypatch, all_trees, tree_selection
         include_all_trees=all_trees,
         tree_selection=tree_selection,
     )
-    rows = module.run_seed(0, config=config)
+    if not with_accuracy:
+        monkeypatch.setattr(
+            module,
+            "prefix_accuracy",
+            lambda *args, **kwargs: pytest.fail("Default runner calculated accuracy"),
+        )
+    rows = module.run_seed(0, config=config, accuracy=with_accuracy)
     # The utility belongs to the release, even when reconstruction conditions differ.
     from rashomon.publisher import sample_private_public_indices
 
     _, holdout = sample_private_public_indices(data, n=4, public_n=3, seed=0)
     expected_accuracy = (data.X.loc[holdout].iloc[:, 0] == data.y.loc[holdout]).mean()
-    assert all(row["predictive_accuracy"] == expected_accuracy for row in rows)
+    assert all(
+        row.get("predictive_accuracy") == (expected_accuracy if with_accuracy else None)
+        for row in rows
+    )
+    assert all(("predictive_accuracy" in row) == with_accuracy for row in rows)
+    assert (
+        "predictive_utility" in module.protocol(config, accuracy=with_accuracy)
+    ) == with_accuracy
     expected = [1, 2, 3] if all_trees else [1, 2]
     assert [s[0] for s in selected] == expected
     assert all(

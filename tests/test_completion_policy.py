@@ -266,8 +266,9 @@ def test_confidence_coordinator_finishes_other_jobs_and_exits_nonzero(
 
 @pytest.mark.parametrize("failure", ["protocol", "render", None])
 @pytest.mark.parametrize("with_accuracy", [False, True])
+@pytest.mark.parametrize("include_accuracy", [False, True])
 def test_figure_cli_stages_all_outputs_before_publication(
-    tmp_path, monkeypatch, failure, with_accuracy
+    tmp_path, monkeypatch, failure, with_accuracy, include_accuracy
 ):
     import output_paths
     from plotting import attack_figures as plotter
@@ -315,6 +316,8 @@ def test_figure_cli_stages_all_outputs_before_publication(
                     "status": "FEASIBLE",
                     "reconstruction_error": 0.25,
                     **({"predictive_accuracy": 0.8} if with_accuracy else {}),
+                    "uniform_baseline_error": 0.5,
+                    "marginal_baseline_error": 0.4,
                 }
                 for c in ["none", "A", "B", "A+B"]
             ],
@@ -337,6 +340,7 @@ def test_figure_cli_stages_all_outputs_before_publication(
         "argv",
         [
             "plot_attack_figures.py",
+            *(["--include-accuracy"] if include_accuracy else []),
             "--education-dir",
             str(inputs[0]),
             "--age-dir",
@@ -353,10 +357,10 @@ def test_figure_cli_stages_all_outputs_before_publication(
             assert not renders
     else:
         plotter.cli()
-        assert len(renders) == 5
+        assert len(renders) == 6
         assert set(overlays) == (
             {"attack_marital_education", "attack_marital_age"}
-            if with_accuracy
+            if with_accuracy and include_accuracy
             else set()
         )
         provenance = json.loads((data / "sources.json").read_text())

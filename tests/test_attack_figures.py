@@ -109,3 +109,60 @@ def test_embedded_accuracy_is_counted_once_per_release():
         embedded_accuracy({"protocol": {}}, df.drop(columns="predictive_accuracy"))
         is None
     )
+
+
+def test_background_summary_deduplicates_controls_and_declares_none_reference():
+    from analysis.attack_figures import background_summary
+
+    education = pd.DataFrame(
+        [
+            {
+                "seed": seed,
+                "m": 1,
+                "condition": condition,
+                "status": "OPTIMAL",
+                "reconstruction_error": error,
+                "uniform_baseline_error": 0.4 + seed * 0.1,
+                "marginal_baseline_error": 0.35,
+            }
+            for seed in [0, 1]
+            for condition, error in [("none", 0.3), ("A+B", 0.2)]
+        ]
+    )
+    age = education.copy()
+    age.loc[age.condition == "none", "reconstruction_error"] = 0.4
+    age.loc[age.condition == "A+B", "reconstruction_error"] = 0.1
+    result = background_summary(education, age).set_index("condition")
+    assert result.loc["none", "mean"] == pytest.approx(0.3)
+    assert result.loc["age", "mean"] == pytest.approx(0.1)
+    assert result.loc["education", "mean"] == pytest.approx(0.2)
+    assert result.loc["uniform", "count"] == 2
+    assert result.loc["uniform", "mean"] == pytest.approx(0.45)
+    assert result.loc["marginal", "mean"] == pytest.approx(0.35)
+    age.loc[0, "uniform_baseline_error"] = float("nan")
+    with pytest.raises(ValueError, match="invalid"):
+        background_summary(education, age)
+    age.loc[age.seed == 0, "uniform_baseline_error"] = 0.6
+    with pytest.raises(ValueError, match="between"):
+        background_summary(education, age)
+
+
+def test_none_never_has_uncertainty_shading(tmp_path, monkeypatch):
+    import matplotlib.pyplot as plt
+    from plotting.attack_figures import draw
+
+    figures = []
+    monkeypatch.setattr(plt, "close", lambda fig: figures.append(fig))
+    stats = pd.DataFrame(
+        {"condition": ["none"], "m": [1], "mean": [0.3], "sem": [0.1], "count": [2]}
+    )
+    draw(
+        stats,
+        {"none": "None"},
+        tmp_path / "none",
+        {"none": ("black", "o", "None")},
+        uncertainty=True,
+    )
+    assert not figures[0].axes[0].collections
+    assert all("Mean" not in text.get_text() for text in figures[0].texts)
+    figures[0].clear()

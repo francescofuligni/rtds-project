@@ -51,6 +51,55 @@ def aggregate(df: pd.DataFrame) -> pd.DataFrame:
     return stats
 
 
+def background_summary(education: pd.DataFrame, age: pd.DataFrame) -> pd.DataFrame:
+    """Overview: education None reference, each A+B, and measured model-free controls.
+
+    Controls are checked across conditions/runs and counted once per seed/m.
+    They remain unconditional controls, not A/B-informed attacks.
+    """
+    stats = []
+    for df, source in ((education, "education"), (age, "age")):
+        summary = aggregate(df)
+        for condition, name in (("A+B", source), ("none", "none")):
+            if condition == "none" and source != "education":
+                continue
+            selected = summary[summary.condition == condition].copy()
+            selected["condition"] = name
+            stats.append(selected)
+    controls = []
+    names = ["uniform_baseline_error", "marginal_baseline_error"]
+    for df in (education, age):
+        if not df[names].apply(lambda col: col.between(0, 1).all()).all():
+            raise ValueError("Missing or invalid model-free baseline errors")
+        if not df.groupby(["seed", "m"])[names].nunique().eq(1).all().all():
+            raise ValueError("Baseline errors differ across knowledge conditions")
+        controls.append(df[["seed", "m", *names]].drop_duplicates())
+    shared = controls[0].merge(
+        controls[1], on=["seed", "m"], suffixes=("_education", "_age")
+    )
+    if shared.empty:
+        raise ValueError("No shared baseline observations between background runs")
+    for name in names:
+        if (
+            not (shared[f"{name}_education"] - shared[f"{name}_age"])
+            .abs()
+            .le(1e-12)
+            .all()
+        ):
+            raise ValueError("Baseline errors differ between background runs")
+    for name, condition in zip(names, ("uniform", "marginal"), strict=True):
+        baseline = (
+            controls[0]
+            .groupby("m")[name]
+            .agg(mean="mean", std="std", count="count", attempted="size")
+            .reset_index()
+        )
+        baseline["sem"] = baseline["std"] / baseline["count"] ** 0.5
+        baseline["condition"] = condition
+        stats.append(baseline)
+    return pd.concat(stats, ignore_index=True)
+
+
 def paired_selection(random: pd.DataFrame, sequential: pd.DataFrame) -> pd.DataFrame:
     """Keep identical measured seed/m pairs with valid errors in both policies."""
     selected = []

@@ -91,6 +91,14 @@ Add `SEQUENTIAL_DIR=results/<sequential-run>/final_experiment` to include the
 random/sequential comparison. Paired comparisons require compatible protocols
 and shared seed/release-size observations. Each feature figure also gets a
 `_gap` variant that shades the gap between no background knowledge and A+B.
+The same command refreshes `background_knowledge.png`, comparing the education-run
+None reference with Marital + education and Marital + age, plus the measured
+Uniform and Marginal baselines. Controls are unconditional model-free guesses,
+counted once per seed/release size. Its aggregates and reference policy are saved
+under `figures/data/`. None has no uncertainty shading in the overview or either
+base attack plot. Predictive accuracy remains limited to the two base plots.
+The Mean/count footer is omitted from PNGs; means, counts and SEM remain in CSVs.
+
 
 Generated figures are PNGs in `figures/`; rerendering replaces files with the
 same names. Derived plotting tables and `sources.json` are kept in
@@ -99,28 +107,25 @@ under timestamped folders in `results/`.
 
 ### Held-out predictive accuracy
 
-New `make run`, `make run-final` and `make pilot` runs compute predictive income
-accuracy by default on the same tree releases already in memory. No extra
-TreeFARMS fit or reconstruction solve is required. The main seed CSVs include
-`predictive_accuracy`, shared across the four knowledge conditions for each
-seed/m; the manifest declares the vote, tie and holdout policies.
-
-When `make figures` reads two new main runs, it automatically adds accuracy to
-**only** `attack_marital_education.png` and `attack_marital_age.png`, with income
-accuracy on the right axis and sex reconstruction error on the left. The `_gap`
-variants and random/sequential comparison contain reconstruction error only.
-The utility measurements used for each overlay are exported once per seed/m to
-`figures/data/attack_marital_<education|age>_accuracy.csv`.
-
-For example, run the main family separately for each background pair:
+Accuracy is disabled by default in `make run`, `make run-final`, `make pilot`
+and `make figures`. To calculate it on in-memory releases explicitly, use
+`ACCURACY=1` (CLI: `--accuracy`). To overlay embedded measurements explicitly,
+use `make figures ACCURACY=1` (plot CLI: `--include-accuracy`).
 
 ```sh
-make run-final ATTR_B=education N_SEEDS=100 WORKERS=1
-make run-final ATTR_B=age N_SEEDS=100 WORKERS=1
-# Use the two printed final_experiment directories; no utility flags needed.
-make figures EDUCATION_DIR=results/<education-run>/final_experiment \
+make run-final ATTR_B=education N_SEEDS=100 WORKERS=1 ACCURACY=1
+make run-final ATTR_B=age N_SEEDS=100 WORKERS=1 ACCURACY=1
+make figures ACCURACY=1 \
+  EDUCATION_DIR=results/<education-run>/final_experiment \
   AGE_DIR=results/<age-run>/final_experiment
 ```
+
+When explicitly enabled, only `attack_marital_education.png` and
+`attack_marital_age.png` receive an income-accuracy axis on the right. The gap,
+overview and selection plots remain reconstruction-only. Accuracy uses the same
+in-memory tree releases, with no extra fit or solve. Its values are shared across
+conditions per seed/m and accompanied by a declared vote/tie/holdout protocol.
+The plotting inputs are retained in `figures/data/`.
 
 `make run` still runs the configured main pair plus record-confidence; it does
 not implicitly launch both background pairs or render figures without their inputs.

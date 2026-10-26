@@ -13,6 +13,7 @@ import numpy as np
 import pandas as pd
 from analysis.attack_figures import (
     aggregate,
+    background_summary,
     embedded_accuracy,
     load_accuracy,
     paired_selection,
@@ -21,7 +22,7 @@ from output_paths import FIGURE_DATA_ROOT, FIGURES_ROOT, require_saved_result_di
 from provenance import load_results, require_comparable
 from scipy.interpolate import PchipInterpolator
 
-from plotting.style import SELECTION_STYLES, STYLES
+from plotting.style import BACKGROUND_STYLES, SELECTION_STYLES, STYLES
 
 
 def draw(
@@ -35,6 +36,7 @@ def draw(
     height: float = 4.9,
     gap: tuple[str, str] | None = None,
     background_label: str | None = None,
+    legend_columns: int | None = None,
 ) -> None:
     fig, ax = plt.subplots(figsize=(8, height))
     curves = {}
@@ -47,7 +49,7 @@ def draw(
         x, mean, sem = (sub[col].to_numpy() for col in ["m", "mean", "sem"])
         curves[condition] = sub.set_index("m")["mean"]
         # 95% confidence band of the mean; markers sit on the measured tree counts.
-        if uncertainty:
+        if uncertainty and condition != "none":
             ax.fill_between(
                 x, mean - 1.96 * sem, mean + 1.96 * sem, color=color, alpha=0.10, lw=0
             )
@@ -63,6 +65,11 @@ def draw(
             marker=marker if uncertainty else None,
             markersize=3.5,
             label=labels[condition],
+            linestyle="--"
+            if condition == "marginal"
+            else ":"
+            if condition == "uniform"
+            else "-",
         )
     if gap:
         pair = pd.concat([curves[gap[0]], curves[gap[1]]], axis=1, join="inner")
@@ -87,7 +94,7 @@ def draw(
     ax.minorticks_off()
     ax.tick_params(axis="x", which="major", length=3, direction="out")
     ax.set_xlabel("Released trees (m)", fontsize=12)
-    ax.set_ylabel("Sex reconstruction error ↓", fontsize=12)
+    ax.set_ylabel("Sex reconstruction error", fontsize=12)
     ax.tick_params(labelsize=11)
     ax.grid(axis="y", alpha=0.22)
     ax.spines[["top", "right"]].set_visible(False)
@@ -114,7 +121,7 @@ def draw(
         legend_labels,
         loc="upper center",
         bbox_to_anchor=(0.5, -0.17),
-        ncol=len(handles),
+        ncol=legend_columns or len(handles),
         frameon=False,
         # The gap legend has a fifth entry, so it packs tighter to stay on one row.
         **(
@@ -134,15 +141,6 @@ def draw(
             fontsize=9,
             color="#555555",
         )
-    fig.text(
-        0.5,
-        footnote / height,
-        f"Mean{' ± 95% CI' if uncertainty else ''} · "
-        f"n={int(stats['count'].min())}–{int(stats['count'].max())} per point",
-        ha="center",
-        fontsize=9,
-        color="#555555",
-    )
     fig.subplots_adjust(
         bottom=1 - (top + plot) / height,
         left=0.12,
@@ -160,6 +158,11 @@ def cli() -> None:
     parser.add_argument("--sequential-dir", type=Path)
     parser.add_argument("--education-accuracy-dir", type=Path)
     parser.add_argument("--age-accuracy-dir", type=Path)
+    parser.add_argument(
+        "--include-accuracy",
+        action="store_true",
+        help="opt in to accuracy embedded in main results",
+    )
     args = parser.parse_args()
     FIGURES_ROOT.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(prefix=".render-", dir=FIGURES_ROOT) as temporary:
@@ -214,6 +217,11 @@ def render(args, output_dir: Path, data_dir: Path) -> None:
             )
         },
         "sources": [],
+        "background_knowledge": {
+            "none_reference": "education run; not pooled with age run",
+            "baselines": "measured unconditional uniform/marginal controls from education run; shared seed/m controls checked against age run",
+            "aggregation": "one observation per seed/m/curve; available measurements per m",
+        },
     }
     for name, path, (df, manifest) in zip(
         ("education", "age"), (args.education_dir, args.age_dir), loaded, strict=True
@@ -238,7 +246,10 @@ def render(args, output_dir: Path, data_dir: Path) -> None:
         accuracy, accuracy_label = (
             load_accuracy(accuracy_path, manifest, df)
             if accuracy_path
-            else (embedded_accuracy(manifest, df), "Accuracy (vote)")
+            else (
+                embedded_accuracy(manifest, df) if args.include_accuracy else None,
+                "Accuracy (vote)",
+            )
         )
         renders.append(
             (stats, labels, stem, None, accuracy, accuracy_label, {"height": 4.7})
@@ -291,6 +302,19 @@ def render(args, output_dir: Path, data_dir: Path) -> None:
                 },
             }
         )
+    overview = background_summary(loaded[0][0], loaded[1][0])
+    renders.append(
+        (
+            overview,
+            {key: value[2] for key, value in BACKGROUND_STYLES.items()},
+            output_dir / "background_knowledge",
+            BACKGROUND_STYLES,
+            None,
+            "Accuracy (vote)",
+            {"height": 5.1, "legend_columns": 3},
+        )
+    )
+    tables.append((overview, data_dir / "background_knowledge.csv"))
     if args.sequential_dir:
         sequential, seq_manifest = load_results(args.sequential_dir, "final_experiment")
         random, random_manifest = loaded[0]
