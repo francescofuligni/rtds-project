@@ -66,9 +66,12 @@ RECORD_ONLY ?=
 EDUCATION_DIR ?=
 AGE_DIR ?=
 SEQUENTIAL_DIR ?=
+ATTACK_DIR ?=
+EDUCATION_ACCURACY_DIR ?=
+AGE_ACCURACY_DIR ?=
 
 .DEFAULT_GOAL := help
-.PHONY: help setup pilot run run-final run-record-confidence figures analyze test report
+.PHONY: help setup pilot run run-final run-record-confidence run-accuracy figures analyze test report
 
 help:
 	@printf '%s\n' \
@@ -76,9 +79,10 @@ help:
 	  '  make setup                  Sync the locked Python 3.12 environment' \
 	  '  make pilot                  Run one configurable main-experiment seed' \
 	  '  make run                    Run every experiment family and analysis' \
-	  '  make run-final              Run only the main experiment family' \
+	  '  make run-final              Run the main experiment, including held-out accuracy' \
 	  '  make run-record-confidence  Run only the record-confidence family' \
 	  '  make figures                Plot saved attack results without rerunning experiments' \
+	  '  make run-accuracy           Rebuild ATTACK_DIR releases and score held-out income (no solves)' \
 	  '  make analyze                Write numerical summaries of the latest results' \
 	  '  make test                   Run pytest' \
 	  '  make report                 Build the local report PDF' \
@@ -106,9 +110,13 @@ run-record-confidence:
 	$(PYTHON) experiments/analyze_record_confidence.py --no-plots --results-dirs $(RESULT_DIR)/record_confidence || status=1; \
 	exit $$status
 
+run-accuracy:
+	@test -n "$(ATTACK_DIR)" || { echo "Set ATTACK_DIR to a saved final_experiment directory"; exit 2; }
+	$(PYTHON) experiments/run_predictive_accuracy.py --attack-dir "$(ATTACK_DIR)" $(if $(strip $(SEED_START)),--seed-start $(SEED_START),) $(if $(strip $(N_SEEDS)),--n-seeds $(N_SEEDS),)
+
 figures:
 	@test -n "$(EDUCATION_DIR)" -a -n "$(AGE_DIR)" || { echo "Set EDUCATION_DIR and AGE_DIR to saved final_experiment directories"; exit 2; }
-	MPLBACKEND=Agg $(PYTHON) experiments/plot_attack_figures.py --education-dir "$(EDUCATION_DIR)" --age-dir "$(AGE_DIR)" $(if $(strip $(SEQUENTIAL_DIR)),--sequential-dir "$(SEQUENTIAL_DIR)",)
+	MPLBACKEND=Agg $(PYTHON) experiments/plot_attack_figures.py --education-dir "$(EDUCATION_DIR)" --age-dir "$(AGE_DIR)" $(if $(strip $(SEQUENTIAL_DIR)),--sequential-dir "$(SEQUENTIAL_DIR)",) $(if $(strip $(EDUCATION_ACCURACY_DIR)),--education-accuracy-dir "$(EDUCATION_ACCURACY_DIR)",) $(if $(strip $(AGE_ACCURACY_DIR)),--age-accuracy-dir "$(AGE_ACCURACY_DIR)",)
 
 # Keep the families sequential because each can be compute- and memory-intensive.
 run:

@@ -5,6 +5,32 @@ from pathlib import Path
 
 import pandas as pd
 
+from rashomon.utility import UTILITY_PROTOCOL
+
+
+def embedded_accuracy(
+    attack_manifest: dict, attack: pd.DataFrame
+) -> pd.DataFrame | None:
+    """Read utility measured on the original in-memory release, once per seed/m."""
+    declared = attack_manifest["protocol"].get("predictive_utility")
+    if declared is None and "predictive_accuracy" not in attack:
+        return None  # Historical reconstruction-only archive.
+    if declared != UTILITY_PROTOCOL:
+        raise ValueError("Unsupported embedded predictive utility protocol")
+    if (
+        "predictive_accuracy" not in attack
+        or not attack.predictive_accuracy.between(0, 1).all()
+    ):
+        raise ValueError("Missing or invalid embedded predictive accuracy")
+    grouped = attack.groupby(["seed", "m"]).predictive_accuracy.nunique()
+    if not grouped.eq(1).all():
+        raise ValueError("Predictive accuracy differs across knowledge conditions")
+    return (
+        attack[["seed", "m", "predictive_accuracy"]]
+        .drop_duplicates()
+        .rename(columns={"predictive_accuracy": "accuracy"})
+    )
+
 
 def aggregate(df: pd.DataFrame) -> pd.DataFrame:
     """Summarise valid errors; missing solves are never assigned an error."""
@@ -48,7 +74,7 @@ def paired_selection(random: pd.DataFrame, sequential: pd.DataFrame) -> pd.DataF
 def load_accuracy(
     path: Path, attack_manifest: dict, attack: pd.DataFrame
 ) -> tuple[pd.DataFrame, str]:
-    """Read a future utility-only output; never infer utility from T error."""
+    """Read a utility-only output; never infer utility from T error."""
     metadata = json.loads((path / "manifest.json").read_text())
     if metadata["experiment"] != "predictive_accuracy":
         raise ValueError("Expected predictive_accuracy results")

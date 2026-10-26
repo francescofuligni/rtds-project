@@ -97,6 +97,70 @@ same names. Derived plotting tables and `sources.json` are kept in
 `figures/data/`. Raw seed data and manifests remain in their source folders
 under timestamped folders in `results/`.
 
+### Held-out predictive accuracy
+
+New `make run`, `make run-final` and `make pilot` runs compute predictive income
+accuracy by default on the same tree releases already in memory. No extra
+TreeFARMS fit or reconstruction solve is required. The main seed CSVs include
+`predictive_accuracy`, shared across the four knowledge conditions for each
+seed/m; the manifest declares the vote, tie and holdout policies.
+
+When `make figures` reads two new main runs, it automatically adds accuracy to
+**only** `attack_marital_education.png` and `attack_marital_age.png`, with income
+accuracy on the right axis and sex reconstruction error on the left. The `_gap`
+variants and random/sequential comparison contain reconstruction error only.
+The utility measurements used for each overlay are exported once per seed/m to
+`figures/data/attack_marital_<education|age>_accuracy.csv`.
+
+For example, run the main family separately for each background pair:
+
+```sh
+make run-final ATTR_B=education N_SEEDS=100 WORKERS=1
+make run-final ATTR_B=age N_SEEDS=100 WORKERS=1
+# Use the two printed final_experiment directories; no utility flags needed.
+make figures EDUCATION_DIR=results/<education-run>/final_experiment \
+  AGE_DIR=results/<age-run>/final_experiment
+```
+
+`make run` still runs the configured main pair plus record-confidence; it does
+not implicitly launch both background pairs or render figures without their inputs.
+Existing archives are unchanged. To add utility to historical runs, rebuild a saved main run's tree releases and evaluate majority-vote income
+accuracy on its disjoint per-seed holdout, without rerunning reconstruction:
+
+```sh
+# Bounded pilot: one saved seed. Omit N_SEEDS to process every saved seed.
+make run-accuracy ATTACK_DIR=results/20261020_195325/final_experiment N_SEEDS=1
+make run-accuracy ATTACK_DIR=results/20261020_195325/final_experiment
+make run-accuracy ATTACK_DIR=results/20261020_195325_01/final_experiment
+```
+
+Each invocation prints a new `results/<timestamp>/predictive_accuracy/` directory.
+Seeds run serially; rebuilding TreeFARMS still costs computation. Parameters and
+measured seed/m keys come from the source run, rather than current runner defaults.
+Tied votes predict income class 0. Historical preprocessing is reproduced,
+including thresholds fitted on the full cleaned table, so this is not a fully
+training-only preprocessing evaluation. Tree counts and joint-split fractions
+must match saved diagnostics. Historical tree hashes are absent: passing these
+checks does not certify identical historical trees. Newly generated release
+hashes, input hashes and execution metadata are retained for future comparisons.
+Independent seeds continue after errors; the process exits nonzero for failures.
+Partial/pilot accuracy files cannot overlay a complete attack run.
+
+Pass the two complete output directories to the existing figure command:
+
+```sh
+make figures \
+  EDUCATION_DIR=results/20261020_195325/final_experiment \
+  AGE_DIR=results/20261020_195325_01/final_experiment \
+  SEQUENTIAL_DIR=results/20261025_190500/final_experiment \
+  EDUCATION_ACCURACY_DIR=results/<education-utility-run>/predictive_accuracy \
+  AGE_ACCURACY_DIR=results/<age-utility-run>/predictive_accuracy
+```
+
+The right axis shows held-out income accuracy; the left retains sex reconstruction
+error. Accuracy uses all measured releases, including those with missing attack
+errors. The two utility runs are evaluated separately; equal curves are not assumed.
+
 ## Repository map
 
 - `src/rashomon/` builds and selects trees from the Rashomon set.

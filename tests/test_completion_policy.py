@@ -265,8 +265,9 @@ def test_confidence_coordinator_finishes_other_jobs_and_exits_nonzero(
 
 
 @pytest.mark.parametrize("failure", ["protocol", "render", None])
+@pytest.mark.parametrize("with_accuracy", [False, True])
 def test_figure_cli_stages_all_outputs_before_publication(
-    tmp_path, monkeypatch, failure
+    tmp_path, monkeypatch, failure, with_accuracy
 ):
     import output_paths
     from plotting import attack_figures as plotter
@@ -299,6 +300,10 @@ def test_figure_cli_stages_all_outputs_before_publication(
             "tree_selection": selection,
             "solve_timeout": 2 if index == 2 and failure == "protocol" else 1,
         }
+        if with_accuracy:
+            from rashomon.utility import UTILITY_PROTOCOL
+
+            protocol["predictive_utility"] = UTILITY_PROTOCOL
         stamp(directory, "final_experiment", protocol, data="seed*.csv")
         write_rows(
             directory / "seed000.csv",
@@ -309,15 +314,19 @@ def test_figure_cli_stages_all_outputs_before_publication(
                     "condition": c,
                     "status": "FEASIBLE",
                     "reconstruction_error": 0.25,
+                    **({"predictive_accuracy": 0.8} if with_accuracy else {}),
                 }
                 for c in ["none", "A", "B", "A+B"]
             ],
         )
         inputs.append(directory)
     renders = []
+    overlays = []
 
     def draw(stats, labels, stem, **kwargs):
         renders.append(stem)
+        if kwargs["accuracy"] is not None:
+            overlays.append(stem.name)
         stem.with_suffix(".png").write_bytes(b"new figure")
         if failure == "render" and len(renders) == 2:
             raise RuntimeError("render failed")
@@ -345,6 +354,11 @@ def test_figure_cli_stages_all_outputs_before_publication(
     else:
         plotter.cli()
         assert len(renders) == 5
+        assert set(overlays) == (
+            {"attack_marital_education", "attack_marital_age"}
+            if with_accuracy
+            else set()
+        )
         provenance = json.loads((data / "sources.json").read_text())
         assert provenance["selection_comparison"]["paired_keys"] == [
             {"seed": 0, "m": 1}

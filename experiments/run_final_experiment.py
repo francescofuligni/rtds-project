@@ -1,7 +1,7 @@
 """Run the paired None/A/B/A+B background-knowledge experiment on Adult.
 
-For each seed, sample a private pilot and a disjoint holdout used only by the
-baselines, then build one Rashomon set. For every configured geometric or linear
+For each seed, sample a private pilot and a disjoint holdout used by the
+baselines and predictive accuracy, then build one Rashomon set. For every configured geometric or linear
 release size, use
 the same sample and selected trees in all four knowledge conditions. This
 pairing makes condition differences comparable within each seed and release.
@@ -56,6 +56,7 @@ from rashomon.selection import (
     select_trees,
     selection_protocol,
 )
+from rashomon.utility import UTILITY_PROTOCOL, prefix_accuracy
 
 TARGET = "sex"
 HOLDOUT_N = 2000
@@ -98,6 +99,7 @@ def protocol(
         "seed_workers": workers,
         "conditions": CONDITIONS,
         "labels": "given_per_row",
+        "predictive_utility": UTILITY_PROTOCOL,
     }
 
 
@@ -190,6 +192,10 @@ def run_seed(
         trees_branches = [extract_branches(t, X, y, classes) for t in trees]
         joint_a_frac = joint_split_fraction(trees, set(target_idx), a_idx)
         joint_b_frac = joint_split_fraction(trees, set(target_idx), b_idx)
+        # Evaluate the exact release already in memory; A/B cannot change its votes.
+        accuracy = prefix_accuracy(
+            trees, holdout_df, data_full.y.loc[holdout_idx], [m]
+        )[m]
 
         for condition in CONDITIONS:
             t0 = time.time()
@@ -219,6 +225,7 @@ def run_seed(
                     "marginal_baseline_error": marginal_error,
                     "joint_split_frac_A": round(joint_a_frac, 4),
                     "joint_split_frac_B": round(joint_b_frac, 4),
+                    "predictive_accuracy": accuracy,
                 }
             )
 

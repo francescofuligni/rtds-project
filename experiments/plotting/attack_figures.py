@@ -11,7 +11,12 @@ from tempfile import TemporaryDirectory
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from analysis.attack_figures import aggregate, load_accuracy, paired_selection
+from analysis.attack_figures import (
+    aggregate,
+    embedded_accuracy,
+    load_accuracy,
+    paired_selection,
+)
 from output_paths import FIGURE_DATA_ROOT, FIGURES_ROOT, require_saved_result_dir
 from provenance import load_results, require_comparable
 from scipy.interpolate import PchipInterpolator
@@ -29,6 +34,7 @@ def draw(
     uncertainty: bool = False,
     height: float = 4.9,
     gap: tuple[str, str] | None = None,
+    background_label: str | None = None,
 ) -> None:
     fig, ax = plt.subplots(figsize=(8, height))
     curves = {}
@@ -43,7 +49,7 @@ def draw(
         # 95% confidence band of the mean; markers sit on the measured tree counts.
         if uncertainty:
             ax.fill_between(
-                x, mean - 1.96 * sem, mean + 1.96 * sem, color=color, alpha=0.15, lw=0
+                x, mean - 1.96 * sem, mean + 1.96 * sem, color=color, alpha=0.10, lw=0
             )
         # A gap figure emphasises its two conditions and keeps the rest as context.
         context = gap is not None and condition not in gap
@@ -55,7 +61,7 @@ def draw(
             alpha=0.55 if context else 1.0,
             zorder=2 if context else 3,
             marker=marker if uncertainty else None,
-            markersize=4.5,
+            markersize=3.5,
             label=labels[condition],
         )
     if gap:
@@ -64,8 +70,9 @@ def draw(
             pair.index,
             pair.iloc[:, 0],
             pair.iloc[:, 1],
-            color=(styles or STYLES)[gap[1]][0],
-            alpha=0.18,
+            color="#F0E442",
+            alpha=0.12,
+            zorder=1,
             lw=0,
             label="Gain from both",
         )
@@ -118,6 +125,15 @@ def draw(
     )
     # Margins in inches keep the plot area the same size at any figure height.
     top, plot, footnote = 0.147, 3.332, 0.1225
+    if background_label:
+        fig.text(
+            0.5,
+            (footnote + 0.23) / height,
+            background_label,
+            ha="center",
+            fontsize=9,
+            color="#555555",
+        )
     fig.text(
         0.5,
         footnote / height,
@@ -222,7 +238,7 @@ def render(args, output_dir: Path, data_dir: Path) -> None:
         accuracy, accuracy_label = (
             load_accuracy(accuracy_path, manifest, df)
             if accuracy_path
-            else (None, "Predictive accuracy on Y")
+            else (embedded_accuracy(manifest, df), "Accuracy (vote)")
         )
         renders.append(
             (stats, labels, stem, None, accuracy, accuracy_label, {"height": 4.7})
@@ -241,6 +257,8 @@ def render(args, output_dir: Path, data_dir: Path) -> None:
         )
         data_path = data_dir / f"{stem.name}.csv"
         tables.append((stats, data_path))
+        if accuracy is not None:
+            tables.append((accuracy, data_dir / f"{stem.name}_accuracy.csv"))
         files = sorted(path.glob(manifest["data"])) + [path / "manifest.json"]
         accuracy_files = (
             [accuracy_path / "accuracy.csv", accuracy_path / "manifest.json"]
@@ -252,6 +270,11 @@ def render(args, output_dir: Path, data_dir: Path) -> None:
                 "directory": str(path.resolve()),
                 "accuracy_directory": str(accuracy_path.resolve())
                 if accuracy_path
+                else None,
+                "accuracy_source": "separate_rebuilt_releases"
+                if accuracy_path
+                else "embedded_original_releases"
+                if accuracy is not None
                 else None,
                 "accuracy_sha256": {
                     str(p.resolve()): hashlib.sha256(p.read_bytes()).hexdigest()
@@ -302,7 +325,10 @@ def render(args, output_dir: Path, data_dir: Path) -> None:
                 styles,
                 None,
                 "Predictive accuracy on Y",
-                {"uncertainty": True},
+                {
+                    "uncertainty": True,
+                    "background_label": "Background knowledge: A+B (marital status + education)",
+                },
             )
         )
         data_path = data_dir / f"{stem.name}.csv"

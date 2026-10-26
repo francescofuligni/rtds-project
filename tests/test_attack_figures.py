@@ -79,3 +79,33 @@ def test_accuracy_contract_and_overlay(tmp_path):
     assert not (tmp_path / "overlay.pdf").exists()
     with pytest.raises(ValueError, match="protocols"):
         load_accuracy(tmp_path, {"protocol": {}}, attack)
+
+
+def test_embedded_accuracy_is_counted_once_per_release():
+    from analysis.attack_figures import embedded_accuracy
+
+    from rashomon.utility import UTILITY_PROTOCOL
+
+    df = pd.DataFrame(
+        {
+            "seed": [0, 0, 1, 1],
+            "m": [1] * 4,
+            "predictive_accuracy": [0.8, 0.8, 0.9, 0.9],
+        }
+    )
+    manifest = {"protocol": {"predictive_utility": UTILITY_PROTOCOL}}
+    result = embedded_accuracy(manifest, df)
+    assert len(result) == 2
+    assert result.accuracy.mean() == pytest.approx(0.85)
+    df.loc[0, "predictive_accuracy"] = 0.5
+    with pytest.raises(ValueError, match="differs"):
+        embedded_accuracy(manifest, df)
+    df.loc[0, "predictive_accuracy"] = float("nan")
+    with pytest.raises(ValueError, match="invalid"):
+        embedded_accuracy(manifest, df)
+    with pytest.raises(ValueError, match="Missing"):
+        embedded_accuracy(manifest, df.drop(columns="predictive_accuracy"))
+    assert (
+        embedded_accuracy({"protocol": {}}, df.drop(columns="predictive_accuracy"))
+        is None
+    )
