@@ -97,6 +97,11 @@ same names. Derived plotting tables and `sources.json` are kept in
 `figures/data/`. Raw seed data and manifests remain in their source folders
 under timestamped folders in `results/`.
 
+`experiments/plot_public_data_calibration.py` draws the record-confidence
+overconfidence figure (`figures/public_data_calibration.png`: 200 vs 2,000
+public records, plain vs Dirichlet prior). Its docstring names the archived run
+it needs for the 2,000-record plain bars.
+
 ### Held-out predictive accuracy
 
 New `make run`, `make run-final` and `make pilot` runs compute predictive income

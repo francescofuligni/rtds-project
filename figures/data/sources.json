@@ -4,7 +4,7 @@
   "curves": "reconstruction: straight segments; accuracy: PCHIP in log(m); no extrapolation",
   "metric": "categorical target error after evaluator row matching",
   "implementation_sha256": {
-    "experiments/plotting/attack_figures.py": "8f72f792a8a1f012b111216b229bc9d574168329723f1b8acca0cb04ecc1b8de",
+    "experiments/plotting/attack_figures.py": "826d7ab6177df934ed6dde37165b659ca299b08d70ed80ea194eb33550983247",
     "experiments/analysis/attack_figures.py": "3dda93dd0550a8548259250fe3ac920ada09d3483d6c1ce1343ea4d87e2ad44c",
     "experiments/output_paths.py": "0f40e2f6badf82a6adf614fe0e5d1001e6bd10c2135d1c5f07e87c34a1bf95e1",
     "experiments/provenance.py": "4cf77043979898e88be121d31de8f8d8078e58eea32d8f2d3cc3d9b323d7ef4e",

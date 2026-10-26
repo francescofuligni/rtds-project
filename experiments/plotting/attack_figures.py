@@ -316,10 +316,7 @@ def render(args, output_dir: Path, data_dir: Path) -> None:
                 styles,
                 None,
                 "Predictive accuracy on Y",
-                {
-                    "uncertainty": True,
-                    "background_label": "Background knowledge: A+B (marital status + education)",
-                },
+                {"uncertainty": True, "height": 4.47},
             )
         )
         data_path = data_dir / f"{stem.name}.csv"
