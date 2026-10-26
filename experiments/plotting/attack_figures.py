@@ -32,7 +32,7 @@ def draw(
     accuracy: pd.DataFrame | None = None,
     accuracy_label: str = "Accuracy",
     uncertainty: bool = False,
-    height: float = 4.9,
+    height: float = 4.67,
     gap: tuple[str, str] | None = None,
     background_label: str | None = None,
 ) -> None:
@@ -116,33 +116,24 @@ def draw(
         bbox_to_anchor=(0.5, -0.17),
         ncol=len(handles),
         frameon=False,
-        # The gap legend has a fifth entry, so it packs tighter to stay on one row.
+        # A fifth entry (gap shading or accuracy) packs tighter to stay on one row.
         **(
             {"fontsize": 10.5, "handlelength": 1.6, "columnspacing": 1.2}
-            if gap
+            if len(handles) > 4
             else {"fontsize": 11}
         ),
     )
     # Margins in inches keep the plot area the same size at any figure height.
-    top, plot, footnote = 0.147, 3.332, 0.1225
+    top, plot, caption = 0.147, 3.332, 0.1225
     if background_label:
         fig.text(
             0.5,
-            (footnote + 0.23) / height,
+            caption / height,
             background_label,
             ha="center",
             fontsize=9,
             color="#555555",
         )
-    fig.text(
-        0.5,
-        footnote / height,
-        f"Mean{' ± 95% CI' if uncertainty else ''} · "
-        f"n={int(stats['count'].min())}–{int(stats['count'].max())} per point",
-        ha="center",
-        fontsize=9,
-        color="#555555",
-    )
     fig.subplots_adjust(
         bottom=1 - (top + plot) / height,
         left=0.12,
@@ -241,7 +232,7 @@ def render(args, output_dir: Path, data_dir: Path) -> None:
             else (embedded_accuracy(manifest, df), "Accuracy (vote)")
         )
         renders.append(
-            (stats, labels, stem, None, accuracy, accuracy_label, {"height": 4.7})
+            (stats, labels, stem, None, accuracy, accuracy_label, {"height": 4.47})
         )
         # Same aggregates, with the None to A+B gap shaded as the effect to read.
         renders.append(
@@ -252,7 +243,7 @@ def render(args, output_dir: Path, data_dir: Path) -> None:
                 None,
                 None,
                 accuracy_label,
-                {"height": 4.7, "gap": ("none", "A+B")},
+                {"height": 4.47, "gap": ("none", "A+B")},
             )
         )
         data_path = data_dir / f"{stem.name}.csv"
