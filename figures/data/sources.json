@@ -15,12 +15,9 @@
   "sources": [
     {
       "directory": "/home/hendrik/Unief/Erasmus/Semester 1/RTDS/rtds-project/results/20261020_195325/final_experiment",
-      "accuracy_directory": "/home/hendrik/Unief/Erasmus/Semester 1/RTDS/rtds-project/results/20261026_161456/predictive_accuracy",
-      "accuracy_source": "separate_rebuilt_releases",
-      "accuracy_sha256": {
-        "/home/hendrik/Unief/Erasmus/Semester 1/RTDS/rtds-project/results/20261026_161456/predictive_accuracy/accuracy.csv": "1d127fb9d05186aeb97a1c2b08726857421e046dbe7af45010eb653ae2ab879a",
-        "/home/hendrik/Unief/Erasmus/Semester 1/RTDS/rtds-project/results/20261026_161456/predictive_accuracy/manifest.json": "0704dbd8168e349777e6cf0a878b329935a47612a12bff6b7a989bd5a0e4f728"
-      },
+      "accuracy_directory": null,
+      "accuracy_source": null,
+      "accuracy_sha256": {},
       "protocol": {
         "attr_a": "marital-status",
         "attr_b": "education",
@@ -190,12 +187,9 @@
     },
     {
       "directory": "/home/hendrik/Unief/Erasmus/Semester 1/RTDS/rtds-project/results/20261020_195325_01/final_experiment",
-      "accuracy_directory": "/home/hendrik/Unief/Erasmus/Semester 1/RTDS/rtds-project/results/20261026_161841/predictive_accuracy",
-      "accuracy_source": "separate_rebuilt_releases",
-      "accuracy_sha256": {
-        "/home/hendrik/Unief/Erasmus/Semester 1/RTDS/rtds-project/results/20261026_161841/predictive_accuracy/accuracy.csv": "1d127fb9d05186aeb97a1c2b08726857421e046dbe7af45010eb653ae2ab879a",
-        "/home/hendrik/Unief/Erasmus/Semester 1/RTDS/rtds-project/results/20261026_161841/predictive_accuracy/manifest.json": "0a2d356af66f1031d4c985dbf2961487bcc073b6b85eb6962c53b4c59c818a3e"
-      },
+      "accuracy_directory": null,
+      "accuracy_source": null,
+      "accuracy_sha256": {},
       "protocol": {
         "attr_a": "marital-status",
         "attr_b": "age",
