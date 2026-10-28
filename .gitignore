@@ -26,6 +26,10 @@ dist/
 # Downloaded datasets
 /data/
 
+# Local source PDFs; retain the versioned source catalogue
+/docs/papers/*
+!/docs/papers/papers.md
+
 # LaTeX temporary files
 *.aux
 *.bbl
@@ -40,8 +44,14 @@ dist/
 *.toc
 *.xdv
 
+# Report build outputs
+/report/.build/
+/report/report.pdf
+
+# Local poster files
+/poster/
+
 # Local documentation and working notes
-/report/
 .codex/
 .vscode/
 .AGENTS.md
@@ -53,11 +63,15 @@ dist/
 /results/.RESULTS_GUIDE.md
 .notes/
 .wiki/
+
 # Stamped result sets under results/ are committed (data, manifest, figures,
 # summaries) so results travel between machines; local historical archives and
 # scratch runs are excluded from version control.
 /results/legacy/
 results/dev/
+
+# Regenerable plotting tables and provenance
+/figures/data/
 
 # Cluster job logs
 hpc/logs/

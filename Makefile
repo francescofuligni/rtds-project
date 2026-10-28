@@ -138,7 +138,6 @@ analyze:
 test:
 	$(PYTHON) -m pytest -q
 
-# The report sources are kept locally (report/ is not committed).
+# Build the empty or student-authored report using the supplied ICLR template.
 report:
-	@test -f report/Makefile || { echo "report/ is not in the repository; add your local copy first"; exit 1; }
 	$(MAKE) -C report pdf

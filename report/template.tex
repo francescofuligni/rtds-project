@@ -1,0 +1,21 @@
+\documentclass[11pt]{article}
+\usepackage{lmodern}
+\usepackage{iclr2025_conference,times}
+\iclrfinalcopy
+
+% The course requires 11 pt; the supplied ICLR style defaults to 10 pt.
+\makeatletter
+\renewcommand{\normalsize}{\@setfontsize\normalsize{11pt}{13.2pt}}
+\makeatother
+\renewcommand{\baselinestretch}{1}
+\normalsize
+
+% Latin Modern Mono is available locally; Courier is absent from BasicTeX.
+\renewcommand{\ttdefault}{lmtt}
+\usepackage[hidelinks]{hyperref}
+\bibliographystyle{iclr2025_conference}
+
+% Keep authors visible without claiming an ICLR submission or publication.
+\let\rtdsmaketitle\maketitle
+\renewcommand{\maketitle}{\rtdsmaketitle\fancyhead{}}
+\renewcommand{\headrulewidth}{0pt}

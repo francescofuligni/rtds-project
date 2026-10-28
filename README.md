@@ -22,8 +22,9 @@ experiment evaluates scores attached to reconstructed record claims.
 | [`experiments/plotting/`](experiments/plotting/) | Figure rendering and styles |
 | [`tests/`](tests/) | Small synthetic tests and bounded integration checks |
 | [`results/`](results/) | Saved experiment data, protocol manifests and numerical summaries |
-| [`figures/`](figures/) | Generated PNGs; aggregate tables and provenance in `figures/data/` |
-| [`docs/`](docs/) | Background reading, including student literature reviews |
+| [`figures/`](figures/) | Generated experiment PNGs |
+| [`docs/`](docs/) | Background reading and the [selected source catalogue](docs/papers/papers.md) |
+| [`report/`](report/) | LaTeX report skeleton, bibliography and build instructions |
 | [`hpc/`](hpc/) | Slurm seed-array script; adapt resources to the cluster before use |
 
 ## Setup and first run
@@ -134,7 +135,7 @@ retries. Analysis comparisons exclude missing pairs rather than treating them as
 losses. Insufficient tree counts are reported as skipped release sizes.
 
 `make figures` validates inputs and stages all renders before replacing existing
-same-named PNGs, aggregate CSVs and `figures/data/sources.json`. Raw experiment
+same-named PNGs and associated local plotting metadata. Raw experiment
 inputs remain unchanged. Numerical analyses write summaries beside their inputs.
 
 A feasible or optimal table need not be authentic or unique. Scoring matches rows
@@ -147,6 +148,21 @@ resolved to class 0. Historical replay checks counts and structural diagnostics
 but cannot certify identical historical trees without original hashes.
 Preprocessing thresholds are fitted on the full cleaned table, so this is not a
 fully training-only preprocessing evaluation.
+
+## Report
+
+`report/report.tex` includes the five course sections and an individual-contributions
+section. The scientific text is intentionally empty; authors fill it themselves.
+The title, author names and repository URL are retained.
+[Selected sources](docs/papers/papers.md) explain the references maintained in
+`report/references.bib`.
+
+The supplied ICLR 2025 template is configured for one column and the course's
+11-point, single-spaced text. `make report` produces `report/report.pdf`;
+`make -C report pdf-direct` provides a pdfLaTeX/BibTeX fallback. The course limit
+is six content pages, excluding references. Enable the bibliography after adding
+the first citation. [Template notes](report/TEMPLATE.md) document provenance and
+the small compatibility/course adaptations.
 
 ## Comments and text
 
