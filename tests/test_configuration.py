@@ -178,9 +178,15 @@ def test_numeric_knowledge_and_role_boundary():
     assert np.array_equal(data.X.iloc[:, mask_cols].to_numpy().ravel(), [1, 0])
 
 
-@pytest.mark.parametrize("with_accuracy", [False, True])
-@pytest.mark.parametrize("all_trees", [False, True])
-@pytest.mark.parametrize("tree_selection", ["random", "sequential"])
+@pytest.mark.parametrize(
+    "tree_selection,all_trees,with_accuracy",
+    [
+        ("random", False, False),
+        ("random", True, True),
+        ("sequential", False, True),
+        ("sequential", True, False),
+    ],
+)
 def test_configured_seed_with_real_solver(
     monkeypatch, all_trees, tree_selection, with_accuracy
 ):

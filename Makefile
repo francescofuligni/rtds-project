@@ -29,7 +29,7 @@ ifneq ($(origin SEED_END),undefined)
 $(error SEED_END was removed; use N_SEEDS)
 endif
 WORKERS ?=
-# CP-SAT search workers per solve (default 4, see experiments/configuration.py).
+# CP-SAT workers per solve: main defaults to 4, confidence to 8.
 THREADS ?=
 THREAD_ARGS = $(if $(strip $(THREADS)),--threads $(THREADS),)
 

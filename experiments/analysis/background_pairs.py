@@ -1,14 +1,8 @@
-"""Compare main-experiment result sets that differ only in the background
-attributes A/B (e.g. marital-status/education vs. marital-status/age).
+"""Compare saved main runs that differ in background attributes A/B.
 
-Every set uses the same seeds, so the same private rows and the same released
-trees per (seed, m); conditions are compared within a seed. Reports, per set:
-how many solves found a table (a timed-out solve has no error, so means over
-the solved seeds alone would be biased), each condition's error and its gain
-over None, and the benefit of releasing more trees (error at the smallest m
-minus error at m). Across sets: the difference in gain per condition, paired
-by seed, and a check that conditions with identical knowledge (None always,
-A when both sets share A) reproduce the same error.
+Report solve coverage, condition errors and gains over None. Cross-run
+comparisons use shared seeds and release sizes after protocol checks;
+matching release settings does not certify identical historical trees.
 """
 
 from __future__ import annotations

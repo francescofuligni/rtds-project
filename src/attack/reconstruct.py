@@ -1,28 +1,15 @@
-"""Dataset reconstruction attack against a released set of TreeFARMS trees.
+"""Reconstruct binary features from released tree paths and exact leaf counts.
 
-This is a from-scratch reimplementation of the CP-SAT formulation in
-Ferry et al. (2024), "Trained Random Forests Completely Reveal your
-Dataset" (DRAFT, https://github.com/vidalt/DRAFT, MIT licensed), adapted
-to two things upstream DRAFT doesn't support out of the box:
+Adapts the DRAFT CP-SAT formulation (Ferry et al., 2024,
+https://github.com/vidalt/DRAFT) to TreeFARMS recursive tree dictionaries
+and optional known feature cells. Trees use the full training table,
+without bootstrap multiplicities.
 
-  1. Trees come from TreeFARMS's native recursive-dict representation
-     (`{"feature": i, "true": ..., "false": ...}` / `{"prediction": c}`)
-     instead of sklearn RandomForestClassifier.estimators_. Since
-     TreeFARMS only operates on pre-binarized data, every feature is a
-     plain boolean, so the ordinal/numerical-attribute machinery
-     upstream DRAFT needs is not required here.
-  2. The attacker can be given exact values for a subset of feature
-     columns, for every training row (background knowledge A/B in the
-     None/A/B/A+B ablation), by fixing those CP-SAT variables before
-     solving.
-
-Threat model: the attacker is assumed to know the training labels y (as
-in all reviewed reconstruction papers -- the released trees predict y,
-so y is public) and the released trees' exact per-leaf, per-class
-training-example counts (the "leaf counts" that make a published tree a
-small table of statistics). What the attacker does NOT get is the
-ground-truth feature matrix; `extract_branches` is the one place that
-touches it, to compute what the released artifact would contain.
+The project explicitly assumes true per-row labels Y are known to the
+attacker. Predicting Y does not itself make those labels public. The
+publisher computes exact per-leaf class counts from private X/Y; the
+attacker receives those counts, tree paths and permitted A/B cells, never
+unrestricted private X. A feasible candidate need not be the original table.
 """
 
 from __future__ import annotations
@@ -58,9 +45,8 @@ def extract_branches(
     per_class_counts: number of rows of (X, y) landing in that leaf, per
         class in `classes`.
 
-    This is the only function that touches ground-truth X -- it plays
-    the role of "the model's author publishing the tree with its leaf
-    statistics", not the attacker.
+    Publisher-side only: private X/y produce the aggregate statistics
+    supplied to the attacker.
     """
     branches = []
     for path, _prediction in _walk_leaves(tree_source, []):
@@ -112,10 +98,9 @@ def reconstruct(
     known_mask / known_values: optional (N, M) arrays. Where known_mask is
         True, x_vars[k][i] is fixed to known_values[k][i] -- this is the
         attacker's background knowledge (None/A/B/A+B conditions).
-    target: optional (N, M) 0/1 array. If given, the solver returns the
-        consistent table with minimum Hamming distance to it (within the
-        timeout) instead of an arbitrary one, so cells the release leaves
-        free take the target's values rather than solver defaults.
+    target: optional (N, M) reference table for prior-guided sampling,
+        distinct from the sensitive attribute T. Minimise Hamming distance
+        to this table; only OPTIMAL certifies the minimum within the timeout.
     target_weights: optional (N, M) positive integers weighting each cell's
         mismatch in that distance (default: all 1).
     """

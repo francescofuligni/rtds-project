@@ -10,8 +10,8 @@
 #   sbatch --array=0-19 --cpus-per-task=8 hpc/seed_array.sh run_record_confidence --m 10 25 50 100
 #
 # Every task passes --workers 1 and --threads = its CPUs, so all tasks stamp the
-# same protocol. The main experiment needs 4 CP-SAT workers per solve, record
-# confidence 8 (see experiments/configuration.py).
+# same protocol. Local defaults use 4 CP-SAT workers for the main experiment
+# and 8 for record confidence (see experiments/configuration.py).
 # Adapt the resource lines and the module setup to the cluster (check the site
 # documentation, e.g. how to select a cluster and which Python module exists).
 #SBATCH --job-name=rtds-seed

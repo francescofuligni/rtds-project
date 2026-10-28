@@ -1,24 +1,14 @@
-"""Run the paired None/A/B/A+B background-knowledge experiment on Adult.
+"""Run paired None/A/B/A+B reconstruction on Adult with known per-row Y.
 
-For each seed, sample a private pilot and a disjoint holdout used by the
-baselines and optional predictive accuracy, then build one Rashomon set.
-For every configured geometric or linear
-release size, use
-the same sample and selected trees in all four knowledge conditions. This
-pairing makes condition differences comparable within each seed and release.
+Each seed builds one Rashomon set from a private sample and reuses nested
+tree releases across all four conditions. A disjoint holdout supplies the
+baselines and optional predictive accuracy. Selection is random by default;
+sequential TreeFARMS enumeration is also supported.
 
-Tree selection defaults to one random ordering without replacement. Releasing its
-first m trees creates nested prefixes. Sequential TreeFARMS enumeration is
-available with --tree-selection sequential.
-
-Seeds run independently in a process pool. Each worker builds one Rashomon set
-and processes all release sizes and conditions. Each CP-SAT solve uses
---threads search workers (a portfolio of strategies; see configuration.py).
-
-Results are written to results/{timestamp}/final_experiment/, with one CSV per
-seed and a protocol manifest. Each invocation creates a fresh directory.
-
-Usage: .venv/bin/python experiments/run_final_experiment.py --n-seeds 350
+Seeds run independently, with --threads CP-SAT workers per solve. Failures
+are recorded while other seeds finish; incomplete invocations exit nonzero.
+Results use results/<timestamp>/final_experiment/ with a manifest and
+per-seed CSVs. Standalone invocations allocate a fresh timestamp.
 """
 
 from __future__ import annotations

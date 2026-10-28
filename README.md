@@ -1,196 +1,159 @@
 # RTDS: Reconstructing Data from Released Decision Trees
 
-This repository contains a research project for the Research Topics in Data
-Science course at Stockholm University. It studies how an attacker can infer a
-sensitive attribute from a released set of accurate decision trees, and how
-public background knowledge affects that reconstruction.
+A Research Topics in Data Science course project at Stockholm University.
+The project studies reconstruction of a sensitive attribute from selected
+decision trees in a TreeFARMS Rashomon set and their exact per-leaf class counts.
 
-The experiments build a Rashomon set with TreeFARMS and release nested subsets
-of its trees. For each release size, the attacker reconstructs the sensitive
-target `T` under four knowledge conditions: no extra knowledge, attribute `A`,
-attribute `B`, or both `A+B`. The current main setup uses `T = sex`, known
-per-row income labels `Y`, `A = marital-status`, and `B = education` (or another
-supported attribute). Tree selection is random by default; sequential
-TreeFARMS-order selection is also available for comparison. A separate
-record-confidence experiment evaluates attacker-side confidence methods.
+The main experiment compares four background-knowledge conditions on the same
+sample and released trees: None, A, B and A+B. The sensitive target is **T = sex**;
+**Y = income** is the predictive label and is explicitly assumed known per row.
+A and B are additional known attributes, by default marital status and education.
+T is never supplied as background knowledge. A separate record-confidence
+experiment evaluates scores attached to reconstructed record claims.
 
-The project is a local, reproducible research pipeline. It is not a production
-service. Experiment manifests record the protocol and run environment so that
-results can be inspected and compared under explicit conditions.
+## Repository map
 
-## Set up
+| Directory | Contents |
+| --- | --- |
+| [`src/rashomon/`](src/rashomon/) | Adult preprocessing, sampling, tree construction, selection and voting |
+| [`src/attack/`](src/attack/) | Reconstruction constraints, knowledge conditions, baselines and scoring |
+| [`experiments/`](experiments/) | Runners, analysis CLIs and shared configuration/output helpers |
+| [`experiments/analysis/`](experiments/analysis/) | Numerical analysis and validated figure inputs |
+| [`experiments/plotting/`](experiments/plotting/) | Figure rendering and styles |
+| [`tests/`](tests/) | Small synthetic tests and bounded integration checks |
+| [`results/`](results/) | Saved experiment data, protocol manifests and numerical summaries |
+| [`figures/`](figures/) | Generated PNGs; aggregate tables and provenance in `figures/data/` |
+| [`docs/`](docs/) | Background reading, including student literature reviews |
+| [`hpc/`](hpc/) | Slurm seed-array script; adapt resources to the cluster before use |
 
-Requirements: Python 3.11 or later and `uv`. The lockfile is verified with
-Python 3.12. From the repository root:
+## Setup and first run
+
+Install `uv` and use Python 3.12 for the locked environment (Python >=3.11 is
+declared). Run commands from the repository root:
 
 ```sh
 uv sync --locked --python 3.12
 make help
 make test
-```
-
-The test command may download the UCI Adult dataset if it is not already in the
-local data cache. No full experiment is needed to run the test suite.
-
-## Run experiments
-
-Start with a small one-seed pilot:
-
-```sh
 make pilot N=100 K=4 M_MAX=20
 ```
 
-Run the main experiment and its analyses, or both experiment families:
+Tests use synthetic data and temporary files; they do not download Adult or run
+full experiments. The pilot runs one main-experiment seed. Experiment commands
+fetch the UCI Adult training data if the local cache is absent.
+
+## Experiments, analysis and figures
 
 ```sh
+# Main reconstruction experiment followed by its numerical analyses.
 make run-final
+
+# Both reconstruction and record-confidence families, with their analyses.
 make run
-```
 
-The main defaults are `n=100`, up to 15 geometric release sizes from 1 to 200
-trees, marital status for `A`, education for `B`, 350 seeds, and a 180-second
-solver timeout. Full runs can be compute-intensive. Use Make variables to adjust
-the sample, release grid, attributes, tree selection, seed count, worker count,
-and timeout; `make help` lists the command interface.
+# Example: five main seeds using age as B and sequential tree selection.
+make run-final ATTR_B=age TREE_SELECTION=sequential N_SEEDS=5 WORKERS=1
 
-Random selection is the default. To run the main experiment with sequential
-TreeFARMS enumeration instead:
+# Numerical summaries for the latest saved run of each family.
+make analyze
 
-```sh
-make run-final TREE_SELECTION=sequential
-```
-
-Result folders are created under `results/<timestamp>/`, separated by
-experiment family. Each contains a protocol `manifest.json`, per-run metadata,
-per-seed CSVs, and analysis summaries. New runs do not replace earlier raw
-results. Analyses validate protocol compatibility before comparing datasets.
-
-## Analyze saved results and regenerate figures
-
-`make analyze` writes numerical summaries of the latest saved results without
-rendering historical plots. Direct analysis CLIs retain plotting by default;
-pass `--no-plots` for numerical output only. To select a
-specific result folder, use the corresponding analysis script with
-`--results-dir` or `--results-dirs`; for example:
-
-```sh
-.venv/bin/python experiments/analyze_results.py \
+# Analyze one selected archive without rendering figures.
+.venv/bin/python experiments/analyze_results.py --no-plots \
   --results-dir results/<timestamp>/final_experiment
-```
 
-Regenerate the attack feature figures without rerunning any experiment by
-pointing the plotting target at saved education and age results:
-
-```sh
+# Render figures from saved education/age runs, without new experiments.
 make figures \
   EDUCATION_DIR=results/<education-run>/final_experiment \
   AGE_DIR=results/<age-run>/final_experiment
 ```
 
-Add `SEQUENTIAL_DIR=results/<sequential-run>/final_experiment` to include the
-random/sequential comparison. Paired comparisons require compatible protocols
-and shared seed/release-size observations. Each feature figure also gets a
-`_gap` variant that shades the gap between no background knowledge and A+B.
-The same command refreshes `background_knowledge.png`, comparing the education-run
-None reference with Marital + education and Marital + age, plus the measured
-Uniform and Marginal baselines. Controls are unconditional model-free guesses,
-counted once per seed/release size. Its aggregates and reference policy are saved
-under `figures/data/`. None has no uncertainty shading in the overview or either
-base attack plot. Predictive accuracy remains limited to the two base plots.
-The Mean/count footer is omitted from PNGs; means, counts and SEM remain in CSVs.
+Add `SEQUENTIAL_DIR=results/<sequential-run>/final_experiment` to the figure
+command for the random/sequential A+B comparison. Inputs must have compatible
+protocols and shared valid seed/release-size measurements. The command also
+renders the two gap views and the background overview. Its None reference comes
+from the education run; uniform and marginal controls are measured saved values.
+Direct analysis CLIs render their own plots unless `--no-plots` is supplied.
 
+### Main options
 
-Generated figures are PNGs in `figures/`; rerendering replaces files with the
-same names. Derived plotting tables and `sources.json` are kept in
-`figures/data/`. Raw seed data and manifests remain in their source folders
-under timestamped folders in `results/`.
+| Make variable | Default / meaning |
+| --- | --- |
+| `N` | `100` private training rows |
+| `K`, `M_MAX` | `15` geometric picks up to `200` trees; rounding may reduce the count |
+| `K_STEPS` | Optional linear step instead of `K`; includes the maximum |
+| `ATTR_A`, `ATTR_B` | `marital-status`, `education`; supported alternatives include `age` |
+| `TREE_SELECTION` | `random` nested prefixes; `sequential` uses TreeFARMS enumeration |
+| `ALL_TREES` | `0`; set `1` to add the full available set |
+| `N_SEEDS`, `SEED_START` | Main: `350`, `0`; confidence: `20`, `0` |
+| `WORKERS` | Concurrent seeds; main defaults to available CPUs divided by solver threads, confidence to `2` |
+| `THREADS` | CP-SAT workers per solve; main `4`, confidence `8` |
+| `TIMEOUT` | Main solve limit: `180` seconds |
+| `ACCURACY` | `0`; set `1` to calculate main predictive accuracy or plot embedded accuracy |
 
-### Held-out predictive accuracy
+Full runs can be compute-intensive. `make run` executes one configured main
+background pair and the confidence family. Run education and age separately
+when producing the two figure inputs.
 
-Accuracy is disabled by default in `make run`, `make run-final`, `make pilot`
-and `make figures`. To calculate it on in-memory releases explicitly, use
-`ACCURACY=1` (CLI: `--accuracy`). To overlay embedded measurements explicitly,
-use `make figures ACCURACY=1` (plot CLI: `--include-accuracy`).
+### Supplementary commands
 
-```sh
-make run-final ATTR_B=education N_SEEDS=100 WORKERS=1 ACCURACY=1
-make run-final ATTR_B=age N_SEEDS=100 WORKERS=1 ACCURACY=1
-make figures ACCURACY=1 \
-  EDUCATION_DIR=results/<education-run>/final_experiment \
-  AGE_DIR=results/<age-run>/final_experiment
-```
+| Command | Use |
+| --- | --- |
+| `make run-record-confidence` | Confidence only; `RECORD_M=10`, `RECORD_SAMPLES=20`, `RECORD_TIMEOUT=30` by default |
+| `make run-record-confidence RECORD_ONLY=prior_guided` | Select a method; the runner's `--help` lists all methods |
+| `make run-accuracy ATTACK_DIR=results/<run>/final_experiment` | Rebuild historical releases and score held-out income without reconstruction solves |
+| `make run-accuracy ATTACK_DIR=results/<run>/final_experiment N_SEEDS=1` | Bound the historical accuracy replay to one seed |
+| `.venv/bin/python experiments/compare_background_pairs.py --help` | Compare saved runs with different A/B choices |
 
-When explicitly enabled, only `attack_marital_education.png` and
-`attack_marital_age.png` receive an income-accuracy axis on the right. The gap,
-overview and selection plots remain reconstruction-only. Accuracy uses the same
-in-memory tree releases, with no extra fit or solve. Its values are shared across
-conditions per seed/m and accompanied by a declared vote/tie/holdout protocol.
-The plotting inputs are retained in `figures/data/`.
+Confidence also accepts `RECORD_SEED_START`, `RECORD_N_SEEDS`, `RECORD_WORKERS`
+and `RECORD_TREE_SELECTION`. Shared `N_SEEDS`, `SEED_START`, `WORKERS` and
+`THREADS` apply to both families; confidence-specific values override shared ones.
+Runner CLIs expose additional settings through `--help`.
 
-`make run` still runs the configured main pair plus record-confidence; it does
-not implicitly launch both background pairs or render figures without their inputs.
-Existing archives are unchanged. To add utility to historical runs, rebuild a saved main run's tree releases and evaluate majority-vote income
-accuracy on its disjoint per-seed holdout, without rerunning reconstruction:
+Accuracy is opt-in for main runs and plots. Use `make run-final ACCURACY=1` to
+measure the exact in-memory releases, then `make figures ACCURACY=1` with saved
+inputs to overlay those measurements. Only the two base education/age plots get
+an accuracy axis; gap, overview and selection plots remain reconstruction-only.
 
-```sh
-# Bounded pilot: one saved seed. Omit N_SEEDS to process every saved seed.
-make run-accuracy ATTACK_DIR=results/20261020_195325/final_experiment N_SEEDS=1
-make run-accuracy ATTACK_DIR=results/20261020_195325/final_experiment
-make run-accuracy ATTACK_DIR=results/20261020_195325_01/final_experiment
-```
+Historical replay prints a fresh `results/<timestamp>/predictive_accuracy/`
+directory. Pass complete replay outputs as `EDUCATION_ACCURACY_DIR` and
+`AGE_ACCURACY_DIR` to `make figures` to request separate overlays explicitly.
+A one-seed pilot cannot overlay a complete attack run.
 
-Each invocation prints a new `results/<timestamp>/predictive_accuracy/` directory.
-Seeds run serially; rebuilding TreeFARMS still costs computation. Parameters and
-measured seed/m keys come from the source run, rather than current runner defaults.
-Tied votes predict income class 0. Historical preprocessing is reproduced,
-including thresholds fitted on the full cleaned table, so this is not a fully
-training-only preprocessing evaluation. Tree counts and joint-split fractions
-must match saved diagnostics. Historical tree hashes are absent: passing these
-checks does not certify identical historical trees. Newly generated release
-hashes, input hashes and execution metadata are retained for future comparisons.
-Independent seeds continue after errors; the process exits nonzero for failures.
-Partial/pilot accuracy files cannot overlay a complete attack run.
+## Outputs and interpretation
 
-Pass the two complete output directories to the existing figure command:
+Runs use `results/<Stockholm timestamp>/<experiment>/`. Protocol manifests
+record scientific settings; per-seed CSVs contain measurements, and `runs/`
+records execution provenance and invocation outcomes. Confidence CSVs are grouped
+by release size. New standalone invocations allocate fresh timestamps; `make run`
+shares one timestamp across families. Existing raw archives are preserved.
 
-```sh
-make figures \
-  EDUCATION_DIR=results/20261020_195325/final_experiment \
-  AGE_DIR=results/20261020_195325_01/final_experiment \
-  SEQUENTIAL_DIR=results/20261025_190500/final_experiment \
-  EDUCATION_ACCURACY_DIR=results/<education-utility-run>/predictive_accuracy \
-  AGE_ACCURACY_DIR=results/<age-utility-run>/predictive_accuracy
-```
+Runners finish independent work after a seed/job fails, record missing candidates
+with their solver status, and exit nonzero for incomplete invocations. Make still
+attempts the associated analyses and remaining family. There are no automatic
+retries. Analysis comparisons exclude missing pairs rather than treating them as
+losses. Insufficient tree counts are reported as skipped release sizes.
 
-The right axis shows held-out income accuracy; the left retains sex reconstruction
-error. Accuracy uses all measured releases, including those with missing attack
-errors. The two utility runs are evaluated separately; equal curves are not assumed.
+`make figures` validates inputs and stages all renders before replacing existing
+same-named PNGs, aggregate CSVs and `figures/data/sources.json`. Raw experiment
+inputs remain unchanged. Numerical analyses write summaries beside their inputs.
 
-## Repository map
+A feasible or optimal table need not be authentic or unique. Scoring matches rows
+within Y groups using non-T truth; this is evaluator-assisted matching, not
+attacker-side identification. Confidence scores are not calibrated probabilities
+by construction. Uniform/marginal controls do not use A/B knowledge.
 
-- `src/rashomon/` builds and selects trees from the Rashomon set.
-- `src/attack/` implements reconstruction, scoring, and confidence methods.
-- `experiments/` contains experiment runners, analysis commands, and plotting.
-- `results/` stores manifests and raw experiment outputs.
-- `figures/` stores generated PNGs and reproducibility data for attack plots.
-- `tests/` contains the pytest suite.
-- `docs/` contains project background material.
+Predictive accuracy measures held-out majority-vote income predictions, with ties
+resolved to class 0. Historical replay checks counts and structural diagnostics
+but cannot certify identical historical trees without original hashes.
+Preprocessing thresholds are fitted on the full cleaned table, so this is not a
+fully training-only preprocessing evaluation.
 
-### Incomplete experiments
+## Comments and text
 
-Runners finish independent work after individual failures. Main work units are
-seeds; confidence work units are (seed, m) pairs. Solver outcomes without a
-candidate retain their status and missing metric; unexpected exceptions discard
-only the affected unit. No automatic retries are performed.
-
-Each invocation records outcomes under `runs/outcomes/`, separately from protocol
-manifests and scientific CSVs. Confidence coverage includes selection/scoring
-attempts and successful solves for every method, including methods with no claims.
-Candidate support is conditional on successful solves, not a calibrated posterior.
-Historical archives without this coverage are reported as unavailable.
-
-Runners and Make return a nonzero status for failures or missing candidates after
-finishing independent jobs, analyses and experiment families. Insufficient tree
-counts remain explicit skips. Analyses report incomplete coverage; no data means
-no inferred statistics or figures. `make figures` validates all selected inputs
-and completes temporary rendering before replacing existing output files.
+Use English for maintained text, comments, docstrings, messages and plot labels.
+Preserve original titles, names and scientific data. Write short, plain comments
+that explain a reason, assumption or non-obvious constraint; omit narration of
+obvious code and change history. Keep docstrings focused on behavior, inputs,
+outputs and relevant limits. Distinguish implemented behavior, project assumptions
+and scientific guarantees. Keep tests focused on meaningful properties and a few
+representative workflow checks, without duplicating implementation details.

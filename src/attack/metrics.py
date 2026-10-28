@@ -1,19 +1,9 @@
-"""Row matching and reconstruction-error scoring.
+"""Match rows within known-Y groups and score the sensitive target T.
 
-The CP-SAT model in reconstruct.py has no notion of row identity beyond
-whatever is pinned via `known_mask`/`known_values` (plus the label y,
-which is fixed per slot in every condition). Under partial background
-knowledge, many reconstructed rows sharing a label are interchangeable
-as far as the solver's constraints are concerned, so before scoring the
-sensitive target T we match reconstructed rows to true rows via the
-Hungarian algorithm, using Hamming distance over all columns *except* T.
-
-Excluding T from the matching cost is deliberate (see Francesco's
-review, Sec. 3.3): matching on T itself would let the evaluator's
-knowledge of the true values improve T's measured accuracy in a way the
-attacker has no access to. This also means the "None" condition's match
-is often close to arbitrary within a label group -- that's the honest
-reflection of having no identifying information, not a bug.
+Matching uses Hamming distance over non-T features. Excluding T prevents
+target truth from improving the assignment; ties follow SciPy's assignment
+for the fixed input order. Other true features remain evaluator-only data,
+so this matching does not establish attacker-side identity or confidence.
 """
 
 from __future__ import annotations

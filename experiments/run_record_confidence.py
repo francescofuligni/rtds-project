@@ -6,7 +6,7 @@ of 2,000 rows (--public-n) from the same population. With --public-prior
 marginals the attacker keeps only per-attribute shares within each income
 class from that sample (published tables) instead of whole records, for both
 prior-guided sampling and the no-trees baseline. Build a Rashomon set and release m
-trees selected uniformly without replacement using nested prefixes. Each
+trees using random nested prefixes by default, or sequential enumeration. Each
 attacker produces a 100-row candidate table whose label counts match the
 private sample, then scores claims about record multiplicities. A claim is
 correct when the private table contains at least the claimed number of copies
@@ -75,11 +75,8 @@ from rashomon.selection import (
 
 PILOT_N = 100
 PUBLIC_N = 2000
-# What the attacker knows about the population: a sample of other people's
-# whole records, or only per-attribute shares within each income class
-# (published tables), estimated from that sample (see MarginalPrior).
-# records_dirichlet: whole records, with the uncertainty of a finite sample
-# about the population carried into the confidence (see DirichletRecordPrior).
+# Public knowledge: whole records, a Dirichlet model of record frequencies,
+# or per-attribute shares within each income class.
 PUBLIC_PRIORS = ["records", "records_dirichlet", "marginals"]
 REGULARIZATION = 0.01
 RASHOMON_BOUND_MULTIPLIER = 0.1
@@ -451,7 +448,7 @@ def main(argv: list[str] | None = None) -> None:
         "--only",
         nargs="+",
         choices=METHOD_CHOICES,
-        help="recompute just these attackers inside existing per-seed files",
+        help="run only these attackers in a fresh result directory",
     )
     args = parser.parse_args(argv)
     try:

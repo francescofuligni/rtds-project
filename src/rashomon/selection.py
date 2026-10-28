@@ -29,7 +29,6 @@ def select_random_trees(
 def select_trees(model, m: int) -> list[dict]:
     """Return the first m sources in TreeFARMS enumeration order.
 
-    Restored from 3d4c195. This is sequential enumeration, not boosting.
     Increasing m retains the previously released prefix.
     """
     n = model.get_tree_count()

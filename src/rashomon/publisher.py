@@ -1,4 +1,4 @@
-"""Publisher-side sampling helpers; never pass private data to the attacker."""
+"""Sample private training rows and disjoint public/holdout rows."""
 
 from rashomon.data import BinarizedDataset
 

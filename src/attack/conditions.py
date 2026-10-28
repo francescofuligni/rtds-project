@@ -1,9 +1,6 @@
-"""The None/A/B/A+B background-knowledge ablation.
+"""Run the None/A/B/A+B ablation with fixed sample, release and target T.
 
-For a fixed data sample, fixed released trees, and fixed target T, build
-the known-column mask for each of the four conditions and run the same
-reconstruction attack under each -- the controlled ablation described in
-the project's meeting notes (Sec. 3).
+Each condition adds only its permitted feature cells to the known-Y attack.
 """
 
 from __future__ import annotations

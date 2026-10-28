@@ -1,18 +1,9 @@
-"""Score the record-level confidence attackers from run_record_confidence.py.
+"""Evaluate record-claim scores against evaluator-only ground truth.
 
-Every attacker outputs a 100-row table with a confidence per row; nothing
-is fitted, so a score is calibrated "out of the box" only if, among rows
-it gives confidence c, about a fraction c are correct. Reports per m and
-attacker: table accuracy (1 - global error), mean confidence, the gap
-between the two, ECE, Brier score and AUROC (does confidence separate the
-correct rows from the wrong ones), plus paired per-seed tests of
-prior-guided sampling against the no-trees baseline and of each
-prior-guided variant against the plain sampler, and selective accuracy (how
-right are the rows an attacker keeps when it keeps only its most confident
-ones). Several result sets may differ in one compared setting -- tree
-selection (sets stamped before random selection became the only option),
-public sample size or records vs. marginals -- and are then reported per
-setting and compared with the first set, paired by seed.
+Report accuracy, mean confidence, ECE, Brier score, AUROC and selective
+accuracy per method and release size. Empirical scores do not imply
+calibrated probabilities. Compatible result sets may differ in tree
+selection, public sample size or public prior; comparisons pair seeds.
 """
 
 from __future__ import annotations

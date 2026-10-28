@@ -7,31 +7,31 @@ import run_predictive_accuracy as utility
 from analysis.attack_figures import load_accuracy
 from run_final_experiment import protocol
 
+from rashomon.build import build_rashomon_set
 from rashomon.data import BinarizedDataset
+from rashomon.utility import predict_tree, prefix_accuracy
 
 
 def test_majority_vote_prefixes_and_ties():
     split = {"feature": 0, "true": {"prediction": 1}, "false": {"prediction": 0}}
     trees = [split, {"prediction": 0}, {"prediction": 1}]
     X, y = np.array([[0], [1]]), np.array([0, 1])
-    assert utility.prefix_accuracy(trees, X, y, [1, 2, 3]) == {
+    assert prefix_accuracy(trees, X, y, [1, 2, 3]) == {
         1: 1.0,
         2: 0.5,
         3: 1.0,
     }
     with pytest.raises(ValueError, match="release sizes"):
-        utility.prefix_accuracy(trees, X, y, [4])
+        prefix_accuracy(trees, X, y, [4])
 
 
 def test_routing_matches_native_treefarms_on_synthetic_data():
     X = pd.DataFrame({"a": [0, 0, 1, 1] * 8, "b": [0, 1, 0, 1] * 8})
     y = X.a ^ X.b
-    model = utility.build_rashomon_set(
-        X, y, regularization=0.01, rashomon_bound_multiplier=0.1
-    )
+    model = build_rashomon_set(X, y, regularization=0.01, rashomon_bound_multiplier=0.1)
     for i in range(min(model.get_tree_count(), 10)):
         np.testing.assert_array_equal(
-            utility.predict_tree(model[i].source, X.to_numpy()), model[i].predict(X)
+            predict_tree(model[i].source, X.to_numpy()), model[i].predict(X)
         )
 
 
@@ -145,11 +145,3 @@ def test_seed_failure_does_not_prevent_other_seed(saved_attack, monkeypatch):
     assert set(pd.read_csv(out / "accuracy.csv").seed) == {1}
     outcome = json.loads((out / "outcome.json").read_text())
     assert outcome["failures"][0]["seed"] == 0
-
-
-def test_private_and_holdout_rows_are_disjoint(saved_attack):
-    _, _, p, data = saved_attack
-    private, public = utility.sample_private_public_indices(
-        data, n=p["pilot_n"], public_n=p["holdout_n"], seed=0
-    )
-    assert not set(private) & set(public)

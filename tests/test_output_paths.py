@@ -3,10 +3,8 @@ from datetime import datetime
 
 import pytest
 from output_paths import (
-    FIGURES_ROOT,
     RESULTS_ROOT,
     experiment_result_dir,
-    figure_output_dir,
     latest_result_dir,
     new_timestamp,
     require_saved_result_dir,
@@ -25,10 +23,6 @@ def test_new_timestamp_adds_suffix_when_timestamp_folder_exists(tmp_path, monkey
     monkeypatch.setattr(output_paths, "datetime", FixedDateTime)
     (tmp_path / "20261020_141641").mkdir()
     assert new_timestamp(tmp_path) == "20261020_141641_01"
-
-
-def test_figure_output_dir_is_shared_repo_folder():
-    assert figure_output_dir() == FIGURES_ROOT
 
 
 def test_figure_sources_must_be_saved_under_results(tmp_path):

@@ -1,4 +1,4 @@
-"""Plot meeting attack figures from saved results, without running any solves."""
+"""Render attack figures from saved results without fitting trees or solving."""
 
 from __future__ import annotations
 

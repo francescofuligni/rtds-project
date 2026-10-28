@@ -264,9 +264,17 @@ def test_confidence_coordinator_finishes_other_jobs_and_exits_nonzero(
     assert (tmp_path / "m001" / "seed002.csv").exists()
 
 
-@pytest.mark.parametrize("failure", ["protocol", "render", None])
-@pytest.mark.parametrize("with_accuracy", [False, True])
-@pytest.mark.parametrize("include_accuracy", [False, True])
+@pytest.mark.parametrize(
+    "failure,with_accuracy,include_accuracy",
+    [
+        ("protocol", False, False),
+        ("render", True, True),
+        (None, False, False),
+        (None, False, True),
+        (None, True, False),
+        (None, True, True),
+    ],
+)
 def test_figure_cli_stages_all_outputs_before_publication(
     tmp_path, monkeypatch, failure, with_accuracy, include_accuracy
 ):

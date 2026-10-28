@@ -29,7 +29,6 @@ def toy_dataset():
         ],
         axis=1,
     )
-    # label correlated with marital status and sex so trees have something to split on
     y = pd.Series(
         ((marital_df["marital_1"] == 1) | (sex == 1)).astype(int), name="label"
     )
@@ -44,17 +43,21 @@ def toy_dataset():
 
 
 def test_known_mask_matches_condition(toy_dataset):
-    for condition, expect_a, expect_b in [
-        ("none", False, False),
-        ("A", True, False),
-        ("A+B", True, True),
+    a_columns = ["marital_0", "marital_1", "marital_2"]
+    b_columns = ["edu_hi"]
+    for condition, known_columns in [
+        ("none", []),
+        ("A", a_columns),
+        ("B", b_columns),
+        ("A+B", a_columns + b_columns),
     ]:
-        mask = known_mask_for_condition(toy_dataset, condition, "marital-status", "sex")
-        a_cols = [
-            toy_dataset.X.columns.get_loc(c)
-            for c in toy_dataset.one_hot_groups["marital-status"]
-        ]
-        assert mask[:, a_cols].all() == expect_a
+        expected = np.tile(
+            toy_dataset.X.columns.isin(known_columns), (len(toy_dataset.X), 1)
+        )
+        mask = known_mask_for_condition(
+            toy_dataset, condition, "marital-status", "education"
+        )
+        np.testing.assert_array_equal(mask, expected)
 
 
 def test_run_all_conditions_is_feasible(toy_dataset):
@@ -74,8 +77,8 @@ def test_run_all_conditions_is_feasible(toy_dataset):
             trees_branches,
             data,
             "marital-status",
-            "sex",
             "education",
+            "sex",
             timeout=10,
         )
         assert result.status in ("OPTIMAL", "FEASIBLE")
@@ -90,7 +93,6 @@ def test_baselines_are_not_constant_for_binary_attribute(toy_dataset):
         200, [data.X.columns.get_loc("sex=Female")], data.X.shape[1], seed=0
     )
     marginal = marginal_baseline(data, "sex", 200, holdout, seed=0)
-    # a real coin flip / marginal draw must produce both 0s and 1s, not
-    # always guessing the single available "choice" (the bug this guards against)
+    # A binary attribute has two possible values despite using one column.
     assert 0 < uniform[:, data.X.columns.get_loc("sex=Female")].mean() < 1
     assert 0 < marginal[:, data.X.columns.get_loc("sex=Female")].mean() < 1

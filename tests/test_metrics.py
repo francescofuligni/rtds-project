@@ -9,8 +9,7 @@ def test_match_rows_recovers_known_permutation():
     true_X = rng.integers(0, 2, size=(n, m))
     y = rng.integers(0, 2, size=n)
 
-    # shuffle rows within each label group to build "reconstructed" data
-    # with a known best match, excluding column 0 (pretend T) from the cost
+    # Permutations within Y groups must be recoverable without using T.
     recon = true_X.copy()
     for label in np.unique(y):
         idx = np.where(y == label)[0]
@@ -18,7 +17,6 @@ def test_match_rows_recovers_known_permutation():
         recon[idx] = true_X[shuffled]
 
     perm = match_rows(true_X, recon, y, exclude_cols={0})
-    # every matched row (outside T) should be identical after matching
     matched = recon[perm]
     assert np.array_equal(matched[:, 1:], true_X[:, 1:])
 
@@ -36,6 +34,30 @@ def test_reconstruction_error_detects_flipped_target():
     true_X = np.array([[1, 0], [0, 1], [1, 1], [0, 0]])
     y = np.array([0, 0, 1, 1])
     recon = true_X.copy()
-    recon[:, 0] = 1 - recon[:, 0]  # flip T for every row
+    recon[:, 0] = 1 - recon[:, 0]
     err, _perm = reconstruction_error(true_X, recon, y, target_cols=[0])
     assert err == 1.0
+
+
+def test_matching_is_target_blind_even_when_costs_tie():
+    true_X = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
+    recon = np.array([[1, 0], [0, 0], [1, 1], [0, 1]])
+    y = np.array([0, 0, 1, 1])
+    original = match_rows(true_X, recon, y, exclude_cols={0})
+    for change_truth, change_candidate in [(True, False), (False, True), (True, True)]:
+        truth, candidate = true_X.copy(), recon.copy()
+        if change_truth:
+            truth[:, 0] = 1 - truth[:, 0]
+        if change_candidate:
+            candidate[:, 0] = 1 - candidate[:, 0]
+        perm = match_rows(truth, candidate, y, exclude_cols={0})
+        np.testing.assert_array_equal(perm, original)
+        np.testing.assert_array_equal(y[perm], y)
+
+
+def test_categorical_target_error_counts_rows_instead_of_changed_bits():
+    true_X = np.array([[1, 0, 0], [0, 1, 1]])
+    recon = np.array([[0, 1, 0], [0, 1, 1]])
+    error, perm = reconstruction_error(true_X, recon, np.array([0, 0]), [0, 1])
+    np.testing.assert_array_equal(perm, [0, 1])
+    assert error == 0.5

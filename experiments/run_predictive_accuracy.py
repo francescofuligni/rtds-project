@@ -25,7 +25,7 @@ from rashomon.build import build_rashomon_set
 from rashomon.data import binarize_adult_curated, known_columns_for, load_adult_raw
 from rashomon.publisher import sample_private_public_indices
 from rashomon.selection import select_random_trees, select_trees, selection_protocol
-from rashomon.utility import predict_tree, prefix_accuracy  # noqa: F401 -- compatibility for existing callers/tests
+from rashomon.utility import prefix_accuracy
 
 ROOT = Path(__file__).resolve().parent.parent
 

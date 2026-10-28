@@ -4,9 +4,9 @@ Each released tree is reconstructed on its own (its leaf counts only),
 giving one candidate table per tree. A record is identified by its
 content -- every feature value plus the label -- so candidates from
 different trees can be compared without aligning them to the true table.
-Everything here except `record_counts` applied to the true data uses only
-what the attacker has: the released trees and (for the prior baseline) a
-public sample from the same population.
+Candidate generation uses released paths/counts, known per-row Y, optional
+known feature cells and, for prior methods, a disjoint public sample.
+Ground truth is used by the runner only after claims have been selected.
 
 For a record r with multiplicities c_1..c_m across the m candidates:
   presence(r)       fraction of candidates containing r at least once
@@ -16,7 +16,8 @@ For a record r with multiplicities c_1..c_m across the m candidates:
 The absolute count decomposes into occurrence scores:
 sum_j c_j = m * sum_k occurrence(r, k). Splitting it per copy gives one
 claim per (record, k) -- "the data contains at least k copies of r" --
-whose score lies in [0, 1] and can be read as a probability directly.
+whose empirical support lies in [0, 1]. These scores are conditional on
+successful solves and are not calibrated probabilities by construction.
 """
 
 from __future__ import annotations
@@ -114,9 +115,9 @@ def sampled_candidates(
     """Several candidates from the joint release (all trees at once).
 
     With public data: prior-guided sampling. Each sample is the
-    release-consistent table closest to a fresh random table drawn from the
-    public sample, so cells the release pins down agree across samples and
-    free cells vary the way the population does (perturb-and-MAP style).
+    release-consistent table nearest a fresh table drawn from the public
+    sample. A FEASIBLE result need not certify the minimum distance;
+    only OPTIMAL certifies the objective. This does not sample a posterior.
     draw_table(y, rng), if given, draws that random table instead (e.g.
     MarginalPrior.draw_table when only per-attribute shares are public).
     Without public data: only the solver's random seed varies.
@@ -124,8 +125,8 @@ def sampled_candidates(
     Several consistent tables are often equally close to the random table,
     and the solver would pick among them by its own search order. With
     random_tie_break, each cell's mismatch weight gets a small random
-    jitter, too small to outweigh one whole cell of distance, so ties are
-    broken at random while a strictly closer table still always wins.
+    jitter. Its total is smaller than one whole cell of distance, so the
+    objective prioritises Hamming distance over the random tie preference.
     """
     rng = np.random.default_rng(seed)
     n_cells = len(y) * n_features
@@ -137,7 +138,7 @@ def sampled_candidates(
         elif public_X is not None:
             target = draw_prior_table(public_X, public_y, y, rng)
         if target is not None and random_tie_break:
-            # total jitter < one unit of distance
+            # Total jitter must stay below one unit of Hamming distance.
             base = (TIE_BREAK_JITTER - 1) * n_cells + 1
             weights = base + rng.integers(0, TIE_BREAK_JITTER, size=target.shape)
         result = reconstruct(
@@ -194,10 +195,8 @@ class RecordPrior:
     knows how many of the n rows carry each label (the trees reveal this),
     so P(at least k copies of r) = P(Binomial(n_c, p(r | c)) >= k).
 
-    alpha is the add-alpha smoothing per possible feature vector. With a few
-    hundred public rows per label and 320 possible vectors, alpha=1 moves so
-    much mass to unseen records that the baseline turns underconfident (ECE
-    0.063 over 20 seeds vs 0.010 at alpha=0.1), which would handicap it.
+    alpha is the additive smoothing per possible feature vector. Larger
+    values move more probability mass toward unseen records.
     """
 
     def __init__(

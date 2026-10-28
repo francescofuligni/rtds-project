@@ -1,11 +1,8 @@
-"""Model-free baselines for the reconstruction attack.
+"""Model-free guesses for the sensitive target T.
 
-Both literature reviews flag that most prior work on tree/forest
-reconstruction only compares against uniform random guessing (G3 in the
-Hendrik review), which understates how much the released model actually
-adds. `marginal_baseline` is the informed control: it guesses T using
-only the empirical marginal of T estimated from a holdout sample that is
-disjoint from the attacked table and never touches the released trees.
+Uniform guesses use the target's categories. Marginal guesses use target
+frequencies from a disjoint holdout, without released trees. Both are
+unconditional controls; they do not exploit A/B background knowledge.
 """
 
 from __future__ import annotations

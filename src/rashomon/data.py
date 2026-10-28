@@ -54,11 +54,7 @@ CATEGORICAL_COLUMNS = [
     "race",
 ]
 
-# sex is binary in the raw data, kept as a single 0/1 column.
-# native-country is collapsed to US-vs-other before binarization: in
-# raw form it has ~41 categories (mostly near-empty), which is a large,
-# low-signal contributor to feature count relative to its predictive
-# value -- a standard simplification for this dataset.
+# Raw columns requiring string normalization; the curated encoder uses sex only.
 BINARY_COLUMNS = ["sex", "native-country"]
 
 LABEL_COLUMN = "income"

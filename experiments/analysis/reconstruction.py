@@ -1,6 +1,6 @@
-"""Aggregate results/final_experiment.csv across seeds and plot
-reconstruction error vs. number of released trees (m), one line per
-background-knowledge condition, with baseline reference lines.
+"""Summarise a saved main experiment and optionally plot error by release size.
+
+Paired comparisons use available seeds separately at each release size.
 """
 
 from __future__ import annotations

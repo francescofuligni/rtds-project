@@ -9,15 +9,10 @@ import numpy as np
 
 from rashomon.selection import DEFAULT_RANDOM_TREE_POOL
 
-# CP-SAT search workers per solve. Several workers run different strategies in
-# parallel (a portfolio), which is what finds a table on larger releases: at
-# n=100 with 50 random trees one worker found no table in 180 s, three found
-# the optimum in 16 s. Recorded in every protocol as solver_threads.
+# CP-SAT workers run different search strategies in parallel.
+# Record their count in each protocol to keep solve budgets comparable.
 DEFAULT_SOLVER_THREADS = 4
-# Prior-guided sampling minimises the distance to a random table, and proving
-# that minimum needs workers a 4-worker portfolio does not run: at n=100, m=10,
-# 4 workers hit the 30 s timeout on every sample (feasible, never optimal),
-# 6 and 8 workers proved the optimum in 8-16 s on the same, loaded machine.
+# Prior-guided distance objectives use a larger search portfolio.
 RECORD_CONFIDENCE_SOLVER_THREADS = 8
 
 
@@ -41,8 +36,7 @@ def add_threads_argument(
     )
 
 
-# Defaults are what the laptop can solve: at n=1000 no table was found within
-# 180 s even at m=10, and m>=200 at n=1000 needs more than 5 GB per solve.
+# Keep the default sample small enough for local reconstruction runs.
 @dataclass(frozen=True)
 class ExperimentConfig:
     n: int = 100
