@@ -74,6 +74,8 @@ protocols and shared valid seed/release-size measurements. The command also
 renders the two gap views and the background overview. Its None reference comes
 from the education run; uniform and marginal controls are measured saved values.
 Direct analysis CLIs render their own plots unless `--no-plots` is supplied.
+`experiments/plot_confidence_figures.py` renders the two record-confidence
+figures used in the report from the saved confidence runs.
 
 ### Main options
 
