@@ -27,6 +27,14 @@ references use the ICLR author-year format and match [the report bibliography](.
 
   This paper establishes the privacy motivation for examining how releasing multiple near-optimal trees exposes information about their shared training data.
 
+- Bargav Jayaraman and David Evans. **Are Attribute Inference Attacks Just Imputation?** In *Proceedings of the 2022 ACM SIGSAC Conference on Computer and Communications Security*, pp. 1569–1582. Association for Computing Machinery, 2022. URL: [https://doi.org/10.1145/3548606.3560663](https://doi.org/10.1145/3548606.3560663).
+
+  This paper motivates assessing what released models add beyond distributional knowledge; our unconditional marginal control does not reproduce its conditional imputation attacks.
+
+- Rui Wen, Yiyong Liu, Michael Backes, and Yang Zhang. **SoK: Data Reconstruction Attacks Against Machine Learning Models: Definition, Metrics, and Benchmark**. In *34th USENIX Security Symposium (USENIX Security 25)*, pp. 5601–5620. USENIX Association, 2025. URL: [official proceedings](https://www.usenix.org/conference/usenixsecurity25/presentation/wen).
+
+  This paper supports distinguishing reconstruction fidelity from coverage and declaring matching assumptions, without treating our tabular target-error metric as a reproduction of its vision benchmark.
+
 - Rui Xin, Chudi Zhong, Zhi Chen, Takuya Takagi, Margo Seltzer, and Cynthia Rudin. **Exploring the Whole Rashomon Set of Sparse Decision Trees**. In *Advances in Neural Information Processing Systems*, volume 35, pp. 14071–14084. Curran Associates, Inc., 2022. URL: [official proceedings](https://proceedings.neurips.cc/paper_files/paper/2022/hash/5afaa8b4dd18eb1eed055d2d821b58ae-Abstract-Conference.html).
 
   This paper introduces TreeFARMS, the algorithm used to enumerate and sample the near-optimal decision trees released in our experiments.

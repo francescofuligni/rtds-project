@@ -4,7 +4,7 @@ BIBTEX ?= bibtex
 PDFLATEX_FLAGS = -synctex=1 -output-directory=.build -interaction=nonstopmode -halt-on-error -file-line-error
 
 .DEFAULT_GOAL := pdf
-.PHONY: pdf pdf-direct check-template
+.PHONY: pdf pdf-direct check-template watch
 
 # Keep missing template assets from producing a misleading final PDF.
 check-template:
@@ -29,3 +29,8 @@ pdf-direct: check-template
 	$(PDFLATEX) $(PDFLATEX_FLAGS) report.tex
 	$(PDFLATEX) $(PDFLATEX_FLAGS) report.tex
 	cp .build/report.pdf report.pdf
+
+# Rebuild saved source dependencies and publish only successful PDFs.
+watch: check-template
+	mkdir -p .build
+	$(LATEXMK) -norc -pdf -pvc -view=none -synctex=1 -outdir=.build -out2dir=. -interaction=nonstopmode -halt-on-error -file-line-error -e '@out2_exts = ( "pdf" );' report.tex

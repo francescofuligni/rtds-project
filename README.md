@@ -164,6 +164,11 @@ is six content pages, excluding references. Enable the bibliography after adding
 the first citation. [Template notes](report/TEMPLATE.md) document provenance and
 the small compatibility/course adaptations.
 
+To rebuild automatically whenever a report source or bibliography is saved, run
+`make -C report watch` and leave it running; stop it with Ctrl+C. This requires
+latexmk and updates `report/report.pdf` after successful compilation, keeping
+auxiliary files in `report/.build/`.
+
 ## Comments and text
 
 Use English for maintained text, comments, docstrings, messages and plot labels.
