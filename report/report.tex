@@ -9,6 +9,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{url}
+\usepackage{enumitem}
 
 \title{Sensitive Attribute Reconstruction\\from a Rashomon Set of Decision Trees}
 \author{Hendrik De Coster, Francesco Fuligni \& Aur\'elien Craplet \\ Stockholm University}
@@ -23,6 +24,7 @@
 
 \begin{abstract}
 % Student-authored abstract.
+A decision tree published with its leaf class counts is also a set of statistics about its training data. We release up to 200 near-optimal sparse trees from one Rashomon set, trained on 100-row samples of binarized UCI Adult, and reconstruct each record's sex with a DRAFT-based constraint-programming attack. More trees lower the error from 34.6\% to 25.3\% (always guessing male: 33.0\%). Knowing marital status, education or age adds about one point at most, while releasing random trees instead of the first trees in enumeration order adds six. Using only the release and a public sample, prior-guided sampling gives every reconstructed record a confidence that is calibrated within about two points without fitting; at 50 trees it names 45\% of the records with 98\% precision. With only 200 public records this confidence is 6--9 points overconfident, and a Dirichlet prior over record frequencies brings it back to about two.
 \end{abstract}
 
 \input{sections/introduction}
@@ -32,11 +34,8 @@
 \input{sections/conclusion}
 \input{sections/contributions}
 
-\section*{Code availability}
-\url{https://github.com/francescofuligni/rtds-project}
-
 % Enable the bibliography after adding the first citation.
 % Original source PDFs belong in ../docs/papers/; metadata belongs in references.bib.
-% \bibliography{references}
+\bibliography{references}
 
 \end{document}
