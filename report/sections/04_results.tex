@@ -48,10 +48,9 @@ reports seed-level corrected tests, but no per-$m$ test survives its separate Ho
 correction. The small gains therefore need cautious interpretation.
 
 Solver variability is comparable in size to these gains: identical None problems
-sometimes return different errors across runs. Across shared cells, 15\% of None errors
+sometimes return different errors across runs. Across matched (seed, $m$) pairs, 15\% of None errors
 differ, with a standard deviation of 2.0 percentage points for the paired differences.
-Feasibility leaves the solver free to
-choose among compatible tables. We also found no support for the proposed explanation
+Because any compatible table is accepted, the solver may return different solutions. We also found no support for the proposed explanation
 that gains track the share of trees splitting on sex and the known feature along the
 same path. These checks limit how strongly we can explain the background effects.
 
@@ -119,8 +118,8 @@ selected trees causes the effect.
 
 \paragraph{Recovery is concentrated in high-confidence claims.} At $m=50$, claims
   with confidence $\geq0.9$ cover 45\% of the sample, with mean per-seed precision
-  97.6\%. The public-only control covers about 10\%. This selective view shows
-  exposure that a single overall accuracy hides, without identifying specific people.
+  97.6\%. The public-only control covers about 10\%. Looking at these claims separately shows
+  exposure that overall accuracy hides, without identifying specific people.
   Even unanimous agreement is not certainty: at $m=50$, claims supported by all 20
   candidate tables were wrong in 2 of 673 cases.
 
@@ -132,5 +131,5 @@ selected trees causes the effect.
   high-confidence claims but improves their precision. This suggests that uncertainty
   in public frequencies matters when little public data is available. With 2,000
   public records, the prior has no measurable effect on accuracy, ranking or the
-  absolute mean confidence gap ($p\geq0.13$). Its benefit here is therefore tied
-  to the small public sample, rather than a general improvement across settings.
+  absolute mean confidence gap ($p\geq0.13$). In these experiments, the prior therefore helps mainly
+  when public data are limited.

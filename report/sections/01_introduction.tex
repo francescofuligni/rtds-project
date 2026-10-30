@@ -13,13 +13,13 @@ Our individual literature reviews identified complementary gaps. De Coster studi
 uncertainty: most reviewed attacks return one dataset, while
 \citet{ferry2024probabilistic} describe uncertainty for a single interpretable model.
 \citet{dick2023confidence} rank records by their frequency across reconstructions
-but leave calibrated confidence estimates open. Fuligni studied background knowledge:
+but leave the estimation of calibrated confidence for future work. Fuligni studied background knowledge:
 DRAFT varies the number of known columns, while \citet{mehnaz2022sensitive} vary
 which attributes are unknown in a different, black-box inference setting. This
 motivates testing which known attributes help recover a fixed target from a
 Rashomon release.
 
-Both reviews also motivate informed controls. Census reconstruction and attribute
+Both reviews also point to the need for informed baselines. Census reconstruction and attribute
 inference studies show why an attack should be compared with what can already be
 inferred from population data \citep{abowd2025census,jayaraman2022imputation}.
 We combine the two review strands by measuring both the effect of known attributes

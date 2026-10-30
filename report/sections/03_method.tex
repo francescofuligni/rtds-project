@@ -11,7 +11,7 @@
   TreeFARMS \citep{xin2022treefarms}, with regularization 0.01, enumerates trees
   within 10\% of the best regularized objective. The publisher releases $m$ trees
   with exact class counts in each leaf. Releases use nested prefixes of either a
-  random ordering or TreeFARMS enumeration order. The attacker knows per-row $Y$.
+  random ordering or TreeFARMS enumeration order. The attacker knows each row's income label.
 
 \paragraph{Reconstruction attack (SQ1, SQ2).} We adapt DRAFT's CP model
   \citep{ferry2024draft} to non-bootstrap trees. Binary cells must satisfy each tree's
@@ -32,9 +32,9 @@
 \paragraph{Record-level claims (SQ3).} A record $r$ contains all 13 binary columns
   and the income label. Different people may share this profile. A claim states that
   the private sample contains at least $k$ copies of $r$. The attacker selects 100 claims,
-  respecting the income totals revealed by leaf counts. Profiles may recur with different
+  respecting the income totals revealed by leaf counts. The same profile may appear in several claims with different
   $k$. The evaluator checks claims by counting copies in the private data, without row
-  matching. The aim is confidence that reflects correctness using only attacker inputs.
+  matching. The aim is to estimate how reliable each claim is using only attacker inputs.
 
 \paragraph{Prior-guided sampling.} We draw $K=20$ reference tables from public
   records with the same per-row income labels. For each table, CP-SAT minimizes the
@@ -61,4 +61,4 @@
   then averaged over seeds. The six seed-level comparisons (three conditions in two
   runs) use Holm correction \citep{holm1979multiple}. Per-$m$ tests use a separate
   correction family within each run. Confidence comparisons use per-seed accuracy or
-  absolute mean confidence gaps. Valid denominators appear with the figures and tables.
+  absolute mean confidence gaps. The figures and tables state how many seeds contribute to each result.

@@ -29,12 +29,12 @@ Releasing decision trees with leaf class counts reveals statistics about their t
 records. We study up to 200 near-optimal trees trained on 100-row Adult samples,
 combining two questions from our literature reviews: how known attributes affect sex
 reconstruction, and whether an attacker can estimate which full-record claims are correct.
-A DRAFT-based attack improves mainly with more released trees and random rather than
-sequential selection. Background knowledge adds modest gains. Repeated solving guided
-by public data produces scores whose means are close to observed accuracy. At 50 trees,
+Reconstruction error falls mainly when more trees are released and when selection is
+random rather than sequential. Background knowledge adds modest gains. Repeated solving
+guided by public data gives confidence scores whose averages are close to observed accuracy. At 50 trees,
 high-confidence claims cover 45\% of the sample with 97.6\% mean per-seed precision.
-A Dirichlet prior reduces overconfidence when the public sample is small. These results
-show why disclosure risk should be evaluated beyond average reconstruction error.
+A Dirichlet prior reduces overconfidence when the public sample is small. These findings
+show what average reconstruction error misses.
 \end{abstract}
 
 \input{sections/01_introduction}
