@@ -10,11 +10,10 @@
   private sample of $n=100$ rows and a disjoint public sample of 2,000 rows.
   TreeFARMS \citep{xin2022treefarms}, with regularization 0.01, enumerates trees
   within 10\% of the best regularized objective. The publisher releases $m$ trees
-  with exact class counts in each leaf. Releases use nested prefixes of either a
-  random ordering or TreeFARMS enumeration order. The attacker knows each row's income label.
+  with exact class counts in each leaf. Larger releases add trees from the same random or TreeFARMS ordering. The attacker knows each row's income label.
 
 \paragraph{Reconstruction attack (SQ1, SQ2).} We adapt DRAFT's CP model
-  \citep{ferry2024draft} to non-bootstrap trees. Binary cells must satisfy each tree's
+  \citep{ferry2024draft} to trees trained without bootstrap sampling. Binary cells must satisfy each tree's
   paths and leaf class counts, with exactly one active value per one-hot group.
   CP-SAT\footnote{OR-Tools 9.15, \url{https://developers.google.com/optimization}.}
   searches for any consistent table (180\,s, 4 workers). Compatibility does not prove
@@ -22,11 +21,12 @@
   with A = marital status and B = education or age. Only the selected background cells
   are fixed to their true values. Sample, preprocessing, release and budget stay fixed
   within each comparison. The runs use seeds 0--99 and 14 release sizes from 1 to 200.
-  Unavailable release sizes are skipped. SQ2 compares A+B under random and sequential
+  We skip sizes exceeding the available tree set. SQ2 compares A+B under random and sequential
   selection. We evaluate sex error after matching reconstructed and true rows within
-  income groups, minimizing total Hamming distance over non-sex columns. This matching
-  uses evaluator-only features and does not identify people. Uniform and public-frequency
-  sex guesses provide unconditional model-free controls.
+  income groups, minimizing the total number of differences in non-sex columns
+  (Hamming distance). This matching
+  uses evaluator-only features and does not identify people. Sex guesses drawn uniformly or from public frequencies
+  provide controls that use neither trees nor A/B.
 % AUDIT: the majority baseline needs the original private-sample cache; it is not saved in the CSVs.
 
 \paragraph{Record-level claims (SQ3).} A record $r$ contains all 13 binary columns
@@ -41,7 +41,7 @@
   number of changed cells subject to release consistency (30\,s, 6 workers).
   It may return a feasible table without proving optimality. A claim's confidence is
   the fraction of returned tables containing at least $k$ copies of $r$. The attacker
-  keeps the highest-scoring claims per label. Private truth is used only for evaluation.
+  keeps the highest-scoring claims per label. The original private records are used only for evaluation.
   We also test frequencies from single-tree reconstructions and repeated joint solves
   that vary only the solver seed, to check whether solver agreement alone is informative.
 
@@ -55,10 +55,10 @@
   overconfidence (confidence minus accuracy), AUROC, and coverage/precision of claims
   at confidence $\geq0.9$. Confidence uses only successfully returned tables.
 
-\paragraph{Statistics.} Comparisons use paired seeds and the two-sided Wilcoxon
-  signed-rank test \citep{wilcoxon1945individual}. For SQ1, Gain is each seed's mean
-  error reduction relative to its own None control over available paired $m$ values,
-  then averaged over seeds. The six seed-level comparisons (three conditions in two
-  runs) use Holm correction \citep{holm1979multiple}. Per-$m$ tests use a separate
-  correction family within each run. Confidence comparisons use per-seed accuracy or
-  absolute mean confidence gaps. The figures and tables state how many seeds contribute to each result.
+\paragraph{Statistics.} We compare paired seeds using the two-sided Wilcoxon
+  signed-rank test \citep{wilcoxon1945individual}. For SQ1, each seed's error reduction
+  from its own None control is averaged over shared $m$ values. Gain averages these
+  reductions across seeds. Holm correction \citep{holm1979multiple} covers the six
+  comparisons (three conditions in two runs). Per-$m$ tests are corrected separately
+  within each run. Confidence tests compare per-seed accuracy or absolute gaps between
+  mean confidence and accuracy. Figures and tables give the seed counts.

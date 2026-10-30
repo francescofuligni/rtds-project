@@ -12,14 +12,13 @@ consider both release policy and selective recovery.
   profiles, including income, are possible, and the public-only control already reaches
   58.5\% claim accuracy. Correct claims can therefore reflect common population
   profiles, making the improvement over this control essential to interpreting leakage.
-  Main controls do not
-  use A/B-conditioned imputation. Sex error uses evaluator-assisted matching, while
+  Main controls do not predict sex from A/B. Sex error uses evaluator-assisted matching, while
   confidence evaluates profile counts rather than personal identities. The confidence
   study uses 20 seeds and no background knowledge, and some candidate tables are not
   proven optima. A limited budget check provides some reassurance: with 200 public
   records and the Dirichlet prior at $m=25$, doubling solve time and workers on ten
-  paired seeds changed accuracy from 68.4\% to 68.5\%. This check does not establish
-  optimality or show that all settings are insensitive to the budget.
+  paired seeds changed accuracy from 68.4\% to 68.5\%. This check does not prove
+  optimality or rule out budget effects in other settings.
   Baseline smoothing was chosen after inspecting calibration, favouring
   that control. We could not confirm that the current data cache matches the one used
   for the original runs, which limits exact reproduction.
