@@ -1,17 +1,20 @@
 \section{Research Problem and Question}
 % Define the gap and state the research question and sub-questions.
 
-A single average reconstruction error does not show how results depend on attacker
-knowledge or which records are exposed. We ask: \emph{when $m$ sparse trees from one
-Rashomon set are released with leaf class counts, how well can an attacker reconstruct
-sex and estimate which full-record claims are correct?}
+A single average reconstruction error does not show how much the result depends on what the
+attacker already knows, or which individual records are exposed. Our research question is
+therefore: \emph{when $m$ sparse decision trees from one Rashomon set are published together
+with their leaf class counts, how well can an attacker reconstruct the sex of the training
+records, and can the attacker tell which reconstructed records are correct?} 
 \begin{description}[leftmargin=1.2em,itemsep=0pt,topsep=2pt]
-  \item[SQ1.] How much does knowing marital status, education or age help, compared with
-      releasing more trees?
-  \item[SQ2.] How does random tree selection compare with TreeFARMS enumeration order?
-  \item[SQ3.] Can public data help estimate reliable record-level confidence, and how much
-      public data is needed?
+  \item[SQ1.] How much does it help the attacker to know the marital status, education or age
+      of every training record, compared with simply releasing more trees?
+  \item[SQ2.] Does it matter which trees of the Rashomon set are released? We compare a
+      random selection with the first $m$ trees in the order in which TreeFARMS lists them.
+  \item[SQ3.] Using only the released trees and a public sample of the population, can the
+      attacker estimate how reliable each reconstructed record is, and how much public data
+      is needed for this?
 \end{description}
-SQ2 extends the release-policy comparison already studied by
-\citet{hsu2026rashomon}. We adapt DRAFT and use repeated solving guided by public
-data, following a similar idea to \citet{dick2023confidence}.
+SQ2 builds on \citet{hsu2026rashomon}, who limit how many trees are released as a defence.
+We do not propose a new attack: we adapt DRAFT and, for SQ3, solve it repeatedly with
+guidance from public data, similar to \citet{dick2023confidence}.

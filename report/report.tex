@@ -10,6 +10,9 @@
 \usepackage{amssymb}
 \usepackage{url}
 \usepackage{enumitem}
+% Allow a third float at the top of a page so tables stay near their figures.
+\setcounter{topnumber}{3}
+\renewcommand{\topfraction}{0.8}
 
 \title{Sensitive Attribute Reconstruction\\from a Rashomon Set of Decision Trees}
 \author{Hendrik De Coster, Francesco Fuligni, Aur\'elien Craplet \\ Stockholm
@@ -26,16 +29,17 @@
 
 \begin{abstract}
 % Student-authored abstract.
-Releasing decision trees with leaf class counts reveals statistics about their training
-records. We study up to 200 near-optimal trees trained on 100-row Adult samples,
-combining two questions from our literature reviews: how known attributes affect sex
-reconstruction, and whether an attacker can estimate which full-record claims are correct.
-Reconstruction error falls mainly when more trees are released and when selection is
-random rather than sequential. Background knowledge adds modest gains. Repeated solving
-guided by public data gives confidence scores whose averages are close to observed accuracy. At 50 trees,
-high-confidence claims cover 45\% of the sample with 97.6\% mean per-seed precision.
-A Dirichlet prior reduces overconfidence when the public sample is small. These findings
-show what average reconstruction error misses.
+A decision tree is often published together with the number of training examples of each
+class in every leaf, and an attacker can use these counts to reconstruct the training data.
+We study this for sparse trees from one Rashomon set (trees that all fit the data almost
+equally well), trained on samples of 100 people from the UCI Adult census dataset. We ask how much it helps the attacker to already
+know some attributes when reconstructing sex, and whether the attacker can tell which
+reconstructed records are correct. The error drops mainly when more trees are released, and
+when they are chosen at random instead of in the order in which TreeFARMS lists them; known
+attributes help only a little. By solving the reconstruction repeatedly with guidance from
+public data, the attacker gets a confidence per record that is close to its accuracy on
+average, and can point out almost half of the records with very few mistakes. With little
+public data, a Dirichlet prior keeps this confidence from becoming too high.
 \end{abstract}
 
 \input{sections/01_introduction}

@@ -1,27 +1,31 @@
 \section{Introduction}
 % Motivate the area and synthesize the individual literature reviews.
 
-Publishing interpretable models can support transparency \citep{rudin2019stop}, but
-leaf class counts also reveal statistics about training data. DRAFT
-\citep{ferry2024draft} uses these statistics to reconstruct random-forest training
-sets with constraint programming. \citet{hsu2026rashomon} apply this attack to sparse
-near-optimal trees from a Rashomon set, enumerated by TreeFARMS
-\citep{xin2022treefarms}, and show that releasing more trees can lower reconstruction
-error. Our project asks what this average error leaves out.
+Interpretable models such as decision trees are often published to make automated
+decisions transparent \citep{rudin2019stop}. A published tree usually comes with the number
+of training examples of each class in every leaf, and these counts are statistics about the
+training data that can be used to rebuild it. DRAFT \citep{ferry2024draft} reconstructs the
+training set of a random forest by searching, with constraint programming, for a table that
+matches all published trees and counts. \citet{hsu2026rashomon} apply this attack to a
+Rashomon set: a collection of different sparse trees that all fit the data almost equally
+well, which TreeFARMS \citep{xin2022treefarms} can list. They show that publishing more of
+these trees usually lowers the reconstruction error. That error is an average over the whole
+table, and our project asks what this average leaves out.
 
-Our individual literature reviews identified complementary gaps. De Coster studied
-uncertainty: most reviewed attacks return one dataset, while
-\citet{ferry2024probabilistic} describe uncertainty for a single interpretable model.
-\citet{dick2023confidence} rank records by their frequency across reconstructions
-but leave the estimation of calibrated confidence for future work. Fuligni studied background knowledge:
-DRAFT varies the number of known columns, while \citet{mehnaz2022sensitive} vary
-which attributes are unknown in a different, black-box inference setting. This
-motivates testing which known attributes help recover a fixed target from a
-Rashomon release.
+Our individual literature reviews pointed to two different gaps. De Coster's review looked
+at uncertainty. Most of the reviewed attacks return a single reconstructed dataset and do not
+say which parts of it are likely to be right. \citet{ferry2024probabilistic} describe this
+uncertainty for a single interpretable model, and \citet{dick2023confidence} rank
+reconstructed census records by how often they come back over many reconstructions, but
+leave calibrated confidence for future work. Fuligni's review looked at background
+knowledge. DRAFT varies how many columns the attacker already knows, but not which ones,
+while \citet{mehnaz2022sensitive} vary which attributes are unknown in a different,
+black-box setting. It is therefore still open which known attributes help an attacker
+recover a fixed sensitive attribute from released trees.
 
-Both reviews also point to the need for informed baselines. Census reconstruction and attribute
-inference studies show why an attack should be compared with what can already be
-inferred from population data \citep{abowd2025census,jayaraman2022imputation}.
-We combine the two review strands by measuring both the effect of known attributes
-and the reliability of full-record claims. Code, data and results are available at
+Both reviews also stress that an attack should be compared with a sensible baseline: what
+can already be guessed from population data, without the model
+\citep{abowd2025census,jayaraman2022imputation}. We combine the two strands in one setting
+and measure both how much known attributes help the attacker and how reliable the
+attacker's reconstructed records are. Code, data and results are available at
 \url{https://github.com/francescofuligni/rtds-project}.

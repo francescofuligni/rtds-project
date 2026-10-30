@@ -1,20 +1,11 @@
 \section{Results}
 % Present and synthesize the findings, tied to the research question.
 
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.495\linewidth]{attack_marital_education.png}\hfill
-  \includegraphics[width=0.495\linewidth]{attack_marital_age.png}
-  \caption{Sex reconstruction error under random tree selection, mean over 93--100
-      valid seeds per condition and release size. Both panels compare None, A, B and
-      A+B, with A = marital status. Left: B = education. Right: B = age.}
-  \label{fig:attack}
-\end{figure}
-
 \begin{table}[t]
   \centering
-  \caption{Sex error (\%), mean over seeds (94 at $m=200$). Gain: per-seed difference to
-      None, averaged over all $m$. Holm-corrected $p$. None and A: education run.}
+  \caption{Sex reconstruction error (\%), mean over seeds (94 at $m=200$). Gain: error
+      reduction compared with no background knowledge, averaged over all $m$, with
+      Holm-corrected $p$. None and marital status alone: education run.}
   \label{tab:attack}
   \small
   \setlength{\tabcolsep}{5pt}
@@ -36,57 +27,57 @@
 
 \subsection{More trees, and a little background knowledge (SQ1)}
 \label{sec:knowledge}
-Figure~\ref{fig:attack} and Table~\ref{tab:attack} show that releasing more trees
-has a larger effect than the tested background attributes. In the education run,
-None error falls from 34.6\% to 25.3\%. Uniform and public-frequency controls have
-50.4\% and 44.5\% error, illustrating why the choice of baseline matters.
+Releasing more trees has a much larger effect than any background attribute we tested
+(Table~\ref{tab:attack}). Without background knowledge, the error falls from 34.6\% with one
+tree to 25.3\% with 200 trees. Guessing sex at random or from its public frequency gives
+50.4\% and 44.5\% error. These controls are weak, which shows how much the choice of baseline
+affects how strong an attack looks.
 
-A+B gives the largest average background gain, about one percentage point.
-Education alone helps more than age alone, while age has no statistically significant
-average gain. These comparisons use each run's own None control. Table~\ref{tab:attack}
-reports seed-level corrected tests, but no per-$m$ test survives its separate Holm
-correction. The small gains therefore need cautious interpretation.
+Knowing marital status together with a second attribute (A+B) helps most, but only by about
+one percentage point. Education on its own helps more than age, and the gain from age alone
+is not significant. Averaged over all release sizes the gains survive Holm correction, but
+none of the tests at a single release size does, so we interpret them with caution.
 
-Solver variability is comparable in size to these gains: identical None problems
-sometimes return different errors across runs. Across matched (seed, $m$) pairs, 15\% of None errors
-differ, with a standard deviation of 2.0 percentage points for the paired differences.
-Because any compatible table is accepted, the solver may return different solutions. We also found no support for the proposed explanation
-that gains track the share of trees splitting on sex and the known feature along the
-same path. These checks limit how strongly we can explain the background effects.
+One reason is that the solver adds noise of about the same size. The condition without
+background knowledge is the same problem in both runs, yet for 15\% of the (seed, $m$) pairs
+the two runs gave a different error (standard deviation 2.0 points), because the solver
+accepts any consistent table and may find a different one each time. We also found no
+support for the idea that the gains depend on how often trees split on both sex and the
+known attribute.
 
 \subsection{Which trees are released (SQ2)}
 \label{sec:selection}
 \begin{figure}[t]
   \centering
-  \includegraphics[width=0.75\linewidth]{attack_selection_comparison.png}
-  \caption{Sex reconstruction error with marital status and education known (A+B),
-      comparing random tree selection with TreeFARMS enumeration order. Means use
-      94--100 paired seeds per release size. Shaded bands show mean $\pm$ 1.96 SEM.}
+  \includegraphics[width=0.44\linewidth]{attack_selection_comparison.png}
+  \caption{Sex reconstruction error with marital status and education known (A+B), for
+      randomly chosen trees and for the first trees in TreeFARMS order. Means over 94--100
+      paired seeds; bands show $\pm$ 1.96 standard errors.}
   \label{fig:selection}
 \end{figure}
 
-With marital status and education known, random selection reaches 24.3\% error at
-$m=200$, against 30.4\% for enumeration order (Figure~\ref{fig:selection}, paired
-$p=8\times10^{-11}$). This larger difference shows that release policy matters under
-the fixed attack. It does not by itself establish which structural property of the
-selected trees causes the effect.
+Which trees are released matters more than background knowledge. With marital status and
+education known, the error at $m=200$ is 24.3\% when the trees are chosen at random, against
+30.4\% when they are the first 200 trees in TreeFARMS order (Figure~\ref{fig:selection},
+paired $p=8\times10^{-11}$). The two curves separate after about five trees.  This
+experiment does not show which property of the selected trees causes the difference.
 % AUDIT: the removed three-seed Jaccard check lacks a saved source artifact.
 
 \begin{figure}[t]
   \centering
-\includegraphics[width=0.37\linewidth]{confidence_reliability_m50.png}\hspace{0.05\linewidth}
-  \includegraphics[width=0.37\linewidth]{confidence_public_data.png}
-  \caption{Record-level confidence, 20 seeds. Left: stated confidence vs.\ share of
-      correct claims at $m=50$ (marker area $\propto$ claims). Right: overconfidence of
-      prior-guided sampling by public data and prior (95\% $t$-intervals).}
+\includegraphics[width=0.32\linewidth]{confidence_reliability_m50.png}\hspace{0.05\linewidth}
+  \includegraphics[width=0.32\linewidth]{confidence_public_data.png}
+  \caption{Record-level confidence, 20 seeds. Left: stated confidence against the share of
+      correct claims at $m=50$ (marker area: number of claims). Right: overconfidence with
+      2,000 or 200 public records and the plain or Dirichlet prior (95\% $t$-intervals).}
   \label{fig:confidence}
 \end{figure}
 
 \begin{table}[t]
   \centering
-  \caption{Prior-guided sampling with 2,000 public records, means over 20 seeds.
-      At $m=100$, 18 seeds returned candidates (1--20 tables each). Precision and AUROC
-      are averaged per seed. Vouched: confidence $\geq0.9$.}
+  \caption{Prior-guided sampling with 2,000 public records, means over 20 seeds (18 at
+      $m=100$). Vouched: claims with confidence of at least 0.9, and the share of those that
+      are correct.}
   \label{tab:confidence}
   \small
   \setlength{\tabcolsep}{4.5pt}
@@ -104,32 +95,22 @@ selected trees causes the effect.
 \end{table}
 
 \subsection{Record-level confidence and correctness (SQ3)}
-\paragraph{Solver agreement alone is misleading.} Single-tree frequencies and
-  repeated joint solves can assign high confidence to mostly incorrect claims. The
-  solver can fill unconstrained cells similarly across solutions, so agreement is not
-  evidence that those values are forced by the release.
+\paragraph{Accuracy and average confidence.} With 2,000 public records, prior-guided sampling
+  gets more claims right than public statistics alone at every number of trees we tested
+  (paired $p\leq2\times10^{-4}$; Table~\ref{tab:confidence}), and its average confidence is
+  only 0.7 to 2.3 percentage points above its accuracy. At $m=50$ this also roughly holds within each range of
+  confidence (Figure~\ref{fig:confidence}, left), although that does not prove calibration.
 
-\paragraph{Public guidance improves accuracy and mean confidence.} Prior-guided
-  sampling is more accurate than the public-only control at every measured $m$
-  (paired $p\leq2\times10^{-4}$). Its mean confidence exceeds accuracy by only
-  0.7--2.3 points (Table~\ref{tab:confidence}). Figure~\ref{fig:confidence} left also
-  compares scores with correctness. Small average gaps do not establish calibration
-  at every confidence level.
+\paragraph{Correct records are concentrated among high-confidence claims.} At $m=50$, 45\% of the claims reach a confidence of at least 0.9, and
+  on average 97.6\% of these are correct, while public statistics alone give only about 10\%
+  of the claims such a high confidence. The attacker can thus point out a large group of
+  almost certainly correct records, which the overall accuracy of 77.8\% does not show,
+  although it does not know who these people are. 
 
-\paragraph{Recovery is concentrated in high-confidence claims.} At $m=50$, claims
-  with confidence $\geq0.9$ cover 45\% of the sample, with mean per-seed precision
-  97.6\%. The public-only control covers about 10\%. Looking at these claims separately shows
-  exposure that overall accuracy hides, without identifying specific people.
-  Even unanimous agreement is not certainty: at $m=50$, claims supported by all 20
-  candidate tables were wrong in 2 of 673 cases.
-
-\paragraph{A Dirichlet prior helps with a small public sample.} With 200 public
-  records, plain-prior scores become overconfident (Figure~\ref{fig:confidence} right).
-  At $m=10$, the Dirichlet variant reduces the mean gap from 8.6 to 1.6 points.
-  The reduction is significant at all three tested sizes (paired absolute-gap
-  $p\leq3\times10^{-5}$), with no measurable accuracy change. It selects fewer
-  high-confidence claims but improves their precision. This suggests that uncertainty
-  in public frequencies matters when little public data is available. With 2,000
-  public records, the prior has no measurable effect on accuracy, ranking or the
-  absolute mean confidence gap ($p\geq0.13$). In these experiments, the prior therefore helps mainly
-  when public data are limited.
+\paragraph{Small public samples.} With only 200 public records, the plain version becomes
+  overconfident (Figure~\ref{fig:confidence}, right): at $m=10$ its average confidence is 8.6
+  percentage points above its accuracy. The Dirichlet variant brings this down to 1.6 points.
+  The improvement is significant at all three tested release sizes (paired
+  $p\leq3\times10^{-5}$ for the absolute gap), and accuracy does not change measurably. The
+  Dirichlet version gives fewer claims a confidence of 0.9 or more, but more of those are
+  correct.  With 2,000 public records, the Dirichlet prior has no measurable effect on accuracy, ranking or the confidence gap ($p\geq0.13$).

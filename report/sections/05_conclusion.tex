@@ -1,32 +1,23 @@
 \section{Conclusion}
 % Reflect on the contribution, limitations and future work.
 
-Together, the two studies show why average reconstruction error gives an incomplete view
-of a Rashomon release. The tested background attributes add modest gains, while tree
-count and selection policy have larger effects. Public-guided confidence also reveals
-which full-record claims are more reliable. Disclosure policies should therefore
-consider both release policy and selective recovery.
+Together, the two studies show that the average reconstruction error gives an incomplete
+picture of what a Rashomon release exposes. Known attributes add little, the number of
+released trees and the way they are selected matter much more, and the attacker can tell
+which reconstructed records are most likely correct. Rules for publishing models should
+therefore also consider how trees are selected and which records become nearly certain.
 
-\paragraph{Limitations.} These results concern small, coarsely encoded Adult samples,
-  known income labels and public data from the same population. Only 640 encoded
-  profiles, including income, are possible, and the public-only control already reaches
-  58.5\% claim accuracy. Correct claims can therefore reflect common population
-  profiles, making the improvement over this control essential to interpreting leakage.
-  Main controls do not predict sex from A/B. Sex error uses evaluator-assisted matching, while
-  confidence evaluates profile counts rather than personal identities. The confidence
-  study uses 20 seeds and no background knowledge, and some candidate tables are not
-  proven optima. A limited budget check provides some reassurance: with 200 public
-  records and the Dirichlet prior at $m=25$, doubling solve time and workers on ten
-  paired seeds changed accuracy from 68.4\% to 68.5\%. This check does not prove
-  optimality or rule out budget effects in other settings.
-  Baseline smoothing was chosen after inspecting calibration, favouring
-  that control. We could not confirm that the current data cache matches the one used
-  for the original runs, which limits exact reproduction.
+\paragraph{Limitations.} Our results come from small samples of the Adult data with a coarse
+  binary encoding, known income labels and public data from the same population. Only 640
+  different records are possible, and public statistics alone already get 58.5\% of the claims right. The confidence study uses
+  20 seeds and no background knowledge, and some returned tables are not proven to be the
+  closest ones, although doubling the solve time and workers on ten seeds changed accuracy by
+  only 0.1 points. The smoothing of the public-statistics control was chosen
+  after looking at its calibration, which favours it. Finally, we could not confirm that the current data
+  cache matches the one used for the original runs.
 
-\paragraph{Future work.} Test confidence with background knowledge, larger tables
-  and public data from a different population. Combining the two studies would show
-  whether known attributes improve the reliability of full-record claims as well as
-  sex reconstruction. Such comparisons should also give the no-tree control the same
-  background information, so that the comparison measures what the released
-  models add beyond background knowledge. Testing less coarse feature encodings would help assess whether the
-  selective recovery observed here extends beyond this small profile space.
+\paragraph{Future work.} Next steps are to test the confidence attack with background
+  knowledge, on larger tables with a finer encoding, and with public data from a different
+  population. Combining the two studies, with the same background knowledge given to the control
+  without trees, would show whether known attributes make the
+  records more reliable.
