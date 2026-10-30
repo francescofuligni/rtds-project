@@ -25,17 +25,16 @@
 
 \begin{abstract}
 % Student-authored abstract.
-A decision tree published with its leaf class counts is also a set of statistics about
-its training data. We release up to 200 near-optimal sparse trees from one Rashomon set,
-trained on 100-row samples of binarized UCI Adult, and reconstruct each record's sex
-with a DRAFT-based constraint-programming attack. Releasing more trees lowers the error from 34.6\%
-to 25.3\% (always guessing male: 33.0\%). Background knowledge of marital status, education or age reduces the error by
-about one point, while releasing random trees instead of the first trees in
-enumeration order reduces it by six points. Using only the release and a public sample, prior-guided
-sampling gives record-level scores whose mean is within about
-two points of observed accuracy. At 50 trees it identifies 45\% of the records with 98\%
-precision. With only 200 public records, confidence exceeds accuracy by 6--9 points.
-A Dirichlet prior over record frequencies reduces this gap to about two points.
+Releasing decision trees with leaf class counts reveals statistics about their training
+records. We study up to 200 near-optimal trees trained on 100-row Adult samples,
+combining two questions from our literature reviews: how known attributes affect sex
+reconstruction, and whether an attacker can estimate which full-record claims are correct.
+A DRAFT-based attack improves mainly with more released trees and random rather than
+sequential selection. Background knowledge adds modest gains. Repeated solving guided
+by public data produces scores whose means are close to observed accuracy. At 50 trees,
+high-confidence claims cover 45\% of the sample with 97.6\% mean per-seed precision.
+A Dirichlet prior reduces overconfidence when the public sample is small. These results
+show why disclosure risk should be evaluated beyond average reconstruction error.
 \end{abstract}
 
 \input{sections/01_introduction}

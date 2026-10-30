@@ -1,27 +1,33 @@
 \section{Conclusion}
 % Reflect on the contribution, limitations and future work.
 
-Our reviews identified two gaps. Background knowledge had a small effect in
-our setting (about one point), far less than the number of trees (nine points) and their
-selection policy (six). Record-level confidence revealed a larger difference: from the release and a public sample
-alone, the attacker identifies 45\% of the records at $m=50$ with mean per-seed
-precision of 97.6\%. With 200 public records and a Dirichlet prior, high-confidence
-claims cover 24--40\% of the rows with 95--97\% precision at the tested $m$.
-Disclosure rules should therefore consider the diversity of the released trees and which
-records can be recovered with high precision, not only the number of trees or the average error.
+The two review strands show why average reconstruction error is an incomplete view
+of a Rashomon release. The tested background attributes add modest gains, while tree
+count and selection policy have larger effects. Public-guided confidence also reveals
+which full-record claims are more reliable. Disclosure policies should therefore
+consider both release policy and selective recovery.
 
-\paragraph{Limitations.} We use a small dataset with features reduced to a few categories. With 100 rows and 13 binary
-  columns there are only 640 possible records, so 58.5\% of the public-statistics claims
-  are already correct. The added recovery comes from the improvement over this baseline. The attacker knows every income label
-  and, under background knowledge, exact values for every row. The public sample comes
-  from the same population. The baseline's smoothing (0.1) was chosen after looking at
-  its calibration, which favours the baseline. Many prior-guided samples hit the 30\,s
-  limit before the solver proved that the returned table was the closest, but doubling workers and time on ten seeds
-  changed accuracy only from 68.4\% to 68.5\%. The confidence experiment uses 20 seeds
-  and no background knowledge, and the error metric matches rows with true non-sex
-  columns. We did not save a hash of the original data cache, so we cannot
-  confirm that the current cache is identical.
+\paragraph{Limitations.} These results concern small, coarsely encoded Adult samples,
+  known income labels and public data from the same population. Only 640 encoded
+  profiles, including income, are possible, and the public-only control already reaches
+  58.5\% claim accuracy. Correct claims can therefore reflect common population
+  profiles, making the improvement over this control essential to interpreting leakage.
+  Main controls do not
+  use A/B-conditioned imputation. Sex error uses evaluator-assisted matching, while
+  confidence evaluates profile counts rather than personal identities. The confidence
+  study uses 20 seeds and no background knowledge, and some candidate tables are not
+  proven optima. A limited budget check provides some reassurance: with 200 public
+  records and the Dirichlet prior at $m=25$, doubling solve time and workers on ten
+  paired seeds changed accuracy from 68.4\% to 68.5\%. This check does not establish
+  optimality or show that all settings are insensitive to the budget.
+  Baseline smoothing was chosen after inspecting calibration, favouring
+  that control. The historical data-cache identity could not be verified against the
+  current copy, limiting exact reproduction.
 
-\paragraph{Future work.} Next steps are differentially private leaf counts
-  \citep{gorge2026dp}, a confidence attack that uses background knowledge, larger
-  tables, public data from a different population, and diversity-based disclosure rules.
+\paragraph{Future work.} Test confidence with background knowledge, larger tables
+  and public data from a different population. Combining the two studies would show
+  whether known attributes improve the reliability of full-record claims as well as
+  sex reconstruction. Such comparisons should also give the no-tree control the same
+  background information, so that the measured improvement isolates what the released
+  models add. Testing less coarse feature encodings would help assess whether the
+  selective recovery observed here extends beyond this small profile space.

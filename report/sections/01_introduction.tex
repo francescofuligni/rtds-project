@@ -1,35 +1,27 @@
 \section{Introduction}
 % Motivate the area and synthesize the individual literature reviews.
 
-Interpretable models are recommended for high-stakes decisions \citep{rudin2019stop},
-and publishing them can support transparency. Yet a decision tree published with the
-class counts in every leaf is also a small table of statistics about its training data,
-and statistics can be turned back into records. Census tables have been used to
-reconstruct census microdata at national scale \citep{abowd2025census}, and reconstructed
-census rows can be ranked by how often they appear in repeated reconstructions \citep{dick2023confidence}. For
-trees, \citet{ferry2024probabilistic} measure the uncertainty across all datasets
-that fit one published tree, DRAFT \citep{ferry2024draft} reconstructs the training set
-of a random forest with constraint programming, and \citet{gorge2026dp} extend it to
-differentially private forests. \citet{hsu2026rashomon} show that publishing many
-near-optimal models from one Rashomon set, which TreeFARMS \citep{xin2022treefarms}
-enumerates for sparse trees, gives an attacker several views of the same data: their
-DRAFT-based error mostly falls as more trees are released.
+Publishing interpretable models can support transparency \citep{rudin2019stop}, but
+leaf class counts also reveal statistics about training data. DRAFT
+\citep{ferry2024draft} uses these statistics to reconstruct random-forest training
+sets with constraint programming. \citet{hsu2026rashomon} apply this attack to sparse
+near-optimal trees from a Rashomon set, enumerated by TreeFARMS
+\citep{xin2022treefarms}, and show that releasing more trees can lower reconstruction
+error. Our project asks what this average error leaves out.
 
-Our two individual literature reviews focused on different questions. The
-first (De Coster) compared what reconstruction attacks output. Most of the reviewed attacks return one dataset:
-apart from the single-model analysis of \citet{ferry2024probabilistic}, none gives a
-probability to each reconstructed value, and \citet{dick2023confidence} rank their rows
-but state that the ranking is not calibrated. The second (Fuligni) studied the
-attacker's background knowledge. DRAFT's experiments report reconstruction error as the number of known columns
-increases \citep{ferry2024draft}. In a different setting,
-\citet{mehnaz2022sensitive} vary which non-sensitive attributes are unknown in
-black-box attribute inference. Both
-reviews found the same evaluation weaknesses. Attacks on tree models are mostly compared
-with uniform guessing. Using a baseline that knows the data distribution can change the
-conclusion \citep{abowd2025census,jayaraman2022imputation}.
-\citet{wen2025reconstruction} distinguish how closely reconstructed images match the
-originals from how much of the dataset is recovered. In our tabular setting, an additional concern is that matching an
-anonymous reconstruction to true rows uses evaluator-only information. Our shared starting point is therefore the Rashomon
-release of \citet{hsu2026rashomon} with a DRAFT-style attack and baselines that use public data. We study
-the questions identified in our individual reviews. Code, data and results
-are available at \url{https://github.com/francescofuligni/rtds-project}.
+Our individual literature reviews identified complementary gaps. De Coster studied
+uncertainty: most reviewed attacks return one dataset, while
+\citet{ferry2024probabilistic} describe uncertainty for a single interpretable model.
+\citet{dick2023confidence} rank records by their frequency across reconstructions
+but leave calibrated confidence estimates open. Fuligni studied background knowledge:
+DRAFT varies the number of known columns, while \citet{mehnaz2022sensitive} vary
+which attributes are unknown in a different, black-box inference setting. This
+motivates testing which known attributes help recover a fixed target from a
+Rashomon release.
+
+Both reviews also motivate informed controls. Census reconstruction and attribute
+inference studies show why an attack should be compared with what can already be
+inferred from population data \citep{abowd2025census,jayaraman2022imputation}.
+We combine the two review strands by measuring both the effect of known attributes
+and the reliability of full-record claims. Code, data and results are available at
+\url{https://github.com/francescofuligni/rtds-project}.

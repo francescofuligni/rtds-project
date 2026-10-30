@@ -1,25 +1,17 @@
 \section{Research Problem and Question}
 % Define the gap and state the research question and sub-questions.
 
-\citet{hsu2026rashomon} measure the leakage of a Rashomon release as the average error
-of one reconstruction against uniform guessing. A single average leaves two questions unanswered:
-how much the result depends on the attacker's prior knowledge,
-and which records are exposed. Our question is: \emph{when $m$ sparse decision trees
-from one Rashomon set are released with their leaf class counts, how well can an
-attacker reconstruct the sex of the training records, and can the attacker tell which
-reconstructed records are correct?}
+A single average reconstruction error does not show how results depend on attacker
+knowledge or which records are exposed. We ask: \emph{when $m$ sparse trees from one
+Rashomon set are released with leaf class counts, how well can an attacker reconstruct
+sex, and estimate which full-record claims are correct?}
 \begin{description}[leftmargin=1.2em,itemsep=0pt,topsep=2pt]
-  \item[SQ1.] How much does knowing marital status, education or age for every row lower
-      the error, compared with releasing more trees, and does it matter which attribute
-      is known?
-  \item[SQ2.] Does it matter whether the released trees are a random subset of the
-      Rashomon set or the first $m$ in TreeFARMS's enumeration order?
-  \item[SQ3.] Can the attacker give each reconstructed record a confidence that is
-      calibrated without fitting on ground truth, using only the release and a public
-      sample, and how much public data does that need?
+  \item[SQ1.] How much do known marital status, education or age help, compared with
+      releasing more trees?
+  \item[SQ2.] How does random tree selection compare with TreeFARMS enumeration order?
+  \item[SQ3.] Can public data guide reliable record-level confidence, and how much
+      public data is needed?
 \end{description}
-\citet{hsu2026rashomon} also compare tree-selection strategies. Our comparison in
-SQ2 came up during the project, when the first trees in enumeration order turned out to
-be near-copies (Section~\ref{sec:selection}). We do not propose a new attack: we adapt
-DRAFT and add repeated solving guided by public data, following a similar idea to
-\citet{dick2023confidence}.
+SQ2 extends the release-policy comparison already studied by
+\citet{hsu2026rashomon}. We adapt DRAFT and use repeated solving guided by public
+data, following a similar idea to \citet{dick2023confidence}.

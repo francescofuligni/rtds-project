@@ -23,10 +23,6 @@ data, or related-work discussion. They match [the report bibliography](../../rep
 
   This paper studies uncertainty across datasets consistent with an interpretable model.
 
-- Alice Gorgé, Julien Ferry, Sébastien Gambs, and Thibaut Vidal. **Training Set Reconstruction from Differentially Private Forests: How Effective is DP?** In *2026 IEEE Conference on Secure and Trustworthy Machine Learning (SaTML)*, pp. 1136–1171. IEEE, 2026. URL: [https://doi.org/10.1109/SaTML68715.2026.00067](https://doi.org/10.1109/SaTML68715.2026.00067).
-
-  This paper extends tree reconstruction to differentially private forests.
-
 - Sture Holm. **A Simple Sequentially Rejective Multiple Test Procedure**. *Scandinavian Journal of Statistics*, 6(2):65–70, 1979. URL: [https://www.jstor.org/stable/4615733](https://www.jstor.org/stable/4615733).
 
   This paper defines the multiple-testing correction cited for the report's paired comparisons.
@@ -46,10 +42,6 @@ data, or related-work discussion. They match [the report bibliography](../../rep
 - Cynthia Rudin. **Stop Explaining Black Box Machine Learning Models for High Stakes Decisions and Use Interpretable Models Instead**. *Nature Machine Intelligence*, 1(5):206–215, 2019. URL: [https://doi.org/10.1038/s42256-019-0048-x](https://doi.org/10.1038/s42256-019-0048-x).
 
   This paper motivates the role of interpretable models in high-stakes decisions.
-
-- Rui Wen, Yiyong Liu, Michael Backes, and Yang Zhang. **SoK: Data Reconstruction Attacks Against Machine Learning Models: Definition, Metrics, and Benchmark**. In *34th USENIX Security Symposium (USENIX Security 25)*, pp. 5601–5620. USENIX Association, 2025. URL: [official proceedings](https://www.usenix.org/conference/usenixsecurity25/presentation/wen).
-
-  This paper supports distinguishing reconstruction fidelity from coverage in vision attacks. Excluding the sensitive target from our tabular row assignment is a project evaluation choice, not a method attributed to this paper.
 
 - Frank Wilcoxon. **Individual Comparisons by Ranking Methods**. *Biometrics Bulletin*, 1(6):80–83, 1945. URL: [https://doi.org/10.2307/3001968](https://doi.org/10.2307/3001968).
 

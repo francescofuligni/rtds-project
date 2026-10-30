@@ -36,32 +36,24 @@
 
 \subsection{More trees, and a little background knowledge (SQ1)}
 \label{sec:knowledge}
-Figure~\ref{fig:attack} compares the education and age background-knowledge runs.
-The number of released trees drives the leakage in both panels
-(Table~\ref{tab:attack}). In the education run, without background knowledge,
-the error falls from 34.6\% at
-$m=1$ to 25.3\% at $m=200$ ($-9.4$ points, $p=2\times10^{-11}$). At $m=1$ the attack is
-no better than always guessing male: a single tree constrains few cells, and the solver
-tends to fill the free sex cells with 0, which encodes male. For half of the seeds the
-$m=1$ error equals the share of women in the sample exactly. Against the majority guess
-it gains 7.7 points at $m=200$ ($p=5\times10^{-11}$). The uniform and frequency
-baselines would make it look strong from the start.
+Figure~\ref{fig:attack} and Table~\ref{tab:attack} show that releasing more trees
+has a larger effect than the tested background attributes. In the education run,
+None error falls from 34.6\% to 25.3\%. Uniform and public-frequency controls have
+50.4\% and 44.5\% error, illustrating why the choice of baseline matters.
 
-Background knowledge reduces the error by about one additional point. Averaged over $m$, marital status with
-education lowers the error by 1.3 points, and with age by 0.9 points. Single attributes
-reduce error by at most 0.5 points, and age alone gives no measurable improvement. In the age
-panel, error at $m=200$ is 25.1\% with age alone and 23.6\% with marital status
-and age known. These values describe $m=200$, while Gain averages the improvement over all $m$.
-As a single known
-attribute, education gives 0.5 points more gain than age ($p=0.03$,
-uncorrected). Tested at each $m$ separately, none of the 42 tests per run survives Holm
-correction. Two further checks help interpret these small effects. First, variation between solver runs
-is similar in size to these gains: None is the same problem in both runs, yet 15\% of its
-(seed, $m$) cells returned a different error (s.d.\ 2.0 points), because CP-SAT's
-parallel workers race and any consistent table is accepted. Second, the mechanism we
-expected, that knowing A helps when trees split on sex and A on the same path, is not
-supported: the share of trees with both splits does not predict the gain ($|r|<0.04$, all
-$p>0.2$).
+A+B gives the largest average background gain, about one percentage point.
+Education alone helps more than age alone, while age has no statistically significant
+average gain. These comparisons use each run's own None control. Table~\ref{tab:attack}
+reports seed-level corrected tests, but no per-$m$ test survives its separate Holm
+correction. The small gains therefore need cautious interpretation.
+
+Solver variability is comparable in size to these gains: identical None problems
+sometimes return different errors across runs. Across shared cells, 15\% of None errors
+differ, with a standard deviation of 2.0 percentage points for the paired differences.
+Feasibility leaves the solver free to
+choose among compatible tables. We also found no support for the proposed explanation
+that gains track the share of trees splitting on sex and the known feature along the
+same path. These checks limit how strongly we can explain the background effects.
 
 \subsection{Which trees are released (SQ2)}
 \label{sec:selection}
@@ -74,18 +66,12 @@ $p>0.2$).
   \label{fig:selection}
 \end{figure}
 
-The choice of trees matters more than background knowledge
-(Figure~\ref{fig:selection}). With marital status and
-education known, random releases reach 24.3\% error at $m=200$, against 30.4\% for the
-first 200 trees in enumeration order ($-6.2$ points, $p=8\times10^{-11}$), and the
-curves separate from about $m=10$ ($-2.8$ points, $p=1\times10^{-4}$).
-% AUDIT: no saved trees or analysis artifact was found for the following three-seed Jaccard check.
-In a small check
-on three seeds, the first 10 trees shared 21--33\% of their leaves pairwise (Jaccard
-index) and had 21--24 distinct leaves, against 3--4\% and 53--83 for 10 random trees:
-the consecutive trees in this check are much more similar to one another. The confidence attack shows the same effect: at
-$m=25$ its accuracy is 61.7\% with the first trees and 73.9\% with random ones
-($p=9\times10^{-5}$, 20 seeds).
+With marital status and education known, random selection reaches 24.3\% error at
+$m=200$, against 30.4\% for enumeration order (Figure~\ref{fig:selection}, paired
+$p=8\times10^{-11}$). This larger difference shows that release policy matters under
+the fixed attack. It does not by itself establish which structural property of the
+selected trees causes the effect.
+% AUDIT: the removed three-seed Jaccard check lacks a saved source artifact.
 
 \begin{figure}[t]
   \centering
@@ -99,8 +85,9 @@ $m=25$ its accuracy is 61.7\% with the first trees and 73.9\% with random ones
 
 \begin{table}[t]
   \centering
-  \caption{Prior-guided sampling, 2,000 public records, means over 20 seeds (18 at
-      $m=100$: two seeds produced no table in time). Precision and AUROC are averaged per seed. Vouched: confidence $\geq0.9$.}
+  \caption{Prior-guided sampling with 2,000 public records, means over 20 seeds.
+      At $m=100$, 18 seeds returned candidates (1--20 tables each). Precision and AUROC
+      are averaged per seed. Vouched: confidence $\geq0.9$.}
   \label{tab:confidence}
   \small
   \setlength{\tabcolsep}{4.5pt}
@@ -118,35 +105,32 @@ $m=25$ its accuracy is 61.7\% with the first trees and 73.9\% with random ones
 \end{table}
 
 \subsection{Record-level confidence and correctness (SQ3)}
-\paragraph{Frequency alone gives unreliable confidence.} Scoring a record by how often
-  it appears gives unreliable scores in these experiments. At $m=10$, the share of single-tree reconstructions containing a
-  record gives claims that are 6.6\% correct at a mean stated confidence of 49\%.
-  Agreement across solver seeds gives 34\% correct at 86\% stated. The reconstructions
-  agree because CP-SAT fills free cells the same way, not because the release forces
-  those values.
+\paragraph{Solver agreement alone is misleading.} Single-tree frequencies and
+  repeated joint solves can assign high confidence to mostly incorrect claims. The
+  solver can fill unconstrained cells similarly across solutions, so agreement is not
+  evidence that those values are forced by the release.
 
-\paragraph{Mean confidence is close to observed accuracy.} Its stated confidence
-  exceeds its accuracy by only 0.7 to 2.3 points (Table~\ref{tab:confidence},
-  Figure~\ref{fig:confidence} left). Its per-seed calibration error
-  $|\text{confidence}-\text{accuracy}|$ matches that of the public-statistics baseline
-  ($p\geq0.17$), except at $m=50$, where it is smaller ($p=0.02$). It is also more accurate, 69.2\% at $m=10$
-  and 77.8\% at $m=50$ against 58.5\% without trees ($p\leq2\times10^{-4}$ at every $m$).
-  All 20 seeds improve at $m=25$ and 50. It also ranks claims better (AUROC 0.79--0.83
-  against 0.74). These small average gaps do not show that every confidence level is calibrated.
+\paragraph{Public guidance improves accuracy and mean confidence.} Prior-guided
+  sampling is more accurate than the public-only control at every measured $m$
+  (paired $p\leq2\times10^{-4}$). Its mean confidence exceeds accuracy by only
+  0.7--2.3 points (Table~\ref{tab:confidence}). Figure~\ref{fig:confidence} left also
+  compares scores with correctness. Small average gaps do not establish calibration
+  at every confidence level.
 
-\paragraph{High-confidence claims account for much of the recovery.} At $m=50$ the
-  high-confidence claims cover 45\% of the rows, with mean per-seed precision of
-  97.6\%. Public statistics alone cover 10\%. Claims at confidence 1.0 (all 20 samples agree) were
-  wrong in 2 of 673 cases. The overall accuracy of 78\% hides this concentration: about half of the
-  claims receive high confidence, with mean per-seed precision of 97.6\%.
+\paragraph{Recovery is concentrated in high-confidence claims.} At $m=50$, claims
+  with confidence $\geq0.9$ cover 45\% of the sample, with mean per-seed precision
+  97.6\%. The public-only control covers about 10\%. This selective view shows
+  exposure that a single overall accuracy hides, without identifying specific people.
+  Even unanimous agreement is not certainty: at $m=50$, claims supported by all 20
+  candidate tables were wrong in 2 of 673 cases.
 
-\paragraph{A Dirichlet prior helps with a small public sample.} With 200 instead of
-  2,000 public records, accuracy at $m=10$ drops from 69.4\% (a rerun on the same seeds)
-  to 65.1\%, and the confidence becomes 8.6 points overconfident
-  (Figure~\ref{fig:confidence} right). Per-seed calibration error rises from 3.2 to
-  8.6 points ($p=4\times10^{-5}$). The Dirichlet prior removes most of this: overconfidence drops
-  from 8.6, 7.1 and 5.9 points to 1.6, 2.0 and 1.7 at $m=10$, 25 and 50
-  ($p\leq3\times10^{-5}$ each), while accuracy and AUROC show no measurable change ($p\geq0.19$). It
-  vouches for fewer rows (24\% against 33\% at $m=10$) but has higher precision on those rows
-  (94.8\% against 88.7\%). With 2,000 records it has no measurable effect
-  ($p\geq0.13$). In this setting, 200 public records suffice to bring mean confidence within about two points of accuracy.
+\paragraph{A Dirichlet prior helps with a small public sample.} With 200 public
+  records, plain-prior scores become overconfident (Figure~\ref{fig:confidence} right).
+  At $m=10$, the Dirichlet variant reduces the mean gap from 8.6 to 1.6 points.
+  The reduction is significant at all three tested sizes (paired absolute-gap
+  $p\leq3\times10^{-5}$), with no measurable accuracy change. It selects fewer
+  high-confidence claims but improves their precision. This suggests that uncertainty
+  in public frequencies matters when little public data is available. With 2,000
+  public records, the prior has no measurable effect on accuracy, ranking or the
+  absolute mean confidence gap ($p\geq0.13$). Its benefit here is therefore tied
+  to the small public sample, rather than a general improvement across settings.
