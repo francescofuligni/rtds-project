@@ -29,7 +29,7 @@ data, or related-work discussion. They match [the report bibliography](../../rep
 
 - Sture Holm. **A Simple Sequentially Rejective Multiple Test Procedure**. *Scandinavian Journal of Statistics*, 6(2):65–70, 1979. URL: [https://www.jstor.org/stable/4615733](https://www.jstor.org/stable/4615733).
 
-  This paper defines the multiple-testing correction implemented for the main experiment's per-release-size paired comparisons.
+  This paper defines the multiple-testing correction cited for the report's paired comparisons.
 
 - Ethan Hsu, Harry Chen, Chudi Zhong, and Lesia Semenova. **The Double-Edged Nature of the Rashomon Set for Trustworthy Machine Learning**. In *Proceedings of the 43rd International Conference on Machine Learning*, volume 306 of Proceedings of Machine Learning Research, pp. 44452–44490. PMLR, 2026. URL: [https://proceedings.mlr.press/v306/hsu26a.html](https://proceedings.mlr.press/v306/hsu26a.html).
 
@@ -49,9 +49,9 @@ data, or related-work discussion. They match [the report bibliography](../../rep
 
 - Rui Wen, Yiyong Liu, Michael Backes, and Yang Zhang. **SoK: Data Reconstruction Attacks Against Machine Learning Models: Definition, Metrics, and Benchmark**. In *34th USENIX Security Symposium (USENIX Security 25)*, pp. 5601–5620. USENIX Association, 2025. URL: [official proceedings](https://www.usenix.org/conference/usenixsecurity25/presentation/wen).
 
-  This paper supports distinguishing reconstruction fidelity from coverage and declaring matching assumptions, without treating our tabular target-error metric as a reproduction of its vision benchmark.
+  This paper supports distinguishing reconstruction fidelity from coverage in vision attacks. Excluding the sensitive target from our tabular row assignment is a project evaluation choice, not a method attributed to this paper.
 
-- Frank Wilcoxon. **Individual Comparisons by Ranking Methods**. *Biometrics Bulletin*, 1(6), 1945. URL: [https://doi.org/10.2307/3001968](https://doi.org/10.2307/3001968).
+- Frank Wilcoxon. **Individual Comparisons by Ranking Methods**. *Biometrics Bulletin*, 1(6):80–83, 1945. URL: [https://doi.org/10.2307/3001968](https://doi.org/10.2307/3001968).
 
   This paper defines the paired signed-rank test used in the report's seed-level comparisons.
 

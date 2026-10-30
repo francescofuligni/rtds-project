@@ -2,12 +2,12 @@
 % Motivate the area and synthesize the individual literature reviews.
 
 Interpretable models are recommended for high-stakes decisions \citep{rudin2019stop},
-and transparency is a reason to publish them. Yet a decision tree published with the
+and publishing them can support transparency. Yet a decision tree published with the
 class counts in every leaf is also a small table of statistics about its training data,
 and statistics can be turned back into records. Census tables have been used to
-reconstruct the records of a whole country \citep{abowd2025census}, and reconstructed
-census rows can be ranked by how often they come back \citep{dick2023confidence}. For
-trees, \citet{ferry2024probabilistic} measure the uncertainty left over all datasets
+reconstruct census microdata at national scale \citep{abowd2025census}, and reconstructed
+census rows can be ranked by how often they recur across reconstructions \citep{dick2023confidence}. For
+trees, \citet{ferry2024probabilistic} measure the uncertainty across all datasets
 that fit one published tree, DRAFT \citep{ferry2024draft} reconstructs the training set
 of a random forest with constraint programming, and \citet{gorge2026dp} extend it to
 differentially private forests. \citet{hsu2026rashomon} show that publishing many
@@ -15,19 +15,20 @@ near-optimal models from one Rashomon set, which TreeFARMS \citep{xin2022treefar
 enumerates for sparse trees, gives an attacker several views of the same data: their
 DRAFT-based error mostly falls as more trees are released.
 
-Our two individual literature reviews looked at this work from different sides. The
-first (De Coster) compared what reconstruction attacks output. Most return one dataset:
+Our two individual literature reviews approached this work from different angles. The
+first (De Coster) compared what reconstruction attacks output. Most of the reviewed attacks return one dataset:
 apart from the single-model analysis of \citet{ferry2024probabilistic}, none attaches a
 probability to each reconstructed value, and \citet{dick2023confidence} rank their rows
 but state that the ranking is not calibrated. The second (Fuligni) studied the
-attacker's background knowledge. DRAFT's experiments vary how many columns the attacker
-knows, not which ones \citep{ferry2024draft}, and the identity of a known attribute has
-only been studied for black-box attribute inference \citep{mehnaz2022sensitive}. Both
+attacker's background knowledge. DRAFT's experiments report reconstruction error as the number of known columns
+increases \citep{ferry2024draft}. In a different setting,
+\citet{mehnaz2022sensitive} vary which non-sensitive attributes are unknown in
+black-box attribute inference. Both
 reviews found the same evaluation weaknesses. Attacks on tree models are mostly compared
 with uniform guessing, while a baseline that knows the data distribution can change the
-conclusion \citep{abowd2025census,jayaraman2022imputation}, and the row matching used to
-score an anonymous reconstruction can use information the attacker does not have
-\citep{wen2025reconstruction}. Our shared starting point is therefore the Rashomon
-release of \citet{hsu2026rashomon} with a DRAFT-style attack and informed baselines, to
-which each of us added the open question from their own review. Code, data and results
+conclusion \citep{abowd2025census,jayaraman2022imputation}, while \citet{wen2025reconstruction} distinguish reconstruction fidelity from coverage
+in vision attacks. In our tabular setting, an additional concern is that matching an
+anonymous reconstruction to true rows uses evaluator-only information. Our shared starting point is therefore the Rashomon
+release of \citet{hsu2026rashomon} with a DRAFT-style attack and informed baselines, with
+the questions identified in our individual reviews. Code, data and results
 are available at \url{https://github.com/francescofuligni/rtds-project}.

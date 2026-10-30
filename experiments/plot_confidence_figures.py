@@ -27,7 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from output_paths import FIGURES_ROOT
 
 RESULTS = Path(__file__).resolve().parent.parent / "results"
-OFFICIAL = "record_confidence/random"
+OFFICIAL = "legacy/record_confidence/random"
 MS = (10, 25, 50)
 # (public records, prior) -> (colour, legend label, result set per m under results/)
 PUBLIC_DATA = {
