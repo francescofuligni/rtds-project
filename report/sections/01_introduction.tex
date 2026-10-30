@@ -6,7 +6,7 @@ and publishing them can support transparency. Yet a decision tree published with
 class counts in every leaf is also a small table of statistics about its training data,
 and statistics can be turned back into records. Census tables have been used to
 reconstruct census microdata at national scale \citep{abowd2025census}, and reconstructed
-census rows can be ranked by how often they recur across reconstructions \citep{dick2023confidence}. For
+census rows can be ranked by how often they appear in repeated reconstructions \citep{dick2023confidence}. For
 trees, \citet{ferry2024probabilistic} measure the uncertainty across all datasets
 that fit one published tree, DRAFT \citep{ferry2024draft} reconstructs the training set
 of a random forest with constraint programming, and \citet{gorge2026dp} extend it to
@@ -15,9 +15,9 @@ near-optimal models from one Rashomon set, which TreeFARMS \citep{xin2022treefar
 enumerates for sparse trees, gives an attacker several views of the same data: their
 DRAFT-based error mostly falls as more trees are released.
 
-Our two individual literature reviews approached this work from different angles. The
+Our two individual literature reviews focused on different questions. The
 first (De Coster) compared what reconstruction attacks output. Most of the reviewed attacks return one dataset:
-apart from the single-model analysis of \citet{ferry2024probabilistic}, none attaches a
+apart from the single-model analysis of \citet{ferry2024probabilistic}, none gives a
 probability to each reconstructed value, and \citet{dick2023confidence} rank their rows
 but state that the ranking is not calibrated. The second (Fuligni) studied the
 attacker's background knowledge. DRAFT's experiments report reconstruction error as the number of known columns
@@ -25,10 +25,11 @@ increases \citep{ferry2024draft}. In a different setting,
 \citet{mehnaz2022sensitive} vary which non-sensitive attributes are unknown in
 black-box attribute inference. Both
 reviews found the same evaluation weaknesses. Attacks on tree models are mostly compared
-with uniform guessing, while a baseline that knows the data distribution can change the
-conclusion \citep{abowd2025census,jayaraman2022imputation}, while \citet{wen2025reconstruction} distinguish reconstruction fidelity from coverage
-in vision attacks. In our tabular setting, an additional concern is that matching an
+with uniform guessing. Using a baseline that knows the data distribution can change the
+conclusion \citep{abowd2025census,jayaraman2022imputation}.
+\citet{wen2025reconstruction} distinguish how closely reconstructed images match the
+originals from how much of the dataset is recovered. In our tabular setting, an additional concern is that matching an
 anonymous reconstruction to true rows uses evaluator-only information. Our shared starting point is therefore the Rashomon
-release of \citet{hsu2026rashomon} with a DRAFT-style attack and informed baselines, with
+release of \citet{hsu2026rashomon} with a DRAFT-style attack and baselines that use public data. We study
 the questions identified in our individual reviews. Code, data and results
 are available at \url{https://github.com/francescofuligni/rtds-project}.

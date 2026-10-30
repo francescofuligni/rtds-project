@@ -3,12 +3,17 @@
 \usepackage{iclr2025_conference,times}
 \iclrfinalcopy
 
-% The course requires 11 pt; the supplied ICLR style defaults to 10 pt.
+% Restore 11 pt body text after the ICLR style sets its 10 pt default.
 \makeatletter
 \renewcommand{\normalsize}{\@setfontsize\normalsize{11pt}{13.2pt}}
 \makeatother
 \renewcommand{\baselinestretch}{1}
 \normalsize
+
+% Use 9 pt captions with the 11 pt body.
+\usepackage{caption}
+\DeclareCaptionFont{rtdscaption}{\fontsize{9pt}{11pt}\selectfont}
+\captionsetup{font=rtdscaption}
 
 % Latin Modern Mono is available locally; Courier is absent from BasicTeX.
 \renewcommand{\ttdefault}{lmtt}

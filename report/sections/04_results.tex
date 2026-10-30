@@ -4,17 +4,17 @@
 \begin{figure}[t]
   \centering
   \includegraphics[width=0.495\linewidth]{attack_marital_education.png}\hfill
-  \includegraphics[width=0.495\linewidth]{attack_selection_comparison.png}
-  \caption{Sex reconstruction error by number of released trees, mean over 94--100 seeds.
-      Left: knowledge conditions (B = education), random selection. Right: A+B (marital
-      status, education), random vs.\ sequential selection, 95\% bands.}
+  \includegraphics[width=0.495\linewidth]{attack_marital_age.png}
+  \caption{Sex reconstruction error under random tree selection, mean over 93--100
+      valid seeds per condition and release size. Both panels compare None, A, B and
+      A+B, with A = marital status. Left: B = education. Right: B = age.}
   \label{fig:attack}
 \end{figure}
 
 \begin{table}[t]
   \centering
   \caption{Sex error (\%), mean over seeds (94 at $m=200$). Gain: per-seed difference to
-      None, averaged over all $m$; Holm-corrected $p$. None and A: education run.}
+      None, averaged over all $m$. Holm-corrected $p$. None and A: education run.}
   \label{tab:attack}
   \small
   \setlength{\tabcolsep}{5pt}
@@ -36,36 +36,51 @@
 
 \subsection{More trees, and a little background knowledge (SQ1)}
 \label{sec:knowledge}
-The number of released trees drives the leakage (Figure~\ref{fig:attack},
-Table~\ref{tab:attack}). Without background knowledge the error falls from 34.6\% at
+Figure~\ref{fig:attack} compares the education and age background-knowledge runs.
+The number of released trees drives the leakage in both panels
+(Table~\ref{tab:attack}). In the education run, without background knowledge,
+the error falls from 34.6\% at
 $m=1$ to 25.3\% at $m=200$ ($-9.4$ points, $p=2\times10^{-11}$). At $m=1$ the attack is
 no better than always guessing male: a single tree constrains few cells, and the solver
 tends to fill the free sex cells with 0, which encodes male. For half of the seeds the
 $m=1$ error equals the share of women in the sample exactly. Against the majority guess
-it gains 7.7 points at $m=200$ ($p=5\times10^{-11}$); the uniform and frequency
+it gains 7.7 points at $m=200$ ($p=5\times10^{-11}$). The uniform and frequency
 baselines would make it look strong from the start.
 
 Background knowledge reduces the error by about one additional point. Averaged over $m$, marital status with
 education lowers the error by 1.3 points, and with age by 0.9 points. Single attributes
-give at most 0.5 points, and age alone gives no measurable improvement. As a single known
+reduce error by at most 0.5 points, and age alone gives no measurable improvement. In the age
+panel, error at $m=200$ is 25.1\% with age alone and 23.6\% with marital status
+and age known. These values describe $m=200$, while Gain averages the improvement over all $m$.
+As a single known
 attribute, education gives 0.5 points more gain than age ($p=0.03$,
 uncorrected). Tested at each $m$ separately, none of the 42 tests per run survives Holm
-correction. Two further checks help interpret these small effects. First, the solver
-adds noise of the same size: None is the same problem in both runs, yet 15\% of its
+correction. Two further checks help interpret these small effects. First, variation between solver runs
+is similar in size to these gains: None is the same problem in both runs, yet 15\% of its
 (seed, $m$) cells returned a different error (s.d.\ 2.0 points), because CP-SAT's
 parallel workers race and any consistent table is accepted. Second, the mechanism we
 expected, that knowing A helps when trees split on sex and A on the same path, is not
-supported: the share of such trees does not predict the gain ($|r|<0.04$, all
+supported: the share of trees with both splits does not predict the gain ($|r|<0.04$, all
 $p>0.2$).
 
 \subsection{Which trees are released (SQ2)}
 \label{sec:selection}
-The choice of trees matters more than background knowledge. With marital status and
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.75\linewidth]{attack_selection_comparison.png}
+  \caption{Sex reconstruction error with marital status and education known (A+B),
+      comparing random tree selection with TreeFARMS enumeration order. Means use
+      94--100 paired seeds per release size. Shaded bands show mean $\pm$ 1.96 SEM.}
+  \label{fig:selection}
+\end{figure}
+
+The choice of trees matters more than background knowledge
+(Figure~\ref{fig:selection}). With marital status and
 education known, random releases reach 24.3\% error at $m=200$, against 30.4\% for the
 first 200 trees in enumeration order ($-6.2$ points, $p=8\times10^{-11}$), and the
 curves separate from about $m=10$ ($-2.8$ points, $p=1\times10^{-4}$).
 % AUDIT: no saved trees or analysis artifact was found for the following three-seed Jaccard check.
-In a spot check
+In a small check
 on three seeds, the first 10 trees shared 21--33\% of their leaves pairwise (Jaccard
 index) and had 21--24 distinct leaves, against 3--4\% and 53--83 for 10 random trees:
 the consecutive trees in this check are much more similar to one another. The confidence attack shows the same effect: at
@@ -104,9 +119,9 @@ $m=25$ its accuracy is 61.7\% with the first trees and 73.9\% with random ones
 
 \subsection{Record-level confidence and correctness (SQ3)}
 \paragraph{Frequency alone gives unreliable confidence.} Scoring a record by how often
-  it recurs gives unreliable scores in these experiments. At $m=10$, the share of single-tree reconstructions containing a
-  record gives claims that are 6.6\% correct at a mean stated confidence of 49\%;
-  agreement across solver seeds gives 34\% correct at 86\% stated. The reconstructions
+  it appears gives unreliable scores in these experiments. At $m=10$, the share of single-tree reconstructions containing a
+  record gives claims that are 6.6\% correct at a mean stated confidence of 49\%.
+  Agreement across solver seeds gives 34\% correct at 86\% stated. The reconstructions
   agree because CP-SAT fills free cells the same way, not because the release forces
   those values.
 
@@ -114,24 +129,24 @@ $m=25$ its accuracy is 61.7\% with the first trees and 73.9\% with random ones
   exceeds its accuracy by only 0.7 to 2.3 points (Table~\ref{tab:confidence},
   Figure~\ref{fig:confidence} left). Its per-seed calibration error
   $|\text{confidence}-\text{accuracy}|$ matches that of the public-statistics baseline
-  ($p\geq0.17$; smaller at $m=50$, $p=0.02$). It is also more accurate, 69.2\% at $m=10$
-  and 77.8\% at $m=50$ against 58.5\% without trees ($p\leq2\times10^{-4}$ at every $m$;
-  all 20 seeds better at $m=25$ and 50), and it ranks claims better (AUROC 0.79--0.83
-  against 0.74). These mean gaps do not establish calibration at every score.
+  ($p\geq0.17$), except at $m=50$, where it is smaller ($p=0.02$). It is also more accurate, 69.2\% at $m=10$
+  and 77.8\% at $m=50$ against 58.5\% without trees ($p\leq2\times10^{-4}$ at every $m$).
+  All 20 seeds improve at $m=25$ and 50. It also ranks claims better (AUROC 0.79--0.83
+  against 0.74). These small average gaps do not show that every confidence level is calibrated.
 
 \paragraph{High-confidence claims account for much of the recovery.} At $m=50$ the
   high-confidence claims cover 45\% of the rows, with mean per-seed precision of
-  97.6\%; public statistics alone cover 10\%. Claims at confidence 1.0 (all 20 samples agree) were
+  97.6\%. Public statistics alone cover 10\%. Claims at confidence 1.0 (all 20 samples agree) were
   wrong in 2 of 673 cases. The overall accuracy of 78\% hides this concentration: about half of the
   claims receive high confidence, with mean per-seed precision of 97.6\%.
 
-\paragraph{Little public data suffices with a Dirichlet prior.} With 200 instead of
+\paragraph{A Dirichlet prior helps with a small public sample.} With 200 instead of
   2,000 public records, accuracy at $m=10$ drops from 69.4\% (a rerun on the same seeds)
   to 65.1\%, and the confidence becomes 8.6 points overconfident
-  (Figure~\ref{fig:confidence} right; per-seed calibration error 3.2 against 8.6 points,
-  $p=4\times10^{-5}$). The Dirichlet prior removes most of this: overconfidence drops
+  (Figure~\ref{fig:confidence} right). Per-seed calibration error rises from 3.2 to
+  8.6 points ($p=4\times10^{-5}$). The Dirichlet prior removes most of this: overconfidence drops
   from 8.6, 7.1 and 5.9 points to 1.6, 2.0 and 1.7 at $m=10$, 25 and 50
   ($p\leq3\times10^{-5}$ each), while accuracy and AUROC show no measurable change ($p\geq0.19$). It
-  vouches for fewer rows (24\% against 33\% at $m=10$) but is right on more of them
+  vouches for fewer rows (24\% against 33\% at $m=10$) but has higher precision on those rows
   (94.8\% against 88.7\%). With 2,000 records it has no measurable effect
   ($p\geq0.13$). In this setting, 200 public records suffice to bring mean confidence within about two points of accuracy.

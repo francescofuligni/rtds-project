@@ -8,31 +8,31 @@
   their median, capital gain above zero, marital status (four groups) and education
   (five groups) one-hot, and sex. This gives 13 binary columns, 320 possible feature
   vectors and the label $Y$ = income above 50K. For every seed we draw a private sample
-  of $n=100$ rows and a disjoint public sample of 2,000 rows. TreeFARMS
+  of $n=100$ rows and a public sample of 2,000 rows that does not overlap with it. TreeFARMS
   \citep{xin2022treefarms} with regularization 0.01 enumerates every tree whose
-  objective is within 10\% of the best one (median 6,047 trees; six seeds have fewer
-  than 200 trees and are excluded at the largest $m$). The publisher releases $m$ trees with the exact
+  objective is within 10\% of the best one (median 6,047 trees). Six seeds have fewer
+  than 200 trees and are excluded at the largest $m$. The publisher releases $m$ trees with the exact
   class counts in every leaf, either a uniformly \emph{random} nested subset or the
   first $m$ in TreeFARMS's \emph{sequential} enumeration order. The attacker knows each
-  row's income label; without other known columns this is no more than the class totals
+  row's income label. Without other known columns this is no more than the class totals
   the leaf counts reveal.
 
 \paragraph{Reconstruction attack (SQ1, SQ2).} We adapt the constraint-programming model
   of DRAFT \citep{ferry2024draft} to trees trained on the whole sample, without
-  bootstrap. Each cell of the unknown $100\times13$ table is a Boolean variable. For
+  bootstrap. Each cell of the unknown $100\times13$ table is a variable that can be 0 or 1. For
   every released tree, each row falls into exactly one leaf whose path it satisfies, the
   class counts of every leaf must match the release, and each one-hot group sums to one.
   CP-SAT\footnote{OR-Tools 9.15, \url{https://developers.google.com/optimization}.}
-  searches for any consistent table (180\,s, 4 workers); 5 of 16,548 solves returned UNKNOWN without a candidate.
+  searches for any consistent table (180\,s, 4 workers).
   Background knowledge fixes cells to their true values for every row. On the same
   sample and released trees we compare None, A, B and A+B, with A = marital status and B
   = education in one run and B = age in another, for seeds 0--99 and 14 values of $m$
-  from 1 to 200. A third run repeats all four conditions with education under sequential selection;
+  from 1 to 200. A third run repeats all four conditions with education under sequential selection.
   SQ2 compares A+B.
-  Reconstructed rows are anonymous, so we match them to the true rows within each label
-  group by a minimum-cost assignment on Hamming distance, leaving sex out so that the
-  target cannot improve its own score, and report the
-  share of rows with the wrong sex.
+  Reconstructed rows are anonymous, so we match them to the true rows within each income
+  group. We choose the assignment with the fewest differences across all non-sex binary
+  columns (Hamming distance). Leaving sex out prevents the target from improving its
+  own score. We report the share of rows with the wrong sex.
 % AUDIT: the majority baseline needs the original private-sample cache; it is not saved in the CSVs.
   Baselines are uniform guessing (50.4\% error),
   sampling sex from its public frequency (44.5\%) and always guessing male (33.0\%), the
@@ -45,20 +45,23 @@
   the release and public data alone, and that is calibrated without fitting: among
   claims assigned 80\% confidence, about 80\% should be correct.
 
-\paragraph{Claims.} A record is a full row: 13 columns and the label. The attacker
-  outputs 100 claims ``the private data contain at least $k$ copies of record $r$'',
-  each with a confidence, with as many claims per label as the leaf counts show. A claim
-  is correct if the private sample holds at least $k$ copies of $r$, so no row matching
-  is needed.
+\paragraph{Claims.} A record $r$ is a complete encoded profile: all 13 binary columns
+  and the income label. Different people can share the same profile, so we count copies.
+  Each claim states that ``the private dataset contains at least $k$ copies of $r$'',
+  with a confidence score. The attacker selects 100
+  claims in total, divided between income labels according to the class totals revealed
+  by the leaf counts. The same profile can appear in several claims with different $k$.
+  The evaluator checks each claim by counting copies in the original private sample.
+  No row matching is needed, and the claims do not identify specific people.
 
 \paragraph{Prior-guided sampling.} A single solution says little about uncertainty: cells
   that no tree constrains are filled in by the solver. We therefore draw $K=20$ random
   tables from the public sample (each row a public record with the same label). For each
-  table, CP-SAT minimizes Hamming distance subject to release consistency
-  (30\,s per solve, 6 workers); a returned table need not be a proven optimum. Cells fixed by the release have the same value in every sample;
-  cells it leaves free follow the public data and vary. A claim's confidence is the
+  table, CP-SAT searches for a table that matches the release and differs from the
+  sampled table in as few cells as possible (30\,s per solve, 6 workers). The solver may return a table without proving that it is the closest one. Cells fixed by the release have the same value in every sample.
+  Cells it leaves free follow the public data and vary. A claim's confidence is the
   share of returned tables that contain at least $k$ copies of $r$, and the attacker keeps the
-  highest-scoring claims per label. Ground truth is only used afterwards, for scoring.
+  highest-scoring claims per label. We use the original private data only afterwards, to check the claims.
 
 \paragraph{Baselines and variants.} The no-trees baseline (``public statistics only'')
   gives the probability of at least $k$ copies under a binomial model with the smoothed
@@ -68,15 +71,15 @@
   public records, where the random tables reuse the same people. In the Dirichlet
   variant each sample first draws a record distribution from a Dirichlet posterior
   (public counts plus 0.1 for each of the 640 possible records), then the random table
-  from it; the baseline becomes the matching beta-binomial. These runs use random
+  from it. The baseline becomes the matching beta-binomial. These runs use random
   selection, $m\in\{10,25,50,100\}$, no background knowledge and 20 seeds. We report
   accuracy (share of correct claims), overconfidence (mean confidence minus accuracy),
   the share of claims ``vouched for'' at confidence $\geq0.9$ with their precision, and
-  AUROC. At $m=100$, the 18 successful seeds return 1--20 tables each;
-  at $m=10$, 25 and 50, all 20 seeds return all 20 tables.
+  AUROC. At $m=100$, the 18 successful seeds return 1--20 tables each.
+  At $m=10$, 25 and 50, all 20 seeds return all 20 tables.
 
-\paragraph{Statistics.} The seed is the unit of analysis: it fixes the samples, the
-  Rashomon set and the released trees. Comparisons are paired by seed with the two-sided
-  Wilcoxon signed-rank test \citep{wilcoxon1945individual}. For SQ1 we average each
+\paragraph{Statistics.} Each seed defines one repetition, with fixed samples,
+  Rashomon set and released trees. We compare conditions using the same seeds with the
+  two-sided Wilcoxon signed-rank test \citep{wilcoxon1945individual}. For SQ1 we average each
   seed's difference to None over all $m$, giving six tests (three conditions, two runs),
   corrected with Holm's method \citep{holm1979multiple}.

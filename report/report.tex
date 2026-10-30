@@ -1,4 +1,4 @@
-% Supplied ICLR style with the course-required 11-point body.
+% Supplied ICLR style with report-specific caption and author settings.
 \input{template}
 
 \usepackage[T1]{fontenc}
@@ -33,9 +33,9 @@ to 25.3\% (always guessing male: 33.0\%). Background knowledge of marital status
 about one point, while releasing random trees instead of the first trees in
 enumeration order reduces it by six points. Using only the release and a public sample, prior-guided
 sampling gives record-level scores whose mean is within about
-two points of observed accuracy; at 50 trees it identifies 45\% of the records with 98\%
-precision. With only 200 public records, confidence exceeds accuracy by 6--9 points;
-a Dirichlet prior over record frequencies reduces this gap to about two points.
+two points of observed accuracy. At 50 trees it identifies 45\% of the records with 98\%
+precision. With only 200 public records, confidence exceeds accuracy by 6--9 points.
+A Dirichlet prior over record frequencies reduces this gap to about two points.
 \end{abstract}
 
 \input{sections/01_introduction}
@@ -46,6 +46,7 @@ a Dirichlet prior over record frequencies reduces this gap to about two points.
 \input{sections/06_contributions}
 
 % Original source PDFs belong in ../docs/papers/; metadata belongs in references.bib.
+\clearpage
 \bibliography{references}
 
 \end{document}
