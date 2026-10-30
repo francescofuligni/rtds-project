@@ -1,7 +1,18 @@
 \section{Results}
 % Present and synthesize the findings, tied to the research question.
 
-\begin{table}[t]
+\subsection{More trees, and a little background knowledge (SQ1)}
+\label{sec:knowledge}
+Releasing more trees has a much larger effect than any background attribute we tested
+(Table~\ref{tab:attack}). Without background knowledge, the error falls from 34.6\% with one
+tree to 25.3\% with 200 trees. With a single tree, the reconstruction is little more than a
+default guess: the tree constrains few cells, and the solver tends to fill the free sex
+cells with 0, which encodes male. For half of the seeds, the error with one tree equals
+exactly the share of women in the sample. Guessing sex at random or from its public frequency gives
+50.4\% and 44.5\% error. These controls are weak, which shows how much the choice of baseline
+affects how strong an attack looks.
+
+\begin{table}[ht]
   \centering
   \caption{Sex reconstruction error (\%), mean over seeds (94 at $m=200$). Gain: error reduction against no background knowledge,
       averaged over all $m$ (Holm-corrected $p$). None and marital status alone: education run.}
@@ -23,17 +34,6 @@
     \bottomrule
   \end{tabular}
 \end{table}
-
-\subsection{More trees, and a little background knowledge (SQ1)}
-\label{sec:knowledge}
-Releasing more trees has a much larger effect than any background attribute we tested
-(Table~\ref{tab:attack}). Without background knowledge, the error falls from 34.6\% with one
-tree to 25.3\% with 200 trees. With a single tree, the reconstruction is little more than a
-default guess: the tree constrains few cells, and the solver tends to fill the free sex
-cells with 0, which encodes male. For half of the seeds, the error with one tree equals
-exactly the share of women in the sample. Guessing sex at random or from its public frequency gives
-50.4\% and 44.5\% error. These controls are weak, which shows how much the choice of baseline
-affects how strong an attack looks.
 
 Knowing marital status together with a second attribute (A+B) helps most, but only by about
 one percentage point. Education on its own helps more than age, and the gain from age alone
