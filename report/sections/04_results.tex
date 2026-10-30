@@ -3,9 +3,8 @@
 
 \begin{table}[t]
   \centering
-  \caption{Sex reconstruction error (\%), mean over seeds (94 at $m=200$). Gain: error
-      reduction compared with no background knowledge, averaged over all $m$, with
-      Holm-corrected $p$. None and marital status alone: education run.}
+  \caption{Sex reconstruction error (\%), mean over seeds (94 at $m=200$). Gain: error reduction against no background knowledge,
+      averaged over all $m$ (Holm-corrected $p$). None and marital status alone: education run.}
   \label{tab:attack}
   \small
   \setlength{\tabcolsep}{5pt}
@@ -29,7 +28,10 @@
 \label{sec:knowledge}
 Releasing more trees has a much larger effect than any background attribute we tested
 (Table~\ref{tab:attack}). Without background knowledge, the error falls from 34.6\% with one
-tree to 25.3\% with 200 trees. Guessing sex at random or from its public frequency gives
+tree to 25.3\% with 200 trees. With a single tree, the reconstruction is little more than a
+default guess: the tree constrains few cells, and the solver tends to fill the free sex
+cells with 0, which encodes male. For half of the seeds, the error with one tree equals
+exactly the share of women in the sample. Guessing sex at random or from its public frequency gives
 50.4\% and 44.5\% error. These controls are weak, which shows how much the choice of baseline
 affects how strong an attack looks.
 
@@ -41,9 +43,8 @@ none of the tests at a single release size does, so we interpret them with cauti
 One reason is that the solver adds noise of about the same size. The condition without
 background knowledge is the same problem in both runs, yet for 15\% of the (seed, $m$) pairs
 the two runs gave a different error (standard deviation 2.0 points), because the solver
-accepts any consistent table and may find a different one each time. We also found no
-support for the idea that the gains depend on how often trees split on both sex and the
-known attribute.
+accepts any consistent table and may find a different one each time. We also found no link between the gains and how often trees split
+on both sex and the known attribute.
 
 \subsection{Which trees are released (SQ2)}
 \label{sec:selection}
@@ -51,8 +52,8 @@ known attribute.
   \centering
   \includegraphics[width=0.44\linewidth]{attack_selection_comparison.png}
   \caption{Sex reconstruction error with marital status and education known (A+B), for
-      randomly chosen trees and for the first trees in TreeFARMS order. Means over 94--100
-      paired seeds; bands show $\pm$ 1.96 standard errors.}
+      randomly chosen trees and for the first trees in TreeFARMS order. Means over 94--100 seeds;
+      bands show $\pm$1.96 standard errors.}
   \label{fig:selection}
 \end{figure}
 
@@ -105,7 +106,8 @@ experiment does not show which property of the selected trees causes the differe
   on average 97.6\% of these are correct, while public statistics alone give only about 10\%
   of the claims such a high confidence. The attacker can thus point out a large group of
   almost certainly correct records, which the overall accuracy of 77.8\% does not show,
-  although it does not know who these people are. 
+  although it does not know who these people are. Still, claims found
+  in all 20 tables were wrong in 2 of 673 cases. 
 
 \paragraph{Small public samples.} With only 200 public records, the plain version becomes
   overconfident (Figure~\ref{fig:confidence}, right): at $m=10$ its average confidence is 8.6
