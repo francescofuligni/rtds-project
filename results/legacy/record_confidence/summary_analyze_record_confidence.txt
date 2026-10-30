@@ -1,0 +1,136 @@
+Result set: record_confidence
+  background_knowledge = none
+  dataset = adult_curated_13col
+  labels = given_per_row
+  methods = ['per_tree_absolute', 'per_tree_occurrence', 'per_tree_presence', 'prior_guided', 'prior_only', 'seed_only']
+  pilot_n = 100
+  prior_alpha = 0.1
+  public_n = 2000
+  rashomon_bound_multiplier = 0.1
+  regularization = 0.01
+  samples = 20
+  solve_timeout = 30.0
+  tree_selection = first
+  produced by 1 run(s) at commit(s) 130cea12
+  directory: results/record_confidence/first
+  24000 output rows; skipped (Rashomon set < m): none
+
+Result set: record_confidence
+  background_knowledge = none
+  dataset = adult_curated_13col
+  labels = given_per_row
+  methods = ['per_tree_absolute', 'per_tree_occurrence', 'per_tree_presence', 'prior_guided', 'prior_only', 'seed_only']
+  pilot_n = 100
+  prior_alpha = 0.1
+  public_n = 2000
+  rashomon_bound_multiplier = 0.1
+  regularization = 0.01
+  samples = 20
+  solve_timeout = 30.0
+  tree_selection = random
+  produced by 1 run(s) at commit(s) 95ab8f6e
+  directory: results/record_confidence/random
+  36000 output rows; skipped (Rashomon set < m): none
+
+
+Per attacker: accuracy = 1 - global error of its 100-row table; gap = mean confidence - accuracy
+(positive gap = overconfident). per_tree_absolute is a count, not a probability.
+selection  m              method  seeds  accuracy  acc_sem  mean_conf   gap   ece  brier  auroc_pooled  auroc_seed_mean
+    first 10        prior_guided     20     0.608    0.011      0.647 0.040 0.042  0.195         0.754            0.754
+    first 10          prior_only     20     0.585    0.009      0.592 0.007 0.010  0.204         0.733            0.735
+    first 10 per_tree_occurrence     20     0.060    0.020      0.637 0.578 0.578  0.428         0.554            0.406
+    first 10   per_tree_presence     20     0.047    0.018      0.720 0.673 0.673  0.531         0.570            0.513
+    first 10           seed_only     20     0.111    0.025      0.935 0.824 0.826  0.795         0.524            0.552
+    first 10   per_tree_absolute     20     0.038    0.015        NaN   NaN   NaN    NaN         0.246            0.260
+    first 25        prior_guided     20     0.616    0.011      0.656 0.039 0.040  0.192         0.760            0.759
+    first 25          prior_only     20     0.585    0.009      0.592 0.007 0.010  0.204         0.733            0.735
+    first 25 per_tree_occurrence     20     0.052    0.018      0.569 0.517 0.517  0.348         0.656            0.504
+    first 25   per_tree_presence     20     0.044    0.016      0.676 0.632 0.632  0.474         0.599            0.515
+    first 25           seed_only     20     0.172    0.030      0.900 0.728 0.728  0.698         0.502            0.560
+    first 25   per_tree_absolute     20     0.035    0.014        NaN   NaN   NaN    NaN         0.290            0.398
+   random 10        prior_guided     20     0.692    0.016      0.715 0.023 0.029  0.165         0.797            0.792
+   random 10          prior_only     20     0.585    0.009      0.592 0.007 0.010  0.204         0.733            0.735
+   random 10 per_tree_occurrence     20     0.095    0.023      0.383 0.288 0.288  0.187         0.508            0.478
+   random 10   per_tree_presence     20     0.066    0.017      0.495 0.428 0.429  0.278         0.459            0.387
+   random 10           seed_only     20     0.339    0.042      0.858 0.519 0.519  0.494         0.630            0.666
+   random 10   per_tree_absolute     20     0.030    0.007        NaN   NaN   NaN    NaN         0.307            0.286
+   random 25        prior_guided     20     0.739    0.018      0.755 0.016 0.028  0.146         0.818            0.811
+   random 25          prior_only     20     0.585    0.009      0.592 0.007 0.010  0.204         0.733            0.735
+   random 25 per_tree_occurrence     20     0.091    0.028      0.351 0.260 0.263  0.159         0.597            0.515
+   random 25   per_tree_presence     20     0.053    0.019      0.497 0.444 0.444  0.275         0.533            0.512
+   random 25           seed_only     20     0.466    0.057      0.850 0.384 0.384  0.378         0.675            0.739
+   random 25   per_tree_absolute     20     0.032    0.009        NaN   NaN   NaN    NaN         0.267            0.277
+   random 50        prior_guided     20     0.778    0.019      0.785 0.007 0.025  0.131         0.832            0.826
+   random 50          prior_only     20     0.585    0.009      0.592 0.007 0.010  0.204         0.733            0.735
+   random 50 per_tree_occurrence     20     0.085    0.028      0.343 0.258 0.258  0.151         0.633            0.562
+   random 50   per_tree_presence     20     0.048    0.019      0.497 0.449 0.449  0.273         0.561            0.526
+   random 50           seed_only     20     0.579    0.046      0.859 0.280 0.281  0.285         0.733            0.767
+   random 50   per_tree_absolute     20     0.030    0.011        NaN   NaN   NaN    NaN         0.259            0.257
+
+Paired per-seed comparison, prior_guided minus prior_only (Wilcoxon signed-rank; abs_gap = calibration error):
+  first  m=10   accuracy  mean diff +0.0225 (n=20, 12 seeds up, 6 down) p=0.057
+  first  m=10   auroc     mean diff +0.0184 (n=20, 12 seeds up, 8 down) p=0.245
+  first  m=10   brier     mean diff -0.0089 (n=20, 9 seeds up, 11 down) p=0.114
+  first  m=10   abs_gap   mean diff +0.0157 (n=20, 12 seeds up, 8 down) p=0.0484
+  first  m=25   accuracy  mean diff +0.0315 (n=20, 13 seeds up, 2 down) p=0.00236
+  first  m=25   auroc     mean diff +0.0233 (n=20, 13 seeds up, 7 down) p=0.0759
+  first  m=25   brier     mean diff -0.0123 (n=20, 5 seeds up, 15 down) p=0.00365
+  first  m=25   abs_gap   mean diff +0.0119 (n=20, 13 seeds up, 7 down) p=0.133
+  random m=10   accuracy  mean diff +0.1065 (n=20, 19 seeds up, 0 down) p=0.000132
+  random m=10   auroc     mean diff +0.0567 (n=20, 18 seeds up, 2 down) p=0.000851
+  random m=10   brier     mean diff -0.0385 (n=20, 2 seeds up, 18 down) p=6.29e-05
+  random m=10   abs_gap   mean diff -0.0021 (n=20, 9 seeds up, 11 down) p=0.522
+  random m=25   accuracy  mean diff +0.1540 (n=20, 20 seeds up, 0 down) p=8.81e-05
+  random m=25   auroc     mean diff +0.0754 (n=20, 15 seeds up, 5 down) p=0.000708
+  random m=25   brier     mean diff -0.0575 (n=20, 0 seeds up, 20 down) p=1.91e-06
+  random m=25   abs_gap   mean diff -0.0064 (n=20, 9 seeds up, 11 down) p=0.312
+  random m=50   accuracy  mean diff +0.1930 (n=20, 20 seeds up, 0 down) p=8.73e-05
+  random m=50   auroc     mean diff +0.0906 (n=20, 17 seeds up, 3 down) p=6.29e-05
+  random m=50   brier     mean diff -0.0727 (n=20, 0 seeds up, 20 down) p=1.91e-06
+  random m=50   abs_gap   mean diff -0.0124 (n=20, 5 seeds up, 15 down) p=0.024
+
+Selective accuracy: keep rows with confidence >= t -> share correct / share of the table kept
+  first m=10
+    per_tree_occurrence    >=0.50 0.06/76% | >=0.70 0.06/44% | >=0.80 0.08/29% | >=0.90 0.13/19% | >=0.95 0.16/14%   most confident: top10 0.17, top25 0.08, top50 0.06
+    per_tree_presence      >=0.50 0.04/91% | >=0.70 0.05/62% | >=0.80 0.06/41% | >=0.90 0.08/29% | >=0.95 0.11/20%   most confident: top10 0.16, top25 0.08, top50 0.05
+    prior_guided           >=0.50 0.70/73% | >=0.70 0.83/42% | >=0.80 0.87/30% | >=0.90 0.93/20% | >=0.95 0.95/15%   most confident: top10 0.98, top25 0.90, top50 0.80
+    prior_only             >=0.50 0.72/59% | >=0.70 0.83/32% | >=0.80 0.88/21% | >=0.90 0.92/10% | >=0.95 0.94/ 5%   most confident: top10 0.93, top25 0.85, top50 0.76
+    seed_only              >=0.50 0.11/98% | >=0.70 0.11/91% | >=0.80 0.11/87% | >=0.90 0.11/82% | >=0.95 0.12/79%   most confident: top10 0.47, top25 0.23, top50 0.14
+  first m=25
+    per_tree_occurrence    >=0.50 0.06/59% | >=0.70 0.10/27% | >=0.80 0.12/19% | >=0.90 0.18/ 9% | >=0.95 0.14/ 7%   most confident: top10 0.17, top25 0.09, top50 0.07
+    per_tree_presence      >=0.50 0.04/81% | >=0.70 0.06/43% | >=0.80 0.07/32% | >=0.90 0.12/14% | >=0.95 0.09/11%   most confident: top10 0.12, top25 0.07, top50 0.05
+    prior_guided           >=0.50 0.71/74% | >=0.70 0.84/44% | >=0.80 0.89/32% | >=0.90 0.93/21% | >=0.95 0.95/16%   most confident: top10 0.95, top25 0.91, top50 0.81
+    prior_only             >=0.50 0.72/59% | >=0.70 0.83/32% | >=0.80 0.88/21% | >=0.90 0.92/10% | >=0.95 0.94/ 5%   most confident: top10 0.93, top25 0.85, top50 0.76
+    seed_only              >=0.50 0.17/97% | >=0.70 0.17/86% | >=0.80 0.17/79% | >=0.90 0.18/73% | >=0.95 0.17/70%   most confident: top10 0.49, top25 0.29, top50 0.21
+  random m=10
+    per_tree_occurrence    >=0.50 0.12/25% | >=0.70 0.20/ 8% | >=0.80 0.20/ 3% | >=0.90 0.38/ 1% | >=0.95 1.00/ 0%   most confident: top10 0.20, top25 0.16, top50 0.12
+    per_tree_presence      >=0.50 0.06/55% | >=0.70 0.07/23% | >=0.80 0.06/11% | >=0.90 0.15/ 3% | >=0.95 0.11/ 0%   most confident: top10 0.12, top25 0.08, top50 0.07
+    prior_guided           >=0.50 0.75/83% | >=0.70 0.87/54% | >=0.80 0.92/42% | >=0.90 0.96/31% | >=0.95 0.97/25%   most confident: top10 0.97, top25 0.95, top50 0.87
+    prior_only             >=0.50 0.72/59% | >=0.70 0.83/32% | >=0.80 0.88/21% | >=0.90 0.92/10% | >=0.95 0.94/ 5%   most confident: top10 0.93, top25 0.85, top50 0.76
+    seed_only              >=0.50 0.34/95% | >=0.70 0.37/80% | >=0.80 0.39/71% | >=0.90 0.42/62% | >=0.95 0.43/56%   most confident: top10 0.73, top25 0.54, top50 0.46
+  random m=25
+    per_tree_occurrence    >=0.50 0.18/14% | >=0.70 0.20/ 3% | >=0.80 0.37/ 1% | >=0.90 0.67/ 1% | >=0.95 1.00/ 0%   most confident: top10 0.21, top25 0.17, top50 0.12
+    per_tree_presence      >=0.50 0.06/45% | >=0.70 0.03/16% | >=0.80 0.06/ 9% | >=0.90 0.20/ 2% | >=0.95 0.11/ 0%   most confident: top10 0.10, top25 0.09, top50 0.07
+    prior_guided           >=0.50 0.78/87% | >=0.70 0.90/60% | >=0.80 0.94/50% | >=0.90 0.96/39% | >=0.95 0.98/34%   most confident: top10 0.98, top25 0.96, top50 0.91
+    prior_only             >=0.50 0.72/59% | >=0.70 0.83/32% | >=0.80 0.88/21% | >=0.90 0.92/10% | >=0.95 0.94/ 5%   most confident: top10 0.93, top25 0.85, top50 0.76
+    seed_only              >=0.50 0.48/95% | >=0.70 0.52/77% | >=0.80 0.54/69% | >=0.90 0.59/59% | >=0.95 0.62/55%   most confident: top10 0.86, top25 0.72, top50 0.62
+  random m=50
+    per_tree_occurrence    >=0.50 0.18/15% | >=0.70 0.23/ 2% | >=0.80 0.33/ 1% | >=0.90 0.62/ 1% | >=0.95 1.00/ 0%   most confident: top10 0.22, top25 0.16, top50 0.12
+    per_tree_presence      >=0.50 0.05/53% | >=0.70 0.03/16% | >=0.80 0.06/ 6% | >=0.90 0.20/ 2% | >=0.95 0.11/ 0%   most confident: top10 0.09, top25 0.08, top50 0.07
+    prior_guided           >=0.50 0.82/90% | >=0.70 0.90/66% | >=0.80 0.94/56% | >=0.90 0.98/45% | >=0.95 0.99/40%   most confident: top10 1.00, top25 0.99, top50 0.93
+    prior_only             >=0.50 0.72/59% | >=0.70 0.83/32% | >=0.80 0.88/21% | >=0.90 0.92/10% | >=0.95 0.94/ 5%   most confident: top10 0.93, top25 0.85, top50 0.76
+    seed_only              >=0.50 0.59/96% | >=0.70 0.65/81% | >=0.80 0.69/71% | >=0.90 0.74/62% | >=0.95 0.76/56%   most confident: top10 0.92, top25 0.84, top50 0.76
+
+Rows an attacker can vouch for at confidence >= 0.9 (per seed), prior_guided vs prior_only (Wilcoxon):
+  first  m=10   coverage prior_guided 20% (correct 0.93) vs prior_only 10% (correct 0.92); diff +10% p=8.67e-05
+  first  m=25   coverage prior_guided 21% (correct 0.93) vs prior_only 10% (correct 0.92); diff +11% p=8.78e-05
+  random m=10   coverage prior_guided 31% (correct 0.95) vs prior_only 10% (correct 0.92); diff +21% p=8.84e-05
+  random m=25   coverage prior_guided 39% (correct 0.95) vs prior_only 10% (correct 0.92); diff +29% p=1.91e-06
+  random m=50   coverage prior_guided 45% (correct 0.98) vs prior_only 10% (correct 0.92); diff +35% p=8.83e-05
+
+Tree selection effect on prior_guided accuracy, random minus first (paired by seed):
+  m=10   first 0.608  random 0.692  diff +0.0840 (n=20) p=0.000181
+  m=25   first 0.617  random 0.739  diff +0.1225 (n=20) p=8.82e-05
+
+Wrote /home/hendrik/Unief/Erasmus/Semester 1/RTDS/rtds-project/results/record_confidence/record_confidence_reliability.pdf
+Wrote /home/hendrik/Unief/Erasmus/Semester 1/RTDS/rtds-project/results/record_confidence/record_confidence_selective_accuracy.pdf

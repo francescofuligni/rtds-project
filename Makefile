@@ -74,7 +74,7 @@ EDUCATION_ACCURACY_DIR ?=
 AGE_ACCURACY_DIR ?=
 
 .DEFAULT_GOAL := help
-.PHONY: help setup pilot run run-final run-record-confidence run-accuracy figures analyze test report
+.PHONY: help setup pilot run run-final run-record-confidence run-accuracy figures analyze test report report-watch
 
 help:
 	@printf '%s\n' \
@@ -89,6 +89,7 @@ help:
 	  '  make analyze                Write numerical summaries of the latest results' \
 	  '  make test                   Run pytest' \
 	  '  make report                 Build the local report PDF' \
+	  '  make report-watch           Build and rebuild the report when sources change' \
 	  'Run overrides: N, K or K_STEPS, M_MAX, ATTR_A, ATTR_B, ALL_TREES, TREE_SELECTION,' \
 	  '  N_SEEDS, SEED_START, WORKERS and TIMEOUT. Outputs are always results/{timestamp}/{experiment}.' \
 	  'Supplementary overrides: RECORD_* (see README).'
@@ -138,6 +139,10 @@ analyze:
 test:
 	$(PYTHON) -m pytest -q
 
-# Build the empty or student-authored report using the supplied ICLR template.
+# Build the report PDF using the supplied ICLR template.
 report:
 	$(MAKE) -C report pdf
+
+# Keep rebuilding the PDF after report sources change.
+report-watch:
+	$(MAKE) -C report watch

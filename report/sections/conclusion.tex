@@ -1,8 +1,0 @@
-\section{Conclusion}
-% Reflect on the contribution, limitations and future work.
-
-Of the two blind spots our reviews identified, background knowledge mattered little in our setting (about one point), far less than the number of trees (nine points) and their diversity (six). The per-record view mattered more: from the release and a public sample alone, the attacker gets a calibrated confidence and names about half of the records with 95--98\% precision, even from 200 public records when a Dirichlet prior is used. Disclosure rules should therefore consider the diversity of the released trees and which records become certain, not only the number of trees or the average error.
-
-\paragraph{Limitations.} The setting is small and coarse. With 100 rows and 13 binary columns there are only 640 possible records, so 58.5\% of the public-statistics claims are already correct; the leak is the difference. The attacker knows every income label and, under background knowledge, exact values for every row. The public sample comes from the same population. The baseline's smoothing (0.1) was chosen after looking at its calibration, which favours the baseline. Many prior-guided samples hit the 30\,s limit before the closest table was proven, but doubling workers and time on ten seeds changed accuracy only from 68.4\% to 68.5\%. The confidence experiment uses 20 seeds and no background knowledge, and the error metric matches rows with true non-sex columns.
-
-\paragraph{Future work.} Next steps are differentially private leaf counts \citep{gorge2026dp}, a confidence attack that uses background knowledge, larger tables, shifted public data, and diversity-based disclosure rules.

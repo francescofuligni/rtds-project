@@ -29,8 +29,6 @@
 \newif\ificlrfinal
 \iclrfinalfalse
 \def\iclrfinalcopy{\iclrfinaltrue}
-% Local compatibility: the final-mode report does not display the review ruler.
-\IfFileExists{phvb.tfm}{\font\iclrtenhv = phvb at 8pt}{\font\iclrtenhv = cmssbx10 at 8pt}
 
 % Specify the dimensions of each page
 
@@ -212,7 +210,8 @@ plus      -0.5ex minus -.2ex}{0.5ex plus
 \loop\ifnum\cv@tmpc<#1\relax0\advance\cv@tmpc1\relax\fi \ifnum\cv@tmpc<#1 \repeat
 \cv@tmpc@=#2\relax\ifnum\cv@tmpc@<0\cv@tmpc@=-\cv@tmpc@\fi \relax\the\cv@tmpc@}%
 % \makevruler[<SCALE>][<INITIAL_COUNT>][<STEP>][<DIGITS>][<HEIGHT>]
-\def\makevruler[#1][#2][#3][#4][#5]{\begingroup\offinterlineskip
+% Load ICLR's ruler font only if review mode actually invokes the ruler.
+\def\makevruler[#1][#2][#3][#4][#5]{\font\iclrtenhv = phvb at 8pt\relax\begingroup\offinterlineskip
 \textheight=#5\vbadness=10000\vfuzz=120ex\overfullrule=0pt%
 \global\setbox\iclrrulerbox=\vbox to \textheight{%
 {\parskip=0pt\hfuzz=150em\cv@boxheight=\textheight

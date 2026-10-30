@@ -64,12 +64,6 @@ dist/
 .notes/
 .wiki/
 
-# Stamped result sets under results/ are committed (data, manifest, figures,
-# summaries) so results travel between machines; local historical archives and
-# scratch runs are excluded from version control.
-/results/legacy/
-results/dev/
-
 # Regenerable plotting tables and provenance
 /figures/data/
 
