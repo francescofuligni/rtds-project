@@ -2,18 +2,18 @@
 % Define the gap and state the research question and sub-questions.
 
 A single average reconstruction error does not show how much the result depends on what the
-attacker already knows, or which individual records are exposed. Our research question is
-therefore: \emph{when $m$ sparse decision trees from one Rashomon set are published together
+attacker already knows, or which individual records are exposed. We therefore ask: \emph{when $m$ sparse decision trees from one Rashomon set are published together
 with their leaf class counts, how well can an attacker reconstruct the sex of the training
 records, and can the attacker tell which reconstructed records are correct?} 
 \begin{description}[leftmargin=1.2em,itemsep=0pt,topsep=2pt]
   \item[SQ1.] How much does it help the attacker to know the marital status, education or age
-      of every training record, compared with simply releasing more trees?
+      of every training record, compared with releasing more trees?
   \item[SQ2.] Does it matter which trees of the Rashomon set are released? We compare a
       random selection with the first $m$ trees in the order in which TreeFARMS lists them.
   \item[SQ3.] Using only the released trees and a public sample of the population, can the
       attacker estimate how reliable each reconstructed record is, and how much public data is needed?
 \end{description}
-SQ2 builds on \citet{hsu2026rashomon}, who limit how many trees are released as a defence.
+SQ2 builds on \citet{hsu2026rashomon}, who already compare closest and farthest tree
+selection strategies. We compare random selection with TreeFARMS enumeration order.
 We do not propose a new attack: we adapt DRAFT and, for SQ3, solve it repeatedly with
 guidance from public data, similar to \citet{dick2023confidence}.

@@ -1,23 +1,32 @@
 \section{Conclusion}
 % Reflect on the contribution, limitations and future work.
 
-Together, the two studies show that the average reconstruction error gives an incomplete
-picture of what a Rashomon release exposes. Known attributes add little, the number of
-released trees and the way they are selected matter much more, and the attacker can tell
-which reconstructed records are most likely correct. Rules for publishing models should
-therefore also consider how trees are selected and which records become nearly certain.
+Together, the two studies show that average reconstruction error gives an incomplete
+picture of privacy leakage from a Rashomon release. Background knowledge helps, but its
+value depends on which attributes are known and how they are combined. In our experiments,
+the number and selection of released trees have larger effects. Reconstructions guided by public
+data also show that recovery is uneven: an attacker can distinguish more
+reliable record claims even when reconstruction of the whole dataset remains imperfect.
+Release policies should therefore consider both the information contributed by the
+selected trees and the reliability of individual reconstructed claims, rather than relying
+on average error alone.
 
 \paragraph{Limitations.} Our results come from small samples of the Adult data with a coarse
   binary encoding, known income labels and public data from the same population. Only 640
-  different records are possible, and public statistics alone already get 58.5\% of the claims right. The confidence study uses
-  20 seeds and no background knowledge, and some returned tables are not proven to be the
+  different records are possible, and public statistics alone already get 58.5\% of the
+  claims right. Correct claims can therefore reflect common population profiles, making
+  improvement over this control important when interpreting leakage. The SQ1 controls do
+  not use the known A/B attributes, so they do not isolate what the trees add beyond that
+  knowledge. The confidence study uses
+  20 seeds and no background knowledge, and the solver does not always prove that the returned tables are the
   closest ones, although doubling the solve time and workers on ten seeds changed accuracy by
-  only 0.1 points. The smoothing of the public-statistics control was chosen
-  after looking at its calibration, which favours it. Finally, we could not confirm that the current data
+  only 0.1 points. We chose the public-statistics control's smoothing
+  after inspecting its calibration, which favours that control. Finally, we could not confirm that the current data
   cache matches the one used for the original runs.
 
-\paragraph{Future work.} Next steps are to test the confidence attack with background
-  knowledge, on larger tables with a finer encoding, and with public data from a different
-  population. Combining the two studies, with the same background knowledge given to the control
-  without trees, would show whether known attributes make the
-  records more reliable.
+\paragraph{Future work.} Future work should combine background knowledge with record-level
+  confidence, giving the same background information to the control without trees. This
+  would test whether known attributes improve the reliability of reconstructed claims.
+  Further experiments could use larger tables, finer feature encodings and public data
+  from different populations. Extending reconstruction to differentially private leaf
+  counts would also allow us to study how noisy releases affect both recovery and confidence.

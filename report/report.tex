@@ -15,9 +15,9 @@
 \renewcommand{\topfraction}{0.8}
 
 \title{Sensitive Attribute Reconstruction\\from a Rashomon Set of Decision Trees}
-\author{Hendrik De Coster, Francesco Fuligni, Aur\'elien Craplet \\ Stockholm
-  University \\
-  Research project for the Research Topics in Data Science course}
+\author{Hendrik De Coster, Francesco Fuligni, Aur\'elien Craplet \\
+  Research project for the Research Topics in Data Science course \\
+  Stockholm University}
 \date{}
 \hypersetup{
   pdftitle={Sensitive Attribute Reconstruction from a Rashomon Set of Decision Trees},
@@ -37,9 +37,9 @@ know some attributes when reconstructing sex, and whether the attacker can tell 
 reconstructed records are correct. The error drops mainly when more trees are released, and
 when they are chosen at random instead of in the order in which TreeFARMS lists them; known
 attributes help only a little. By solving the reconstruction repeatedly with guidance from
-public data, the attacker gets a confidence per record that is close to its accuracy on
+public data, the attacker assigns each record a confidence score that is close to its accuracy on
 average, and can point out almost half of the records with very few mistakes. With little
-public data, a Dirichlet prior keeps this confidence from becoming too high.
+public data, a Dirichlet prior reduces overconfidence.
 \end{abstract}
 
 \input{sections/01_introduction}

@@ -6,7 +6,7 @@
   \citep{becker1996adult}. To keep the search for trees and the reconstruction tractable, all
   features are binary: age and hours worked per week are split at their medians, capital
   gain into zero or positive, marital status into four groups and education into five (one
-  column per group), and sex is a single column. This gives 13 columns. The label $Y$ says
+  column per group), and sex is a single column. This gives 13 columns. The label $Y$ indicates
   whether a person earns more than 50K; the attacker tries to reconstruct sex. For each seed
   we draw a private training sample of $n=100$ rows and a separate public sample of 2,000
   other rows. On the private sample, TreeFARMS \citep{xin2022treefarms} (regularization
@@ -28,7 +28,7 @@
 
   For SQ1 we compare four kinds of background knowledge: none, A, B and A+B, where A is
   marital status and B is education in one run and age in another. Knowing an attribute
-  means knowing its true value for every training row, so those cells are fixed.  Both runs use seeds 0 to 99 and 14 release sizes from 1 to 200, skipping sizes
+  means knowing its true value for every training row, so those cells are fixed. Both runs use seeds 0 to 99 and 14 release sizes from 1 to 200, skipping sizes
   larger than the Rashomon set. For SQ2 we repeat A+B with sequential selection.
 
   Because the rows are anonymous, we score a reconstruction by first pairing each
@@ -38,45 +38,32 @@
   B, we guess sex uniformly at random, or according to its frequency in the public sample.
 % AUDIT: the majority baseline needs the original private-sample cache; it is not saved in the CSVs.
 
-\paragraph{Why record-level confidence (SQ3).} The sex error above is one average over the
-  whole table, and only the evaluator can compute it, because it needs the true rows. It also
-  hides that some records are much more reliable than others: the release fixes some records
-  completely, while for others the solver fills in whatever is still free. A confidence for
-  every reconstructed record, computed only from what the attacker has, separates the two.
-  The attacker can then rely on the high-confidence records and combine the rest with public
-  data, and a publisher can see how many records a release exposes. Ideally this confidence
-  needs no fitting on true data: of the records with a confidence of 80\%, about 80\% should
-  be correct.
+\paragraph{Record-level confidence (SQ3).} Average sex error does not show which records
+  are reliable. Unlike the error calculated by the evaluator, confidence must use only information
+  available to the attacker. The separate confidence experiment uses the same data preparation and
+  constraint model, with no background knowledge, and scores full records: all 13 columns
+  plus income. The attacker outputs 100 rows, respecting the released income totals.
+  Because records can repeat, the $k$-th copy of a record $r$ represents a claim that the private sample
+  contains at least $k$ copies of $r$. The evaluator checks these claims by counting copies
+  in the private data, without identifying people. Ideally, among claims assigned 80\%
+  confidence, about 80\% would be correct, without fitting scores to private ground truth.
 
-\paragraph{Confidence experiment and claims.} The confidence study is a separate experiment
-  from the background-knowledge runs. It uses the same data, trees and constraint model, but
-  no background knowledge, and it scores whole records instead of only sex. A record $r$ is a
-  full row: the 13 columns plus income. The attacker outputs a table of 100 rows, as many per
-  income label as the leaf counts show, with a confidence for each row. Because rows are
-  anonymous and several people can share the same record, the $k$-th copy of $r$ in this table
-  is read as the claim ``the private sample contains at least $k$ copies of $r$''. The 100
-  rows thus give 100 claims, which the evaluator checks by counting copies in the private
-  data.
-
-\paragraph{Prior-guided sampling.} Many tables are consistent with the same release. To find
-  out which parts the release really fixes, the attacker produces several consistent tables
-  that differ wherever the release leaves room. It draws $K=20$ reference tables from the
-  public sample, each row being a random public record with the same income label. For each
-  one, CP-SAT finds the consistent table that differs from it in as few cells as possible
-  (30\,s and 6 workers per solve; the solver may stop before proving that no closer table
-  exists). Cells fixed by the release come out the same every time, while the others follow
-  the public data and vary. A claim's confidence is the share of returned tables with at least
-  $k$ copies of $r$, and for each income label the attacker outputs the claims with the
-  highest confidence. The private data are only used afterwards, to check the claims.
+\paragraph{Prior-guided sampling.} The attacker draws $K=20$ reference tables from the
+  public sample, sampling each row with the same income label. For each reference table,
+  CP-SAT minimizes the number of changed cells subject to release consistency (30\,s and
+  6 workers per solve); the solver may return a table without proving optimality. A claim's confidence
+  is the share of returned tables containing at least $k$ copies of $r$. For each income
+  label, the attacker selects the highest-confidence claims. Private data are used only
+  for evaluation. Agreement across these reconstructions estimates reliability; it does
+  not certify that a record is forced by the release.
 
 \paragraph{Controls and variants.} As a control without trees, the attacker estimates the
   probability of at least $k$ copies of $r$ from the public sample alone, with a binomial
-  model and additive smoothing of 0.1 (``public statistics only''). We also repeat the
-  experiment with only 200 public records. The reference tables then reuse the same few
-  people and may agree more than the data justify. In the Dirichlet variant, each reference
-  table therefore first draws a new estimate of how common each of the 640 possible records
-  is (from a Dirichlet distribution with the public counts plus 0.1), and then draws its rows
-  from that estimate; its control without trees uses a beta-binomial model. All confidence
+  model and additive smoothing of 0.1 (``public statistics only''). With only 200 public records, repeated sampling may overstate agreement.
+  The Dirichlet variant first draws a distribution over the 640 possible records using
+  public counts plus 0.1, then samples each reference table from it; its no-tree control
+  uses a beta-binomial model. This accounts for uncertainty in public record frequencies,
+  rather than treating the small public sample as the population. All confidence
   runs use random selection, no background knowledge, 20 seeds and $m\in\{10,25,50,100\}$.
   We report accuracy (the share of correct claims), overconfidence (mean confidence minus
   accuracy), AUROC, and how many claims reach a confidence of at least 0.9 and how many of
@@ -87,6 +74,6 @@
   test \citep{wilcoxon1945individual}. For SQ1 we compute, for each seed, how much a
   condition lowers the error compared with no background knowledge, averaged over the shared
   release sizes; the gain in Table~\ref{tab:attack} is the mean over seeds. These six tests
-  (three conditions in two runs) are corrected with Holm's method \citep{holm1979multiple},
-  and the tests at single release sizes are corrected within each run. For SQ3 we compare the
-  per-seed accuracy, or the per-seed absolute gap between mean confidence and accuracy.
+  (three conditions in two runs) are corrected with Holm's method \citep{holm1979multiple}.
+  For SQ3 we compare accuracy across paired seeds, or the absolute gap between mean
+  confidence and accuracy for each seed.
