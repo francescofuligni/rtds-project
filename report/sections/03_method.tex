@@ -15,7 +15,7 @@
   Rashomon set. The publisher releases $m$ of these trees together with the exact number of
   training rows of each class in every leaf, which we call the \emph{release}. Trees are
   added either in a random order (random selection) or in the order in which TreeFARMS lists
-  them (sequential selection), so a larger release always contains the smaller ones. The attacker knows every row's income label.
+  them (sequential selection), so larger releases contain the smaller ones. The attacker knows every row's income label.
 
 \paragraph{Reconstruction attack (SQ1, SQ2).} We adapt the constraint programming model of
   DRAFT \citep{ferry2024draft} to trees trained on the whole sample, without bootstrap
@@ -58,8 +58,7 @@
   6 workers per solve); the solver may return a table without proving optimality. A claim's confidence
   is the share of returned tables containing at least $k$ copies of $r$. For each income
   label, the attacker selects the highest-confidence claims. Private data are used only
-  for evaluation. Confidence measures agreement across the returned reconstructions, not certainty
-  that a claim is correct.
+  for evaluation. Confidence measures agreement across the returned reconstructions, not certainty.
 
 \paragraph{Controls and variants.} As a control without trees, the attacker estimates the
   probability of at least $k$ copies of $r$ from the public sample alone, with a binomial
@@ -70,8 +69,7 @@
   rather than treating the small public sample as the population. All confidence
   runs use random selection, no background knowledge, 20 seeds and $m\in\{10,25,50,100\}$.
   We report accuracy (the share of correct claims), overconfidence (mean confidence minus
-  accuracy), AUROC, and how many claims reach a confidence of at least 0.9 and how many of
-  those are correct.
+  accuracy), AUROC, and how many claims reach a confidence of at least 0.9 and their precision.
 
 \paragraph{Statistics.} Each seed is one paired observation, because all conditions in a
   comparison share its samples and Rashomon set. We use the two-sided Wilcoxon signed-rank
