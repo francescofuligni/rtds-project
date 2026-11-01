@@ -19,7 +19,7 @@ data, or related-work discussion. They match [the report bibliography](../../rep
 
   This paper introduces DRAFT, whose path and leaf-count reconstruction formulation is adapted to the project's non-bootstrap TreeFARMS releases and known per-row labels.
 
-- Julien Ferry, Ulrich Aïvodji, Sébastien Gambs, Marie-José Huguet, and Mohamed Siala. **Probabilistic Dataset Reconstruction from Interpretable Models**. In *2024 IEEE Conference on Secure and Trustworthy Machine Learning (SaTML)*, pp. 1–17. IEEE, 2024. URL: [https://doi.org/10.1109/SaTML59370.2024.00009](https://doi.org/10.1109/SaTML59370.2024.00009).
+- Julien Ferry, Ulrich Aïvodji, Sébastien Gambs, Marie-José Huguet, and Mohamed Siala. **Probabilistic Dataset Reconstruction from Interpretable Models**. In *2024 IEEE Conference on Secure and Trustworthy Machine Learning (SaTML)*, pp. 1–17. IEEE, 2024. URL: [publisher record](https://ieeexplore.ieee.org/abstract/document/10516646).
 
   This paper studies uncertainty across datasets consistent with an interpretable model.
 
@@ -31,7 +31,7 @@ data, or related-work discussion. They match [the report bibliography](../../rep
 
   This paper establishes the privacy motivation for examining how releasing multiple near-optimal trees exposes information about their shared training data.
 
-- Bargav Jayaraman and David Evans. **Are Attribute Inference Attacks Just Imputation?** In *Proceedings of the 2022 ACM SIGSAC Conference on Computer and Communications Security*, pp. 1569–1582. Association for Computing Machinery, 2022. URL: [https://doi.org/10.1145/3548606.3560663](https://doi.org/10.1145/3548606.3560663).
+- Bargav Jayaraman and David Evans. **Are Attribute Inference Attacks Just Imputation?** In *Proceedings of the 2022 ACM SIGSAC Conference on Computer and Communications Security*, pp. 1569–1582. Association for Computing Machinery, 2022. URL: [publisher record](https://dl.acm.org/doi/abs/10.1145/3548606.3560663).
 
   This paper motivates assessing what released models add beyond distributional knowledge; our unconditional marginal control does not reproduce its conditional imputation attacks.
 
