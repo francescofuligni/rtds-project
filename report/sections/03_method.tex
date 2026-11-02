@@ -19,37 +19,28 @@
 
 \paragraph{Reconstruction attack (SQ1, SQ2).} We adapt the constraint programming model of
   DRAFT \citep{ferry2024draft} to trees trained on the whole sample, without bootstrap
-  sampling. The unknown data form a table of 100 rows and 13 binary columns. Every row must
-  follow a path through each released tree that agrees with its values, every leaf must
-  contain exactly the released number of rows of each class, and each one-hot group must
-  have exactly one active column. The solver
+  sampling. The unknown data form a table of 100 rows and 13 binary columns. Rows must follow paths consistent with their values in every tree, match all released
+  leaf class counts, and have exactly one active column per one-hot group. The solver
   CP-SAT\footnote{OR-Tools 9.15, \url{https://developers.google.com/optimization}.} searches
   for any table that meets these constraints (180\,s and 4 workers per solve). Such a table is
   consistent with the release, but it does not have to be the original data.
 
   For SQ1 we compare four kinds of background knowledge: none, A, B and A+B, where A is
-  marital status and B is education in one run and age in another. These conditions compare
-  knowledge of a binary attribute with grouped categorical attributes, both alone and
-  alongside marital status. They test whether knowing the same number of original
-  attributes provides similar reconstruction benefits. Knowing an attribute
-  means knowing its true value for every training row, so those cells are fixed. Both runs use seeds 0 to 99 and 14 release sizes from 1 to 200, skipping sizes
+  marital status and B is education in one run and age in another. This compares binary and grouped categorical knowledge, alone and alongside
+  marital status, to test whether the number of known attributes captures their benefit. Known attributes are fixed to their true values for every training row. Both runs use seeds 0 to 99 and 14 release sizes from 1 to 200, skipping sizes
   larger than the Rashomon set. For SQ2 we repeat A+B with sequential selection.
 
-  Because the rows are anonymous, we score a reconstruction by first pairing each
-  reconstructed row with a true row in the same income group, so that the number of
-  differing non-sex values (the Hamming distance) is as small as possible. We then count the
-  rows with the wrong sex. Only the evaluator can do this pairing, because it uses the true data. As controls that use neither the trees nor A or
+  We score anonymous rows by matching reconstructed and true rows within each income
+  group, minimizing Hamming distance over non-sex values, then counting sex errors. Only the evaluator can do this pairing, because it uses the true data. As controls that use neither the trees nor A or
   B, we guess sex uniformly at random, or according to its frequency in the public sample.
 % AUDIT: the majority baseline needs the original private-sample cache; it is not saved in the CSVs.
 
-\paragraph{Record-level confidence (SQ3).} Average sex error does not show which records
-  are reliable. Unlike the error calculated by the evaluator, confidence must use only information
-  available to the attacker. The separate confidence experiment uses the same data preparation and
-  constraint model, with no background knowledge, and scores full records: all 13 columns
-  plus income. The attacker outputs 100 rows, respecting the released income totals.
-  Because records can repeat, the $k$-th copy of a record $r$ represents a claim that the private sample
-  contains at least $k$ copies of $r$. The evaluator checks these claims by counting copies
-  in the private data, without identifying people. Ideally, among claims assigned 80\%
+\paragraph{Record-level confidence (SQ3).} Confidence must use only attacker information to assess individual claims.
+  This separate experiment uses the same preprocessing and constraints, no background
+  knowledge, and full records (13 columns plus income). The attacker outputs 100 rows
+  respecting released income totals.
+  The $k$-th copy of record $r$ claims at least $k$ occurrences in the private sample.
+  The evaluator checks counts without identifying people. Ideally, among claims assigned 80\%
   confidence, about 80\% would be correct, without fitting scores to private ground truth.
 
 \paragraph{Prior-guided sampling.} The attacker draws $K=20$ reference tables from the
@@ -75,9 +66,8 @@
 
 \paragraph{Statistics.} Each seed is one paired observation, because all conditions in a
   comparison share its samples and Rashomon set. We use the two-sided Wilcoxon signed-rank
-  test \citep{wilcoxon1945individual}. For SQ1 we compute, for each seed, how much a
-  condition lowers the error compared with no background knowledge, averaged over the shared
-  release sizes; the gain in Table~\ref{tab:attack} is the mean over seeds. These six tests
+  test \citep{wilcoxon1945individual}. For SQ1, each seed's gain averages the error reduction against no background knowledge
+  over shared release sizes; Table~\ref{tab:attack} reports the mean across seeds. These six tests
   (three conditions in two runs) are corrected with Holm's method \citep{holm1979multiple}.
   For SQ3 we compare accuracy across paired seeds, or the absolute gap between mean
   confidence and accuracy for each seed.

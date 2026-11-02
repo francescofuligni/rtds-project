@@ -3,11 +3,20 @@
 
 \subsection{More trees, and a little background knowledge (SQ1)}
 \label{sec:knowledge}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.495\linewidth]{attack_marital_education.png}\hfill
+  \includegraphics[width=0.495\linewidth]{attack_marital_age.png}
+  \caption{Sex reconstruction error under random tree selection, mean over 93--100
+      valid seeds per condition and release size. Both panels compare None, A, B and
+      A+B, with A = marital status. Left: B = education. Right: B = age.}
+  \label{fig:attack}
+\end{figure}
+
 Releasing more trees has a much larger effect than any background attribute we tested
-(Table~\ref{tab:attack}). Without background knowledge, the error falls from 34.6\% with one
-tree to 25.3\% with 200 trees. More released trees provide additional constraints on the
-same training sample. A candidate table must satisfy all their paths and leaf counts,
-so tables compatible with one tree may be ruled out by another. Guessing sex at random
+(Figure~\ref{fig:attack} and Table~\ref{tab:attack}). Without background knowledge, the error falls from 34.6\% with one
+tree to 25.3\% with 200 trees. Each additional tree imposes path and leaf-count constraints on the same sample,
+which may rule out previously compatible tables. Guessing sex at random
 or from its public frequency gives 50.4\% and 44.5\% error. These comparisons show an
 advantage over random and public-frequency guesses, but do not isolate the contribution
 of the trees when background attributes are known.
@@ -115,10 +124,9 @@ released trees.
 
 \paragraph{Small public samples.} With only 200 public records, the plain version becomes
   overconfident (Figure~\ref{fig:confidence}, right): at $m=10$ its average confidence is 8.6
-  percentage points above its accuracy. A small public sample provides uncertain record frequencies. Repeatedly sampling
-  from those fixed estimates can therefore produce agreement that overstates reliability.
-  The Dirichlet variant varies the underlying frequencies between reference tables,
-  representing this uncertainty, and brings the average gap down to 1.6 points.
+  percentage points above its accuracy. Treating uncertain public frequencies as fixed can overstate agreement. The Dirichlet
+  variant represents this uncertainty by varying frequencies between reference tables,
+  reducing the average gap to 1.6 points.
   The improvement is significant at all three tested release sizes (paired
   $p\leq3\times10^{-5}$ for the absolute gap), and accuracy does not change measurably. Fewer claims reach a confidence of at least 0.9, but their precision improves. With 2,000 public
   records, no significant difference was detected in accuracy, ranking or the confidence
