@@ -1,14 +1,11 @@
-# Decision-Tree Data Reconstruction Experiments
+# Sensitive Attribute Reconstruction from a Rashomon Set of Decision Trees
 
 Research code for measuring sensitive-attribute reconstruction from selected
 decision trees in a TreeFARMS Rashomon set and their exact per-leaf class counts.
 
-The main experiment compares four background-knowledge conditions on the same
-sample and released trees: None, A, B and A+B. The sensitive target is **T = sex**;
-**Y = income** is the predictive label and is explicitly assumed known per row.
-A and B are additional known attributes, by default marital status and education.
-T is never supplied as background knowledge. A separate record-confidence
-experiment evaluates scores attached to reconstructed record claims.
+Two runners cover the main reconstruction experiment (None, A, B and A+B
+background knowledge) and the record-confidence experiment. Defaults use
+**T = sex**, **Y = income**, **A = marital status** and **B = education**.
 
 ## Repository map
 
@@ -23,6 +20,15 @@ experiment evaluates scores attached to reconstructed record claims.
 | [`results/`](results/) | Saved experiment data, protocol manifests and numerical summaries |
 | [`figures/`](figures/) | Generated experiment PNGs |
 | [`hpc/`](hpc/) | Slurm seed-array script; adapt resources to the cluster before use |
+
+The main entry points are:
+
+- [`experiments/run_final_experiment.py`](experiments/run_final_experiment.py): main reconstruction runner.
+- [`experiments/run_record_confidence.py`](experiments/run_record_confidence.py): record-confidence runner.
+- [`experiments/configuration.py`](experiments/configuration.py): shared experiment settings.
+- [`src/rashomon/publisher.py`](src/rashomon/publisher.py): sample and tree-release construction.
+- [`src/attack/reconstruct.py`](src/attack/reconstruct.py): CP-SAT reconstruction model.
+- [`src/attack/metrics.py`](src/attack/metrics.py): reconstruction scoring and row matching.
 
 ## Setup and first run
 
@@ -71,8 +77,9 @@ protocols and shared valid seed/release-size measurements. The command also
 renders the two gap views and the background overview. Its None reference comes
 from the education run; uniform and marginal controls are measured saved values.
 Direct analysis CLIs render their own plots unless `--no-plots` is supplied.
-`experiments/plot_confidence_figures.py` renders record-confidence figures from
-the saved confidence runs.
+[`experiments/plot_confidence_figures.py`](experiments/plot_confidence_figures.py)
+recreates the confidence figures from fixed saved archives. Its `OFFICIAL` and
+`PUBLIC_DATA` constants select the inputs; it does not discover the latest run.
 
 ### Main options
 
@@ -119,7 +126,7 @@ directory. Pass complete replay outputs as `EDUCATION_ACCURACY_DIR` and
 `AGE_ACCURACY_DIR` to `make figures` to request separate overlays explicitly.
 A one-seed pilot cannot overlay a complete attack run.
 
-## Outputs and interpretation
+## Output files and run status
 
 Runs use `results/<Stockholm timestamp>/<experiment>/`. Protocol manifests
 record scientific settings; per-seed CSVs contain measurements, and `runs/`
@@ -136,24 +143,3 @@ losses. Insufficient tree counts are reported as skipped release sizes.
 `make figures` validates inputs and stages all renders before replacing existing
 same-named PNGs and associated local plotting metadata. Raw experiment
 inputs remain unchanged. Numerical analyses write summaries beside their inputs.
-
-A feasible or optimal table need not be authentic or unique. Scoring matches rows
-within Y groups using non-T truth; this is evaluator-assisted matching, not
-attacker-side identification. Confidence scores are not calibrated probabilities
-by construction. Uniform/marginal controls do not use A/B knowledge.
-
-Predictive accuracy measures held-out majority-vote income predictions, with ties
-resolved to class 0. Historical replay checks counts and structural diagnostics
-but cannot certify identical historical trees without original hashes.
-Preprocessing thresholds are fitted on the full cleaned table, so this is not a
-fully training-only preprocessing evaluation.
-
-## Comments and text
-
-Use English for maintained text, comments, docstrings, messages and plot labels.
-Preserve original titles, names and scientific data. Write short, plain comments
-that explain a reason, assumption or non-obvious constraint; omit narration of
-obvious code and change history. Keep docstrings focused on behavior, inputs,
-outputs and relevant limits. Distinguish implemented behavior, project assumptions
-and scientific guarantees. Keep tests focused on meaningful properties and a few
-representative workflow checks, without duplicating implementation details.
