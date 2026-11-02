@@ -3,8 +3,18 @@
 
 \subsection{More trees, and a little background knowledge (SQ1)}
 \label{sec:knowledge}
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.495\linewidth]{attack_marital_education.png}\hfill
+  \includegraphics[width=0.495\linewidth]{attack_marital_age.png}
+  \caption{Sex reconstruction error under random tree selection, mean over 93--100
+      valid seeds per condition and release size. Both panels compare None, A, B and
+      A+B, with A = marital status. Left: B = education. Right: B = age.}
+  \label{fig:attack}
+\end{figure}
+
 Releasing more trees has a much larger effect than any background attribute we tested
-(Table~\ref{tab:attack}). Without background knowledge, the error falls from 34.6\% with one
+(Figure~\ref{fig:attack} and Table~\ref{tab:attack}). Without background knowledge, the error falls from 34.6\% with one
 tree to 25.3\% with 200 trees. More released trees provide additional constraints on the
 same training sample. A candidate table must satisfy all their paths and leaf counts,
 so tables compatible with one tree may be ruled out by another. Guessing sex at random
